@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { BIKES } from '../data/bikes';
+import { getBikes, Bike } from '../data/bikes';
 import { CalendarDays, MapPin, Phone, User, CreditCard, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const Booking = () => {
   const { bikeId } = useParams();
   const navigate = useNavigate();
-  const bike = BIKES.find(b => b.id === bikeId);
+  
+  const [bike, setBike] = useState<Bike | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
 
   // Form states
   const [step, setStep] = useState(1);
@@ -17,6 +19,31 @@ export const Booking = () => {
   const [phone, setPhone] = useState('');
   const [license, setLicense] = useState('');
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    // Load dynamic bike
+    const list = getBikes();
+    const found = list.find(b => b.id === bikeId);
+    setBike(found);
+    setLoading(false);
+
+    // Auto fill user details if logged in
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const u = JSON.parse(storedUser);
+        setFullName(u.name || '');
+      } catch (e) {}
+    }
+  }, [bikeId]);
+
+  if (loading) {
+    return (
+      <div className="pt-28 pb-20 text-center min-h-screen bg-dark flex flex-col justify-center items-center">
+        <p className="text-gray-400">Đang tải...</p>
+      </div>
+    );
+  }
 
   if (!bike) {
     return (
@@ -34,9 +61,12 @@ export const Booking = () => {
     if (step < 2) {
       setStep(step + 1);
     } else {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+
       // Save order to localStorage
       const newBooking = {
         id: 'BK-' + Math.floor(100000 + Math.random() * 900000),
+        userEmail: currentUser.email || 'guest@example.com',
         bikeId: bike.id,
         bikeName: bike.name,
         image: bike.image,
