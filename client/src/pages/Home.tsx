@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, MapPin, ChevronDown } from 'lucide-react';
 import { motion } from 'motion/react';
-import { BIKES } from '../data/bikes';
+import { getBikes, Bike } from '../data/bikes';
 import { BikeCard } from '../components/BikeCard';
 
 const HeroSearch = () => {
@@ -113,8 +113,12 @@ const HeroSection = () => {
   );
 };
 
-const PopularSection = () => {
-  const featuredBikes = BIKES.filter(b => b.featured);
+interface SectionProps {
+  bikes: Bike[];
+}
+
+const PopularSection = ({ bikes }: SectionProps) => {
+  const featuredBikes = bikes.filter(b => b.featured);
   return (
     <section className="py-20 max-w-7xl mx-auto px-4 lg:px-8">
       <div className="flex flex-col md:flex-row justify-between items-end mb-12">
@@ -132,8 +136,8 @@ const PopularSection = () => {
   );
 };
 
-const HighQualitySection = () => {
-  const otherBikes = BIKES.filter(b => !b.featured).slice(0, 3);
+const HighQualitySection = ({ bikes }: SectionProps) => {
+  const otherBikes = bikes.filter(b => !b.featured).slice(0, 3);
   return (
     <section className="py-20 border-t border-white/5">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
@@ -201,11 +205,17 @@ const BannerCTA = () => {
 };
 
 export const Home = () => {
+  const [bikes, setBikes] = useState<Bike[]>([]);
+
+  useEffect(() => {
+    setBikes(getBikes());
+  }, []);
+
   return (
     <div className="flex-grow">
       <HeroSection />
-      <PopularSection />
-      <HighQualitySection />
+      <PopularSection bikes={bikes} />
+      <HighQualitySection bikes={bikes} />
       <BannerCTA />
     </div>
   );

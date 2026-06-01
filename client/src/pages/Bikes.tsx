@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BIKES } from '../data/bikes';
+import { getBikes, Bike } from '../data/bikes';
 import { BikeCard } from '../components/BikeCard';
 import { SlidersHorizontal, Search } from 'lucide-react';
 
@@ -9,19 +9,24 @@ export const Bikes = () => {
   const initialLocation = searchParams.get('location') || '';
   const initialDate = searchParams.get('date') || '';
 
+  const [bikes, setBikes] = useState<Bike[]>([]);
+  useEffect(() => {
+    setBikes(getBikes());
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('All');
   const [priceSort, setPriceSort] = useState('Default');
 
   // Available bike types
   const types = useMemo(() => {
-    const allTypes = BIKES.map(bike => bike.type);
+    const allTypes = bikes.map(bike => bike.type);
     return ['All', ...Array.from(new Set(allTypes))];
-  }, []);
+  }, [bikes]);
 
   // Filter and sort bikes
   const filteredBikes = useMemo(() => {
-    let result = [...BIKES];
+    let result = [...bikes];
 
     // Search query filter
     if (searchQuery.trim() !== '') {
@@ -44,7 +49,7 @@ export const Bikes = () => {
     }
 
     return result;
-  }, [searchQuery, selectedType, priceSort]);
+  }, [bikes, searchQuery, selectedType, priceSort]);
 
   return (
     <div className="pt-28 pb-20 min-h-screen bg-dark">
