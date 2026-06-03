@@ -41,6 +41,15 @@ const bikesSlice = createSlice({
     setSelectedType(state, action: PayloadAction<string>) {
       state.selectedType = action.payload;
     },
+    addBike(state, action: PayloadAction<Bike>) {
+      state.bikes = [action.payload, ...state.bikes];
+    },
+    updateBike(state, action: PayloadAction<Bike>) {
+      state.bikes = state.bikes.map(b => b.id === action.payload.id ? action.payload : b);
+    },
+    deleteBike(state, action: PayloadAction<string>) {
+      state.bikes = state.bikes.filter(b => b.id !== action.payload);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -60,5 +69,5 @@ const bikesSlice = createSlice({
   },
 });
 
-export const { setSearchQuery, setSelectedType } = bikesSlice.actions;
+export const { setSearchQuery, setSelectedType, addBike, updateBike, deleteBike } = bikesSlice.actions;
 export default bikesSlice.reducer;
