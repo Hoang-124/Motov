@@ -4,12 +4,14 @@ interface UserState {
   name: string;
   email: string;
   memberTag: string;
+  role: 'guest' | 'customer' | 'owner' | 'staff' | 'admin';
 }
 
 const initialState: UserState = {
-  name: 'Khách Hàng Motov',
-  email: 'khachhang@motov.com',
-  memberTag: 'Thành viên Bạc',
+  name: 'Khách vãng lai',
+  email: 'khach@motov.com',
+  memberTag: 'Thành viên mới',
+  role: 'guest',
 };
 
 const userSlice = createSlice({
