@@ -5,6 +5,7 @@ export interface Bike {
   type: string;
   specs: string[];
   image: string;
+  images?: string[];
   featured: boolean;
   ownerEmail?: string;
 }
@@ -524,20 +525,35 @@ export const INITIAL_BIKES: Bike[] = [
 
 export const getBikes = (): Bike[] => {
   const stored = localStorage.getItem('motov_bikes');
-  if (!stored) {
-    localStorage.setItem('motov_bikes', JSON.stringify(INITIAL_BIKES));
-    return INITIAL_BIKES;
+  let list = INITIAL_BIKES;
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed.length === INITIAL_BIKES.length) {
+        list = parsed;
+      } else {
+        localStorage.setItem('motov_bikes', JSON.stringify(INITIAL_BIKES));
+      }
+    } catch (e) {}
   }
-  try {
-    const list = JSON.parse(stored);
-    if (list.length !== 34) {
-      localStorage.setItem('motov_bikes', JSON.stringify(INITIAL_BIKES));
-      return INITIAL_BIKES;
-    }
-    return list;
-  } catch (e) {
-    return INITIAL_BIKES;
-  }
+
+  // Dynamically map Cloudinary image paths: _1.jpg.png (front), _3.jpg.png (side), _4.jpg.png (back)
+  // Cloudinary automatically optimizes images (f_auto, q_auto) for faster load speeds
+  const CLOUD_NAME = 'dsxbuk4pe';
+  const BASE_URL = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_auto,q_auto/bikes`;
+
+  return list.map((bike, idx) => {
+    const num = idx + 1;
+    return {
+      ...bike,
+      image: `${BASE_URL}/${num}_3.jpg.png`, // Default main image is side profile
+      images: [
+        `${BASE_URL}/${num}_1.jpg.png`, // front
+        `${BASE_URL}/${num}_3.jpg.png`, // side
+        `${BASE_URL}/${num}_4.jpg.png`  // back
+      ]
+    };
+  });
 };
 
 export const saveBikes = (bikes: Bike[]) => {
