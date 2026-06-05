@@ -7,6 +7,7 @@ import { Bikes } from './pages/Bikes';
 import { Booking } from './pages/Booking';
 import { Bookings } from './pages/Bookings';
 import { Auth } from './pages/Auth';
+import { Profile } from './pages/Profile';
 
 // Staff pages
 import { StaffBookings } from './pages/staff/StaffBookings';
@@ -65,6 +66,11 @@ export default function App() {
             <Route path="/bookings" element={
               <ProtectedRoute allowedRoles={['customer']}>
                 <Bookings />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute allowedRoles={['customer', 'staff', 'admin', 'owner']}>
+                <Profile />
               </ProtectedRoute>
             } />
 

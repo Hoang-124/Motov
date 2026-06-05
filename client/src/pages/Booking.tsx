@@ -9,6 +9,7 @@ export const Booking = () => {
   const navigate = useNavigate();
   
   const [bike, setBike] = useState<Bike | undefined>(undefined);
+  const [activeImage, setActiveImage] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Form states
@@ -25,6 +26,9 @@ export const Booking = () => {
     const list = getBikes();
     const found = list.find(b => b.id === bikeId);
     setBike(found);
+    if (found) {
+      setActiveImage(found.image);
+    }
     setLoading(false);
 
     // Auto fill user details if logged in
@@ -272,8 +276,37 @@ export const Booking = () => {
               Tóm Tắt Đơn Thuê Xe
             </h3>
 
-            <div className="aspect-video w-full rounded-lg overflow-hidden bg-black border border-gray-800">
-              <img src={bike.image} alt={bike.name} className="w-full h-full object-cover" />
+            <div className="space-y-3">
+              <div className="aspect-video w-full rounded-lg overflow-hidden bg-black border border-gray-800 relative">
+                <img src={activeImage} alt={bike.name} className="w-full h-full object-cover transition-all duration-300" />
+              </div>
+              
+              {/* Thumbnail Gallery */}
+              {bike.images && bike.images.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {bike.images.map((imgUrl, index) => {
+                    const labels = ["Mặt trước", "Nhìn nghiêng", "Mặt sau"];
+                    const isSelected = activeImage === imgUrl;
+                    return (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setActiveImage(imgUrl)}
+                        className={`group relative aspect-video rounded-md overflow-hidden bg-black border transition-all duration-200 cursor-pointer ${
+                          isSelected ? 'border-neon ring-1 ring-neon' : 'border-gray-800 hover:border-gray-600'
+                        }`}
+                      >
+                        <img src={imgUrl} alt={labels[index]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                        <div className={`absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-center text-[10px] font-bold ${
+                          isSelected ? 'text-neon' : 'text-gray-400 group-hover:text-white'
+                        }`}>
+                          {labels[index]}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div>

@@ -81,7 +81,7 @@ export const Bookings = () => {
               >
                 {/* Image */}
                 <div className="w-full md:w-48 aspect-video rounded-xl overflow-hidden bg-black border border-gray-800 flex-shrink-0">
-                  <img src={booking.image} alt={booking.bikeName} className="w-full h-full object-cover" />
+                  <img src={booking.image} alt={booking.bikeName} loading="lazy" className="w-full h-full object-cover" />
                 </div>
 
                 {/* Details */}
