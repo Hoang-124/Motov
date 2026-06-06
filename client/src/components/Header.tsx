@@ -37,7 +37,8 @@ export const Header = () => {
       
       const { token } = JSON.parse(storedUser);
 
-      const response = await fetch('http://localhost:5000/api/auth/become-owner', {
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${apiBaseUrl}/auth/become-owner`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
