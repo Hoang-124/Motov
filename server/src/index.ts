@@ -9,6 +9,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { User } from './models/User.js';
 import authRoutes from './routes/authRoutes.js';
+import vehicleRoutes from './routes/vehicleRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,12 +33,17 @@ app.use('/uploads', express.static(uploadsDir));
 // Routes xác thực (Auth APIs)
 app.use('/api/auth', authRoutes);
 
+// Routes quản lý xe (Vehicle/Bike Management APIs)
+app.use('/api/vehicles', vehicleRoutes);
+
 // Cấu hình Multer để lưu trữ ảnh tải lên
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  // @ts-ignore
+  destination: (req: any, file: any, cb: any) => {
     cb(null, uploadsDir);
   },
-  filename: (req, file, cb) => {
+  // @ts-ignore
+  filename: (req: any, file: any, cb: any) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
@@ -46,7 +52,8 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: { fileSize: 2 * 1024 * 1024 }, // Tối đa 2MB
-  fileFilter: (req, file, cb) => {
+  // @ts-ignore
+  fileFilter: (req: any, file: any, cb: any) => {
     const filetypes = /jpeg|jpg|png|webp/;
     const mimetype = filetypes.test(file.mimetype);
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
@@ -152,7 +159,7 @@ mongoose.connect(MONGODB_URI)
     console.log('✅ Connected to MongoDB successfully!');
     await seedUsers();
   })
-  .catch((err) => console.error('❌ Failed to connect to MongoDB:', err));
+  .catch((err: any) => console.error('❌ Failed to connect to MongoDB:', err));
 
 
 interface Bike {
