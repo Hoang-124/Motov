@@ -4,6 +4,8 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Home } from './pages/Home';
 import { Bikes } from './pages/Bikes';
+import { MotorbikeDetail } from './pages/MotorbikeDetail';
+import { MotorbikeForm } from './pages/MotorbikeForm';
 import { Booking } from './pages/Booking';
 import { Bookings } from './pages/Bookings';
 import { Auth } from './pages/Auth';
@@ -55,6 +57,17 @@ export default function App() {
             {/* Public Routes */}
             <Route path="/" element={<Home />} />
             <Route path="/bikes" element={<Bikes />} />
+            <Route path="/motorbike/:id" element={<MotorbikeDetail />} />
+            <Route path="/bike-add" element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <MotorbikeForm />
+              </ProtectedRoute>
+            } />
+            <Route path="/bike-edit/:id" element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <MotorbikeForm />
+              </ProtectedRoute>
+            } />
             <Route path="/auth" element={<Auth />} />
 
             {/* Customer Protected Route */}
