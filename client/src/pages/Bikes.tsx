@@ -1,27 +1,45 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getBikes, Bike } from '../data/bikes';
 import { BikeCard } from '../components/BikeCard';
-import { SlidersHorizontal, Search } from 'lucide-react';
+import { SlidersHorizontal, Search, AlertCircle, Loader } from 'lucide-react';
+import { getAllMotorbikes, Motorbike } from '../services/vehicleService';
 
 export const Bikes = () => {
   const [searchParams] = useSearchParams();
   const initialLocation = searchParams.get('location') || '';
   const initialDate = searchParams.get('date') || '';
 
-  const [bikes, setBikes] = useState<Bike[]>([]);
+  const [bikes, setBikes] = useState<Motorbike[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch bikes from API
   useEffect(() => {
-    setBikes(getBikes());
+    const fetchBikes = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getAllMotorbikes({ status: 'Available' });
+        setBikes(data);
+      } catch (err) {
+        setError('Failed to load motorbikes. Please try again later.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBikes();
   }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedType, setSelectedType] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [priceSort, setPriceSort] = useState('Default');
 
-  // Available bike types
-  const types = useMemo(() => {
-    const allTypes = bikes.map(bike => bike.type);
-    return ['All', ...Array.from(new Set(allTypes))];
+  // Available bike categories
+  const categories = useMemo(() => {
+    const allCategories = bikes.map(bike => bike.category);
+    return ['All', ...Array.from(new Set(allCategories))];
   }, [bikes]);
 
   // Filter and sort bikes
@@ -31,25 +49,26 @@ export const Bikes = () => {
     // Search query filter
     if (searchQuery.trim() !== '') {
       result = result.filter(bike => 
-        bike.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bike.type.toLowerCase().includes(searchQuery.toLowerCase())
+        bike.vehicleModel.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        bike.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        bike.description?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
-    // Type filter
-    if (selectedType !== 'All') {
-      result = result.filter(bike => bike.type === selectedType);
+    // Category filter
+    if (selectedCategory !== 'All') {
+      result = result.filter(bike => bike.category === selectedCategory);
     }
 
     // Sort by price
     if (priceSort === 'LowToHigh') {
-      result.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+      result.sort((a, b) => a.rentalPrice - b.rentalPrice);
     } else if (priceSort === 'HighToLow') {
-      result.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+      result.sort((a, b) => b.rentalPrice - a.rentalPrice);
     }
 
     return result;
-  }, [bikes, searchQuery, selectedType, priceSort]);
+  }, [bikes, searchQuery, selectedCategory, priceSort]);
 
   return (
     <div className="pt-28 pb-20 min-h-screen bg-dark">
@@ -65,66 +84,86 @@ export const Bikes = () => {
           </p>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 mb-6 flex items-center gap-3">
+            <AlertCircle size={20} className="text-red-500" />
+            <p className="text-red-300">{error}</p>
+          </div>
+        )}
+
         {/* Filter and Search Bar */}
-        <div className="bg-surface border border-gray-800 rounded-2xl p-6 mb-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between shadow-lg">
-          {/* Search bar */}
-          <div className="relative flex-grow max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search size={18} className="text-gray-500" />
-            </div>
-            <input 
-              type="text" 
-              placeholder="Tìm kiếm dòng xe..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none transition-all duration-300"
-            />
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-wrap gap-4 items-center">
-            {/* Filter by Type */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 font-medium uppercase tracking-wider hidden sm:inline">Phân loại:</span>
-              <select 
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent p-3 outline-none appearance-none cursor-pointer transition-all duration-300"
-              >
-                {types.map(t => (
-                  <option key={t} value={t}>{t === 'All' ? 'Tất cả dòng xe' : t}</option>
-                ))}
-              </select>
+        {!loading && (
+          <div className="bg-surface border border-gray-800 rounded-2xl p-6 mb-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between shadow-lg">
+            {/* Search bar */}
+            <div className="relative flex-grow max-w-md">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={18} className="text-gray-500" />
+              </div>
+              <input 
+                type="text" 
+                placeholder="Tìm kiếm xe máy..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none transition-all duration-300"
+              />
             </div>
 
-            {/* Sort by Price */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 font-medium uppercase tracking-wider hidden sm:inline">Sắp xếp giá:</span>
-              <select 
-                value={priceSort}
-                onChange={(e) => setPriceSort(e.target.value)}
-                className="bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent p-3 outline-none appearance-none cursor-pointer transition-all duration-300"
-              >
-                <option value="Default">Mặc định</option>
-                <option value="LowToHigh">Từ thấp đến cao</option>
-                <option value="HighToLow">Từ cao đến thấp</option>
-              </select>
+            {/* Filters */}
+            <div className="flex flex-wrap gap-4 items-center">
+              {/* Filter by Category */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 font-medium uppercase tracking-wider hidden sm:inline">Danh mục:</span>
+                <select 
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent p-3 outline-none appearance-none cursor-pointer transition-all duration-300"
+                >
+                  {categories.map(c => (
+                    <option key={c} value={c}>{c === 'All' ? 'Tất cả' : c}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Sort by Price */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 font-medium uppercase tracking-wider hidden sm:inline">Sắp xếp giá:</span>
+                <select 
+                  value={priceSort}
+                  onChange={(e) => setPriceSort(e.target.value)}
+                  className="bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent p-3 outline-none appearance-none cursor-pointer transition-all duration-300"
+                >
+                  <option value="Default">Mặc định</option>
+                  <option value="LowToHigh">Từ thấp đến cao</option>
+                  <option value="HighToLow">Từ cao đến thấp</option>
+                </select>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <Loader size={40} className="text-neon animate-spin mx-auto mb-4" />
+              <p className="text-gray-400">Đang tải xe máy...</p>
+            </div>
+          </div>
+        )}
 
         {/* Bikes Grid */}
-        {filteredBikes.length > 0 ? (
+        {!loading && filteredBikes.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredBikes.map(bike => (
-              <BikeCard key={bike.id} bike={bike} />
+              <BikeCard key={bike._id} bike={bike} />
             ))}
           </div>
-        ) : (
+        ) : !loading && (
           <div className="text-center py-20 border border-dashed border-gray-800 rounded-2xl bg-surface/50">
-            <p className="text-gray-500 mb-2">Không tìm thấy dòng xe phù hợp với bộ lọc.</p>
+            <p className="text-gray-500 mb-2">Không tìm thấy xe máy phù hợp với bộ lọc.</p>
             <button 
-              onClick={() => { setSearchQuery(''); setSelectedType('All'); setPriceSort('Default'); }}
+              onClick={() => { setSearchQuery(''); setSelectedCategory('All'); setPriceSort('Default'); }}
               className="text-neon text-sm underline hover:text-white transition-colors"
             >
               Reset bộ lọc
