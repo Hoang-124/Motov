@@ -269,8 +269,13 @@ export const googleLogin = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Thiếu thông tin xác thực Google (Access Token)' });
     }
 
-    // Gọi API UserInfo của Google để lấy thông tin người dùng bằng access token
-    const googleResponse = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`);
+    // Gọi API UserInfo của Google để lấy thông tin người dùng bằng access token qua Authorization Header
+    const googleResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
     
     if (!googleResponse.ok) {
       return res.status(400).json({ success: false, message: 'Xác thực Access Token từ Google thất bại' });
@@ -283,12 +288,17 @@ export const googleLogin = async (req: Request, res: Response) => {
 
     const { sub: googleId, email, given_name: firstName, family_name: lastName, picture: avatarUrl } = payload;
 
+    if (!googleId) {
+      return res.status(400).json({ success: false, message: 'Không thể xác định mã định danh Google (googleId) từ tài khoản của bạn' });
+    }
+
     if (!email) {
       return res.status(400).json({ success: false, message: 'Không thể lấy được địa chỉ email từ tài khoản Google của bạn' });
     }
 
     // Tìm user bằng googleId trước
     let user = await User.findOne({ googleId });
+
 
     if (!user) {
       // Nếu chưa có googleId, kiểm tra xem có user nào đăng ký bằng email này trước đó chưa
