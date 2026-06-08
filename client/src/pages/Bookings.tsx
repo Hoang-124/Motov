@@ -19,17 +19,38 @@ interface SavedBooking {
 
 export const Bookings = () => {
   const [bookings, setBookings] = useState<SavedBooking[]>([]);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    const currentUser = storedUser ? JSON.parse(storedUser) : null;
+    setUser(currentUser);
+
     const list = JSON.parse(localStorage.getItem('bookings') || '[]');
-    setBookings(list);
+    if (currentUser) {
+      // Show only current user's bookings
+      setBookings(list.filter((b: any) => b.userEmail === currentUser.email));
+    } else {
+      setBookings([]);
+    }
   }, []);
 
   const handleCancelBooking = (id: string) => {
     if (window.confirm('Bạn có chắc chắn muốn hủy đơn thuê xe này không?')) {
-      const updated = bookings.filter(b => b.id !== id);
-      setBookings(updated);
-      localStorage.setItem('bookings', JSON.stringify(updated));
+      const updatedLocal = bookings.map(b => {
+        if (b.id === id) return { ...b, status: 'Đã hủy' };
+        return b;
+      });
+      setBookings(updatedLocal);
+
+      const allBookings = JSON.parse(localStorage.getItem('bookings') || '[]');
+      const updatedGlobal = allBookings.map((b: any) => {
+        if (b.id === id) {
+          return { ...b, status: 'Đã hủy' };
+        }
+        return b;
+      });
+      localStorage.setItem('bookings', JSON.stringify(updatedGlobal));
     }
   };
 
@@ -60,7 +81,7 @@ export const Bookings = () => {
               >
                 {/* Image */}
                 <div className="w-full md:w-48 aspect-video rounded-xl overflow-hidden bg-black border border-gray-800 flex-shrink-0">
-                  <img src={booking.image} alt={booking.bikeName} className="w-full h-full object-cover" />
+                  <img src={booking.image} alt={booking.bikeName} loading="lazy" className="w-full h-full object-cover" />
                 </div>
 
                 {/* Details */}
@@ -71,9 +92,10 @@ export const Bookings = () => {
                       <h3 className="font-display font-bold text-xl text-white">{booking.bikeName}</h3>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                      booking.status === 'Chờ duyệt' 
-                        ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30' 
-                        : 'bg-green-500/10 text-green-500 border-green-500/30'
+                      booking.status === 'Chờ duyệt' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30' :
+                      booking.status === 'Đang thuê' ? 'bg-green-500/10 text-green-500 border-green-500/30' :
+                      booking.status === 'Đã trả' ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' :
+                      'bg-red-500/10 text-red-500 border-red-500/30'
                     }`}>
                       {booking.status}
                     </span>
@@ -100,15 +122,19 @@ export const Bookings = () => {
                   </div>
                 </div>
 
-                {/* Actions */}
+                 {/* Actions */}
                 <div className="w-full md:w-auto flex justify-end md:self-center border-t md:border-t-0 pt-4 md:pt-0 border-gray-800/50">
-                  <button 
-                    onClick={() => handleCancelBooking(booking.id)}
-                    className="flex items-center justify-center gap-2 text-red-500 hover:bg-red-500/10 border border-red-500/20 hover:border-red-500/40 px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-medium cursor-pointer"
-                  >
-                    <Trash2 size={16} />
-                    Hủy đơn
-                  </button>
+                  {booking.status === 'Chờ duyệt' ? (
+                    <button 
+                      onClick={() => handleCancelBooking(booking.id)}
+                      className="flex items-center justify-center gap-2 text-red-500 hover:bg-red-500/10 border border-red-500/20 hover:border-red-500/40 px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-medium cursor-pointer"
+                    >
+                      <Trash2 size={16} />
+                      Hủy đơn
+                    </button>
+                  ) : (
+                    <span className="text-xs text-gray-500 font-medium">Không thể hủy đơn</span>
+                  )}
                 </div>
               </motion.div>
             ))}

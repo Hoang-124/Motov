@@ -19,6 +19,7 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
         <img 
           src={bike.image} 
           alt={bike.name} 
+          loading="lazy"
           className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500 group-hover:scale-105"
         />
         <div className="absolute top-3 left-3 bg-dark/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-neon border border-neon/30">
