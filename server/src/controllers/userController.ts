@@ -2,31 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { User, IUser } from '../models/User.js';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
-
-// Map roles from Database (Backend) -> Client (Frontend)
-const mapBackendRoleToFrontend = (backendRoles: string[]): 'admin' | 'staff' | 'owner' | 'customer' => {
-  const primaryRole = backendRoles[0] || 'Customer';
-  switch (primaryRole) {
-    case 'Admin': return 'admin';
-    case 'Staff': return 'staff';
-    case 'Owner': return 'owner';
-    case 'Customer':
-    default:
-      return 'customer';
-  }
-};
-
-// Map roles from Client (Frontend) -> Database (Backend)
-const mapFrontendRoleToBackend = (frontendRole: string): 'Admin' | 'Staff' | 'Owner' | 'Customer' => {
-  switch (frontendRole) {
-    case 'admin': return 'Admin';
-    case 'staff': return 'Staff';
-    case 'owner': return 'Owner';
-    case 'customer':
-    default:
-      return 'Customer';
-  }
-};
+import { mapBackendRoleToFrontend, mapFrontendRoleToBackend, escapeRegex } from '../utils/roleMapper.js';
 
 // Map individual user for response
 const formatUserResponse = (user: IUser) => {
@@ -60,7 +36,8 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
 
     // Apply search filter (username, email, phone, name)
     if (search) {
-      const searchRegex = new RegExp(String(search), 'i');
+      // FIX [BUG-9]: Escape user input before using as RegExp to prevent ReDoS
+      const searchRegex = new RegExp(escapeRegex(String(search)), 'i');
       query.$or = [
         { username: searchRegex },
         { email: searchRegex },
