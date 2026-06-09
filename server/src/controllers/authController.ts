@@ -3,35 +3,17 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { User, IUser } from '../models/User.js';
+import { PasswordResetToken } from '../models/PasswordResetToken.js';
+import crypto from 'crypto';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
+import { mapBackendRoleToFrontend, mapFrontendRoleToBackend } from '../utils/roleMapper.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'motov_super_secret_key_998877';
+// FIX [SEC-1]: Throw at startup if JWT_SECRET is not configured — never use a fallback literal
+if (!process.env.JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start.');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
-
-// Ánh xạ vai trò từ Database (Backend) -> Giao diện (Client)
-const mapBackendRoleToFrontend = (backendRoles: string[]): string => {
-  const primaryRole = backendRoles[0] || 'Customer';
-  switch (primaryRole) {
-    case 'Admin': return 'admin';
-    case 'Staff': return 'staff';
-    case 'Owner': return 'owner';
-    case 'Customer':
-    default:
-      return 'customer';
-  }
-};
-
-// Ánh xạ vai trò từ Giao diện (Client) -> Database (Backend)
-const mapFrontendRoleToBackend = (frontendRole: string): 'Admin' | 'Staff' | 'Owner' | 'Customer' => {
-  switch (frontendRole) {
-    case 'admin': return 'Admin';
-    case 'staff': return 'Staff';
-    case 'owner': return 'Owner';
-    case 'customer':
-    default:
-      return 'Customer';
-  }
-};
 
 // Đăng ký tài khoản
 export const register = async (req: Request, res: Response) => {
@@ -57,8 +39,10 @@ export const register = async (req: Request, res: Response) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Xác định vai trò từ client gửi lên (chỉ cho phép Owner hoặc Customer)
-    const backendRole = mapFrontendRoleToBackend(role || 'customer');
+    // FIX [SEC-4]: Whitelist public registration roles — only 'customer' and 'owner' are allowed
+    const allowedPublicRoles = ['customer', 'owner'];
+    const safeRole = allowedPublicRoles.includes(role) ? role : 'customer';
+    const backendRole = mapFrontendRoleToBackend(safeRole);
     const assignedRoles: ('Admin' | 'Staff' | 'Owner' | 'Customer')[] = [backendRole];
 
     const newUser = new User({
@@ -219,6 +203,11 @@ export const becomeOwner = async (req: AuthRequest, res: Response) => {
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy thông tin tài khoản' });
+    }
+
+    // FIX [BUG-8]: Idempotency guard — don't re-process if already an Owner
+    if (user.roles.includes('Owner')) {
+      return res.status(400).json({ success: false, message: 'Tài khoản của bạn đã là Chủ xe đối tác' });
     }
 
     // Cập nhật vai trò thành Owner
@@ -428,4 +417,124 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Đăng xuất tài khoản
+export const logout = async (req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: 'Đăng xuất thành công'
+  });
+};
 
+// Đổi mật khẩu
+export const changePassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user?.id;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mật khẩu cũ và mới' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user || !user.passwordHash) {
+      return res.status(404).json({ success: false, message: 'Người dùng không tồn tại hoặc đăng nhập qua Google' });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu cũ không chính xác' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.status(200).json({ success: true, message: 'Đổi mật khẩu thành công' });
+  } catch (error: any) {
+    console.error('Lỗi khi đổi mật khẩu:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
+};
+
+// Quên mật khẩu
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp email' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(200).json({ success: true, message: 'Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.' });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiryTime = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+    await PasswordResetToken.create({
+      token: resetToken,
+      userId: user._id,
+      expiryTime,
+      isUsed: false
+    });
+
+    // FIX [BUG-7]: Token must NEVER be logged — send via email service instead
+    // TODO: Integrate Nodemailer/SendGrid to email the reset link to the user
+    // Example: await emailService.sendPasswordReset(email, resetToken);
+
+    res.status(200).json({
+      success: true,
+      message: 'Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.'
+    });
+  } catch (error: any) {
+    console.error('Lỗi quên mật khẩu:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
+};
+
+// Đặt lại mật khẩu
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp token và mật khẩu mới' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+    }
+
+    const resetRecord = await PasswordResetToken.findOne({
+      token,
+      isUsed: false,
+      expiryTime: { $gt: new Date() }
+    });
+
+    if (!resetRecord) {
+      return res.status(400).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn' });
+    }
+
+    const user = await User.findById(resetRecord.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Người dùng không tồn tại' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    resetRecord.isUsed = true;
+    await resetRecord.save();
+
+    res.status(200).json({ success: true, message: 'Đặt lại mật khẩu thành công' });
+  } catch (error: any) {
+    console.error('Lỗi đặt lại mật khẩu:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
+};
