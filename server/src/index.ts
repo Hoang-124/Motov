@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 import { User } from './models/User.js';
 import authRoutes from './routes/authRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
-
+import userRoutes from './routes/userRoutes.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -32,9 +32,9 @@ app.use('/uploads', express.static(uploadsDir));
 
 // Routes xác thực (Auth APIs)
 app.use('/api/auth', authRoutes);
-
 // Routes Booking (Booking APIs)
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/users', userRoutes);
 
 // Cấu hình Multer để lưu trữ ảnh tải lên
 const storage = multer.diskStorage({
