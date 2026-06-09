@@ -1,0 +1,82 @@
+import axios from 'axios';
+
+// API URL chính xác theo Backend của bạn
+const API_URL = 'http://localhost:5000/api/bookings'; 
+
+// Tự động đính kèm Token lưu trong localStorage vào Header cho mọi request
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Định nghĩa Interface khớp chính xác với Dữ liệu trả về từ bookingController.ts của bạn
+export interface Booking {
+  id: string;            // Ánh xạ từ booking._id ở BE
+  bookingCode: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userPhone: string;
+  vehicleId: string;
+  vehicleModel: string;  // Tên xe từ snapshot (vehicleSnapshot.name)
+  vehicleImage: string;  // Ảnh xe từ snapshot
+  pickupDateTime: string;
+  returnDateTime: string;
+  pickupLocation: {
+    address?: string;
+    coordinates?: number[];
+  };
+  returnLocation: {
+    address?: string;
+    coordinates?: number[];
+  };
+  rentalDays: number;
+  totalAmount: number;
+  status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled'; // Đúng Enum viết hoa chữ cái đầu của bạn
+  statusLabel: string;   // Nhãn tiếng Việt có icon do BE tạo sẵn (ví dụ: "⏳ Chờ xác nhận")
+  cancelReason?: string;
+  createdAt: string;
+}
+
+export const bookingService = {
+  // 1. Lấy tất cả đơn đặt xe (Dành cho Admin / Staff) -> GET /api/bookings
+  getAllBookings: async (filters?: { status?: string }) => {
+    const res = await axios.get(API_URL, { params: filters });
+    return res.data.data || res.data; // Phòng hờ nếu bạn bọc data trong { success: true, data: [...] }
+  },
+
+  // 2. Lấy đơn đặt xe của cá nhân người dùng đang login -> GET /api/bookings/my-bookings
+  getMyBookings: async () => {
+    const res = await axios.get(`${API_URL}/my-bookings`);
+    return res.data.data || res.data;
+  },
+
+  // 3. Tạo mới một đơn đặt xe -> POST /api/bookings
+  createBooking: async (data: {
+    vehicleId: string;
+    pickupDateTime: string;
+    returnDateTime: string;
+    pickupLocation: { address: string };
+    returnLocation: { address: string };
+  }) => {
+    const res = await axios.post(API_URL, data);
+    return res.data;
+  },
+
+  // 4. Cập nhật trạng thái đơn (Phê duyệt/Thu xe) -> PUT /api/bookings/:id
+  // Body truyền lên gồm { status: 'Confirmed' | 'Ongoing' | 'Completed' }
+  updateStatus: async (id: string, status: 'Confirmed' | 'Ongoing' | 'Completed') => {
+    const res = await axios.put(`${API_URL}/${id}`, { status });
+    return res.data;
+  },
+
+  // 5. Hủy đơn đặt xe -> POST /api/bookings/:id/cancel
+  // Body truyền kèm lý do hủy { cancelReason: "..." }
+  cancelBooking: async (id: string, cancelReason: string = 'Khách hàng yêu cầu hủy') => {
+    const res = await axios.post(`${API_URL}/${id}/cancel`, { cancelReason });
+    return res.data;
+  }
+};

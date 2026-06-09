@@ -1,21 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { getBikes } from '../../data/bikes';
 import { ClipboardList, CalendarDays, MapPin, User, Phone, CreditCard, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface Booking {
   id: string;
-  bikeId: string;
-  bikeName: string;
-  image: string;
-  price: string;
-  date: string;
-  location: string;
-  fullName: string;
-  phone: string;
-  license: string;
-  status: string;
-  createdAt: string;
+  bookingCode: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userPhone: string;
+  vehicleId: string;
+  vehicleModel: string;
+  vehicleImage: string;
+  pickupDateTime: string;
+  returnDateTime: string;
+  pickupLocation: { address: string; coordinates?: number[] };
+  returnLocation: { address: string; coordinates?: number[] };
+  rentalDays: number;
+  totalAmount: number;
+  status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled';
+  statusLabel: string;
 }
 
 export const OwnerBookings = () => {
@@ -23,143 +27,124 @@ export const OwnerBookings = () => {
   const [filterStatus, setFilterStatus] = useState<string>('All');
 
   useEffect(() => {
-    // 1. Get current logged in owner
     const storedUser = localStorage.getItem('user');
     if (!storedUser) return;
     const currentUser = JSON.parse(storedUser);
 
-    // 2. Get my bike ids
-    const allBikes = getBikes();
-    const myBikeIds = allBikes
-      .filter(b => b.ownerEmail === currentUser.email)
-      .map(b => b.id);
-
-    // 3. Get all bookings and filter for my bikes
-    const allBookings = JSON.parse(localStorage.getItem('bookings') || '[]');
-    const myBookings = allBookings.filter((b: any) => myBikeIds.includes(b.bikeId));
-    setBookings(myBookings);
+    // Lấy toàn bộ đơn hàng trong hệ thống
+    const allBookings: Booking[] = JSON.parse(localStorage.getItem('bookings') || '[]');
+    
+    // Giả lập lọc các đơn hàng liên quan đến xe của Chủ xe hiện tại (Nơi bạn cấu hình API thực tế)
+    // Ở đây tạm hiển thị toàn bộ hoặc dựa vào logic backend sau này gửi về riêng cho Owner
+    setBookings(allBookings);
   }, []);
 
-  const filteredBookings = bookings.filter(b => {
-    if (filterStatus === 'All') return true;
-    return b.status === filterStatus;
-  });
+  const formatDate = (isoString: string) => {
+    const d = new Date(isoString);
+    return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString('vi-VN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const filteredBookings = bookings.filter(b => filterStatus === 'All' || b.status === filterStatus);
 
   return (
-    <div className="pt-28 pb-20 min-h-screen bg-dark">
-      <div className="max-w-6xl mx-auto px-4 lg:px-8">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-          <div className="text-center md:text-left">
-            <h1 className="font-display font-black text-4xl text-neon uppercase text-glow tracking-tight mb-2 flex items-center justify-center md:justify-start gap-3">
-              <ClipboardList size={36} />
-              Lịch Sử Thuê Xe Của Bạn
-            </h1>
-            <p className="text-gray-400 text-sm">
-              Theo dõi tình hình thuê xe của khách hàng đối với các dòng xe bạn đang chia sẻ
-            </p>
-          </div>
-
-          {/* Status Filters */}
-          <div className="flex flex-wrap gap-2 justify-center">
-            {['All', 'Chờ duyệt', 'Đang thuê', 'Đã trả', 'Đã hủy'].map((status) => (
-              <button
-                key={status}
-                onClick={() => setFilterStatus(status)}
-                className={`px-4 py-2 rounded-full text-xs font-bold border transition-all cursor-pointer ${
-                  filterStatus === status
-                    ? 'bg-neon text-dark border-neon shadow-[0_0_10px_rgba(204,255,0,0.3)]'
-                    : 'bg-surface border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
-                }`}
-              >
-                {status === 'All' ? 'Tất cả' : status}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Bookings list */}
-        {filteredBookings.length > 0 ? (
-          <div className="space-y-6">
-            {filteredBookings.map(booking => (
-              <motion.div 
-                key={booking.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-surface border border-gray-800 rounded-2xl p-6 flex flex-col md:flex-row gap-6 shadow-lg relative overflow-hidden"
-              >
-                {/* Status colored side indicator */}
-                <div className={`absolute left-0 inset-y-0 w-1 ${
-                  booking.status === 'Chờ duyệt' ? 'bg-yellow-500' :
-                  booking.status === 'Đang thuê' ? 'bg-green-500' :
-                  booking.status === 'Đã trả' ? 'bg-blue-500' : 'bg-red-600'
-                }`}></div>
-
-                {/* Bike Image */}
-                <div className="w-full md:w-48 aspect-video rounded-xl overflow-hidden bg-black border border-gray-800 flex-shrink-0">
-                  <img src={booking.image} alt={booking.bikeName} className="w-full h-full object-cover" />
-                </div>
-
-                {/* Details */}
-                <div className="flex-grow space-y-3 w-full">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">Mã đơn: {booking.id} • Ngày tạo: {booking.createdAt}</span>
-                      <h3 className="font-display font-bold text-xl text-white">{booking.bikeName}</h3>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                      booking.status === 'Chờ duyệt' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30' :
-                      booking.status === 'Đang thuê' ? 'bg-green-500/10 text-green-500 border-green-500/30' :
-                      booking.status === 'Đã trả' ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' :
-                      'bg-red-500/10 text-red-500 border-red-500/30'
-                    }`}>
-                      {booking.status}
-                    </span>
-                  </div>
-
-                  {/* Customer Info Box */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-400">
-                    <div className="flex items-center gap-2">
-                      <User size={15} className="text-neon" />
-                      <span>Khách hàng: <strong className="text-gray-300">{booking.fullName}</strong></span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone size={15} className="text-neon" />
-                      <span>Số điện thoại: <strong className="text-gray-300">{booking.phone}</strong></span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CalendarDays size={16} className="text-neon" />
-                      <span>Ngày thuê: {booking.date}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin size={16} className="text-neon" />
-                      <span>Nơi nhận: {booking.location === 'Da Nang Airport' ? 'Sân bay Đà Nẵng' : booking.location === 'Da Nang Train Station' ? 'Ga Đà Nẵng' : booking.location === 'Son Tra Peninsula' ? 'Bán đảo Sơn Trà' : 'Khách sạn Mỹ Khê'}</span>
-                    </div>
-                  </div>
-
-                  {/* Price */}
-                  <div className="pt-2 border-t border-gray-800/50 flex justify-between items-center text-xs">
-                    <span className="text-gray-500">Doanh thu dự kiến:</span>
-                    <span className="text-neon font-semibold text-sm">
-                      {booking.price} VNĐ/ngày
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-24 border border-dashed border-gray-800 rounded-3xl bg-surface/30">
-            <ClipboardList size={48} className="text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-white mb-2">Chưa phát sinh lượt thuê</h3>
-            <p className="text-gray-500 text-sm max-w-sm mx-auto">
-              Không tìm thấy lượt thuê xe nào tương ứng với bộ lọc &ldquo;{filterStatus}&rdquo;.
-            </p>
-          </div>
-        )}
-
+    <div className="p-6 text-white min-h-screen bg-black">
+      <div className="mb-8">
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <ClipboardList className="text-neon" />
+          Lịch trình & Đơn thuê xe của tôi
+        </h1>
+        <p className="text-gray-500 text-sm mt-1">Theo dõi trạng thái thuê và tổng doanh thu dự kiến của các dòng xe của bạn</p>
       </div>
+
+      {/* Thanh bộ lọc trạng thái */}
+      <div className="flex gap-2 overflow-x-auto pb-4 mb-6 border-b border-gray-900/60">
+        {['All', 'Pending', 'Confirmed', 'Ongoing', 'Completed', 'Cancelled'].map((status) => (
+          <button
+            key={status}
+            onClick={() => setFilterStatus(status)}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              filterStatus === status ? 'bg-neon text-dark font-bold' : 'bg-surface border border-gray-800 text-gray-400'
+            }`}
+          >
+            {status === 'All' ? 'Tất cả' : status}
+          </button>
+        ))}
+      </div>
+
+      {/* Grid danh sách dạng Card */}
+      {filteredBookings.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredBookings.map((booking) => (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              key={booking.id}
+              className="bg-surface/30 border border-gray-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-neon/30 transition-all duration-300"
+            >
+              <div>
+                {/* Tiêu đề Đơn */}
+                <div className="flex justify-between items-start gap-2 mb-4">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-gray-500 bg-gray-900 px-2 py-0.5 rounded">CODE</span>
+                    <h3 className="text-sm font-mono text-neon font-bold mt-1">{booking.bookingCode}</h3>
+                  </div>
+                  <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${
+                    booking.status === 'Ongoing' ? 'text-green-400 border-green-500/20 bg-green-500/5' : 
+                    booking.status === 'Pending' ? 'text-yellow-400 border-yellow-500/20 bg-yellow-500/5' : 'text-gray-400 border-gray-800 bg-surface'
+                  }`}>
+                    {booking.statusLabel}
+                  </span>
+                </div>
+
+                {/* Ảnh & Tên xe */}
+                <div className="flex items-center gap-3 bg-surface/50 p-3 rounded-xl mb-4 border border-gray-800/40">
+                  <img src={booking.vehicleImage} alt={booking.vehicleModel} className="w-14 h-14 object-cover rounded-lg border border-gray-800" />
+                  <div>
+                    <h4 className="font-semibold text-sm text-white">{booking.vehicleModel}</h4>
+                    <p className="text-gray-500 text-xs mt-0.5">Thời gian: {booking.rentalDays} ngày</p>
+                  </div>
+                </div>
+
+                {/* Chi tiết thông tin Khách & Thời gian */}
+                <div className="space-y-2.5 text-xs text-gray-400 mb-4">
+                  <div className="flex items-center gap-2">
+                    <User size={14} className="text-gray-600" />
+                    <span>Khách: <strong className="text-gray-200">{booking.userName}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone size={14} className="text-gray-600" />
+                    <span>SĐT: <a href={`tel:${booking.userPhone}`} className="text-blue-400 underline">{booking.userPhone}</a></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CalendarDays size={14} className="text-gray-600" />
+                    <span>{formatDate(booking.pickupDateTime)} → {formatDate(booking.returnDateTime)}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPin size={14} className="text-gray-600 mt-0.5 shrink-0" />
+                    <span className="line-clamp-2">Nhận tại: {booking.pickupLocation.address}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Phần footer của card chứa Giá tiền */}
+              <div className="pt-3 border-t border-gray-800/60 flex justify-between items-center">
+                <span className="text-[11px] text-gray-500 flex items-center gap-1">
+                  <CreditCard size={12} /> Doanh thu dự kiến:
+                </span>
+                <span className="text-neon font-bold text-base">
+                  {booking.totalAmount.toLocaleString('vi-VN')} VNĐ
+                </span>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-24 border border-dashed border-gray-800 rounded-3xl bg-surface/30">
+          <ClipboardList size={48} className="text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-white mb-2">Chưa phát sinh lượt thuê</h3>
+          <p className="text-gray-500 text-sm max-w-sm mx-auto">Không tìm thấy lượt thuê xe nào tương ứng với bộ lọc này.</p>
+        </div>
+      )}
     </div>
   );
 };
