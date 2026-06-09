@@ -9,12 +9,9 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { User } from './models/User.js';
 import authRoutes from './routes/authRoutes.js';
-<<<<<<< HEAD
 import vehicleRoutes from './routes/vehicleRoutes.js';
-=======
 import userRoutes from './routes/userRoutes.js';
 
->>>>>>> 490e820eef19107a38b058f469b389884bdad5c2
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
