@@ -57,7 +57,17 @@ export default function App() {
             {/* Public Routes */}
             <Route path="/" element={<Home />} />
             <Route path="/bikes" element={<Bikes />} />
+            <Route path="/motorbike/new" element={
+              <ProtectedRoute allowedRoles={['staff', 'admin']}>
+                <MotorbikeForm />
+              </ProtectedRoute>
+            } />
             <Route path="/motorbike/:id" element={<MotorbikeDetail />} />
+            <Route path="/motorbike/:id/edit" element={
+              <ProtectedRoute allowedRoles={['staff', 'admin', 'owner']}>
+                <MotorbikeForm />
+              </ProtectedRoute>
+            } />
             <Route path="/bike-add" element={
               <ProtectedRoute allowedRoles={['owner']}>
                 <MotorbikeForm />

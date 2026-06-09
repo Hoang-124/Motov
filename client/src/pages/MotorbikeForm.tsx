@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, AlertCircle, Loader } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Loader, Check, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Motorbike, createMotorbike, updateMotorbike, getMotorbikeById } from '../services/vehicleService';
 
 export const MotorbikeForm = () => {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
-  const isEditMode = !!id;
+  // Check if it's edit mode (URL contains /edit or from /bike-edit/:id)
+  const isEditMode = !!id && id !== 'new';
 
   const [loading, setLoading] = useState(isEditMode);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successBikeId, setSuccessBikeId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     vehicleModel: '',
@@ -20,10 +25,12 @@ export const MotorbikeForm = () => {
     odometer: 0,
     rentalPrice: 0,
     category: '',
-    transmissionType: 'Manual' as const,
+    transmissionType: 'Manual' as 'Manual' | 'Automatic' | 'Semi-Automatic',
     description: '',
     imageUrls: [] as string[],
-    features: [] as string[]
+    features: [] as string[],
+    ownerId: '',
+    status: 'Available' as 'Available' | 'Rented' | 'Maintenance' | 'PendingApproval'
   });
 
   const [imageInput, setImageInput] = useState('');
@@ -43,10 +50,12 @@ export const MotorbikeForm = () => {
             odometer: data.odometer,
             rentalPrice: data.rentalPrice,
             category: data.category,
-            transmissionType: data.transmissionType,
+            transmissionType: (data.transmissionType || 'Manual') as 'Manual' | 'Automatic' | 'Semi-Automatic',
             description: data.description || '',
             imageUrls: data.imageUrls || [],
-            features: data.features || []
+            features: data.features || [],
+            ownerId: typeof data.ownerId === 'string' ? data.ownerId : data.ownerId?._id || '',
+            status: data.status || 'Available'
           });
         } catch (err) {
           setError('Failed to load motorbike data');
@@ -136,16 +145,27 @@ export const MotorbikeForm = () => {
 
       if (isEditMode && id) {
         await updateMotorbike(id, formData, token);
-        navigate(`/motorbike/${id}`);
+        setSuccessMessage('Motorbike updated successfully!');
+        setSuccessBikeId(id);
       } else {
         const result = await createMotorbike(formData, token);
-        navigate(`/motorbike/${result._id}`);
+        setSuccessMessage('Motorbike created successfully!');
+        setSuccessBikeId(result._id || null);
       }
+      
+      setShowSuccessModal(true);
     } catch (err: any) {
       setError(err.message || 'Failed to save motorbike');
       console.error(err);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSuccessModalConfirm = () => {
+    setShowSuccessModal(false);
+    if (successBikeId) {
+      navigate(`/motorbike/${successBikeId}`);
     }
   };
 
@@ -448,6 +468,68 @@ export const MotorbikeForm = () => {
           </form>
         </div>
       </div>
+
+      {/* SUCCESS MODAL */}
+      <AnimatePresence>
+        {showSuccessModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {}}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              className="bg-surface border border-green-500/20 rounded-2xl p-6 shadow-2xl relative w-full max-w-md z-10 overflow-hidden"
+            >
+              {/* Green top line */}
+              <div className="absolute top-0 inset-x-0 h-1 bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)]"></div>
+              
+              <button 
+                onClick={handleSuccessModalConfirm}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 bg-green-500/20 border border-green-500/50 rounded-full flex items-center justify-center">
+                  <Check size={32} className="text-green-500" />
+                </div>
+              </div>
+
+              <h3 className="font-display font-black text-xl text-green-500 uppercase mb-2 text-center">
+                ✓ {isEditMode ? 'Updated' : 'Created'} Successfully
+              </h3>
+
+              <p className="text-sm text-gray-300 text-center mb-6">
+                {isEditMode ? 'Motorbike has been updated' : 'Motorbike has been created'} with all the details you provided.
+              </p>
+
+              <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl text-xs text-green-400 mb-6 flex items-start gap-2.5">
+                <div className="w-4 h-4 rounded-full bg-green-500 shrink-0 mt-0.5"></div>
+                <p>
+                  The motorbike is now visible in the listing and available for customers to book.
+                </p>
+              </div>
+
+              <div className="flex justify-center">
+                <button
+                  onClick={handleSuccessModalConfirm}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all text-sm uppercase tracking-wider shadow-[0_0_10px_rgba(34,197,94,0.2)] cursor-pointer"
+                >
+                  View Motorbike
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

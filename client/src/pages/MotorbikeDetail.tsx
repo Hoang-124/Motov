@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertCircle, Loader, Edit2, Trash2, MapPin, Users, Zap } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Loader, Edit2, Trash2, MapPin, Users, Zap, Check, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { getMotorbikeById, Motorbike, deleteMotorbike } from '../services/vehicleService';
 
 export const MotorbikeDetail = () => {
@@ -10,6 +11,7 @@ export const MotorbikeDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     const fetchMotorbike = async () => {
@@ -38,13 +40,11 @@ export const MotorbikeDetail = () => {
   const handleDelete = async () => {
     if (!motorbike?._id) return;
 
-    const confirmed = window.confirm('Are you sure you want to delete this motorbike?');
-    if (!confirmed) return;
-
     try {
       setDeleting(true);
       const token = localStorage.getItem('token') || '';
       await deleteMotorbike(motorbike._id, token);
+      setShowDeleteModal(false);
       navigate('/bikes');
     } catch (err) {
       alert('Failed to delete motorbike');
@@ -52,6 +52,10 @@ export const MotorbikeDetail = () => {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleOpenDeleteModal = () => {
+    setShowDeleteModal(true);
   };
 
   const ownerName = motorbike && typeof motorbike.ownerId !== 'string'
@@ -201,14 +205,14 @@ export const MotorbikeDetail = () => {
             {/* Action Buttons */}
             <div className="flex gap-4 flex-wrap">
               <button
-                onClick={() => navigate(`/bike-edit/${motorbike._id}`)}
+                onClick={() => navigate(`/motorbike/${motorbike._id}/edit`)}
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-lg transition-colors"
               >
                 <Edit2 size={18} />
                 Edit Motorbike
               </button>
               <button
-                onClick={handleDelete}
+                onClick={handleOpenDeleteModal}
                 disabled={deleting}
                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-lg transition-colors"
               >
@@ -239,6 +243,77 @@ export const MotorbikeDetail = () => {
           </div>
         )}
       </div>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {showDeleteModal && motorbike && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {}}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              className="bg-surface border border-red-500/20 rounded-2xl p-6 shadow-2xl relative w-full max-w-md z-10 overflow-hidden"
+            >
+              {/* Red top line */}
+              <div className="absolute top-0 inset-x-0 h-1 bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]"></div>
+              
+              <button 
+                onClick={() => setShowDeleteModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+
+              <h3 className="font-display font-black text-xl text-red-500 uppercase mb-4 flex items-center gap-2">
+                🗑️ Delete Motorbike
+              </h3>
+
+              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-xs text-red-400 mb-4 flex items-start gap-2.5">
+                <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
+                <p>
+                  This action cannot be undone. The motorbike will be permanently removed from the system.
+                </p>
+              </div>
+
+              <div className="space-y-2 mb-6">
+                <p className="text-sm text-gray-300">You are about to delete:</p>
+                <div className="bg-black/35 p-3 rounded-lg border border-white/5">
+                  <div className="font-bold text-white text-sm mb-1">{motorbike.vehicleModel}</div>
+                  <div className="text-xs text-gray-400 font-mono">License Plate: {motorbike.licensePlate}</div>
+                  <div className="text-xs text-gray-400 font-mono">Category: {motorbike.category}</div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deleting}
+                  className="px-4 py-2 bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 hover:text-white rounded-lg transition-all text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(239,68,68,0.2)] cursor-pointer disabled:opacity-50"
+                >
+                  {deleting ? 'Deleting...' : 'Delete Permanently'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

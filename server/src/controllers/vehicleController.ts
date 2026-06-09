@@ -5,6 +5,11 @@ import mongoose from 'mongoose';
 // Type for authenticated request
 interface AuthRequest extends Request {
   userId?: string;
+  user?: {
+    id: string;
+    email: string;
+    roles: ('Admin' | 'Staff' | 'Owner' | 'Customer')[];
+  };
 }
 
 // Validation helper functions
@@ -104,11 +109,20 @@ export const getVehicleById = async (req: AuthRequest, res: Response) => {
 
 /**
  * Create a new vehicle
- * Only owners can create vehicles
+ * Only staff and admins can create vehicles
  */
 export const createVehicle = async (req: AuthRequest, res: Response) => {
   try {
-    const { vehicleModel, licensePlate, seats, rentalPrice, category, transmissionType, description, imageUrls, features } = req.body;
+    // Check if user has permission (staff or admin only)
+    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only staff and admins can create vehicles'
+      });
+    }
+
+    const { vehicleModel, licensePlate, seats, rentalPrice, category, transmissionType, description, imageUrls, features, ownerId } = req.body;
 
     // Validation
     const validationErrors = validateVehicleInput(req.body);
@@ -129,8 +143,9 @@ export const createVehicle = async (req: AuthRequest, res: Response) => {
     }
 
     // Create new vehicle
+    // If staff/admin provides ownerId, use it; otherwise set as system vehicle
     const newVehicle = new Vehicle({
-      ownerId: req.userId,
+      ownerId: ownerId || req.user?.id,
       vehicleModel,
       licensePlate,
       seats: seats || 2,
@@ -140,7 +155,7 @@ export const createVehicle = async (req: AuthRequest, res: Response) => {
       description,
       imageUrls: imageUrls || [],
       features: features || [],
-      status: 'PendingApproval'
+      status: 'Available' // Staff/Admin created vehicles are available by default
     });
 
     await newVehicle.save();
@@ -186,8 +201,11 @@ export const updateVehicle = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Check if user is the owner (or admin)
-    if (vehicle.ownerId.toString() !== req.userId) {
+    // Check if user is the owner or admin/staff
+    const isOwner = vehicle.ownerId.toString() === (req.user?.id || req.userId);
+    const isAdmin = req.user?.roles?.some(role => role === 'Admin' || role === 'Staff');
+    
+    if (!isOwner && !isAdmin) {
       return res.status(403).json({
         success: false,
         error: 'Not authorized to update this vehicle'
@@ -272,8 +290,11 @@ export const deleteVehicle = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Check if user is the owner (or admin)
-    if (vehicle.ownerId.toString() !== req.userId) {
+    // Check if user is the owner or admin/staff
+    const isOwner = vehicle.ownerId.toString() === (req.user?.id || req.userId);
+    const isAdmin = req.user?.roles?.some(role => role === 'Admin' || role === 'Staff');
+    
+    if (!isOwner && !isAdmin) {
       return res.status(403).json({
         success: false,
         error: 'Not authorized to delete this vehicle'
