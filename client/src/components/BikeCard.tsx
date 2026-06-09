@@ -12,7 +12,9 @@ interface BikeCardProps {
 export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
   const ownerName = typeof bike.ownerId === 'string' 
     ? 'Unknown Owner' 
-    : `${bike.ownerId.firstName} ${bike.ownerId.lastName}`;
+    : bike.ownerId && typeof bike.ownerId === 'object' && bike.ownerId.firstName
+    ? `${bike.ownerId.firstName} ${bike.ownerId.lastName}`
+    : 'Unknown Owner';
 
   const imageUrl = bike.imageUrls && bike.imageUrls.length > 0 
     ? bike.imageUrls[0] 
@@ -49,7 +51,7 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
             {bike.vehicleModel}
           </h3>
         </div>
-        <p className="text-neon font-semibold text-lg mb-1">{bike.rentalPrice.toLocaleString()} VNĐ <span className="text-gray-400 text-xs font-normal">/ Ngày</span></p>
+        <p className="text-neon font-semibold text-lg mb-1">{bike.rentalPrice ? bike.rentalPrice.toLocaleString() : '0'} VNĐ <span className="text-gray-400 text-xs font-normal">/ Ngày</span></p>
         
         {/* License Plate */}
         <p className="text-gray-400 text-xs mb-4">Biển số: {bike.licensePlate}</p>
