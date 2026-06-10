@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { User } from '../../models/User.js';
+import { User } from '../models/User.js';
 
 let mongod: MongoMemoryServer;
 
@@ -34,7 +34,7 @@ const makeAdminReq = (extras = {}) => ({ user: { id: 'admin-id', roles: ['Admin'
 describe('getAllUsers()', () => {
   let getAllUsers: any;
   beforeAll(async () => {
-    ({ getAllUsers } = await import('../../controllers/userController.js'));
+    ({ getAllUsers } = await import('../controllers/userController.js'));
   });
 
   afterEach(async () => { await User.deleteMany({}); });
@@ -73,7 +73,7 @@ describe('banUser() / unbanUser()', () => {
   let unbanUser: any;
 
   beforeAll(async () => {
-    ({ banUser, unbanUser } = await import('../../controllers/userController.js'));
+    ({ banUser, unbanUser } = await import('../controllers/userController.js'));
   });
 
   it('should ban a user', async () => {
@@ -105,7 +105,7 @@ describe('banUser() / unbanUser()', () => {
 describe('updateUser() — self-protection checks', () => {
   let updateUser: any;
   beforeAll(async () => {
-    ({ updateUser } = await import('../../controllers/userController.js'));
+    ({ updateUser } = await import('../controllers/userController.js'));
   });
 
   it('should prevent admin from self-banning via updateUser', async () => {

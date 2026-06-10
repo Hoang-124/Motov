@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { User } from '../../models/User.js';
-import { PasswordResetToken } from '../../models/PasswordResetToken.js';
+import { User } from '../models/User.js';
+import { PasswordResetToken } from '../models/PasswordResetToken.js';
 
 // ── Setup in-memory MongoDB ───────────────────────────────────────────────────
 let mongod: MongoMemoryServer;
@@ -37,7 +37,7 @@ const createMockRes = () => {
 describe('register()', () => {
   let register: any;
   beforeAll(async () => {
-    ({ register } = await import('../../controllers/authController.js'));
+    ({ register } = await import('../controllers/authController.js'));
   });
 
   it('should create a user and return a JWT token', async () => {
@@ -86,7 +86,7 @@ describe('login()', () => {
   let login: any;
   let bcrypt: any;
   beforeAll(async () => {
-    ({ login } = await import('../../controllers/authController.js'));
+    ({ login } = await import('../controllers/authController.js'));
     bcrypt = (await import('bcryptjs')).default;
   });
 
@@ -132,7 +132,7 @@ describe('changePassword()', () => {
   let changePassword: any;
   let bcrypt: any;
   beforeAll(async () => {
-    ({ changePassword } = await import('../../controllers/authController.js'));
+    ({ changePassword } = await import('../controllers/authController.js'));
     bcrypt = (await import('bcryptjs')).default;
   });
 
@@ -167,7 +167,7 @@ describe('changePassword()', () => {
 describe('forgotPassword()', () => {
   let forgotPassword: any;
   beforeAll(async () => {
-    ({ forgotPassword } = await import('../../controllers/authController.js'));
+    ({ forgotPassword } = await import('../controllers/authController.js'));
   });
 
   it('should always return 200 regardless of email existence (anti-enumeration)', async () => {
@@ -193,7 +193,7 @@ describe('resetPassword()', () => {
   let resetPassword: any;
   let bcrypt: any;
   beforeAll(async () => {
-    ({ resetPassword } = await import('../../controllers/authController.js'));
+    ({ resetPassword } = await import('../controllers/authController.js'));
     bcrypt = (await import('bcryptjs')).default;
   });
 
@@ -246,7 +246,7 @@ describe('resetPassword()', () => {
 describe('becomeOwner()', () => {
   let becomeOwner: any;
   beforeAll(async () => {
-    ({ becomeOwner } = await import('../../controllers/authController.js'));
+    ({ becomeOwner } = await import('../controllers/authController.js'));
   });
 
   it('should upgrade a Customer to Owner', async () => {
