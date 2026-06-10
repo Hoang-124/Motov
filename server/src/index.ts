@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 import { User } from './models/User.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import { authMiddleware } from './middlewares/authMiddleware.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -21,7 +22,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/Motov';
 
-app.use(cors());
+// FIX [SEC-5]: Restrict CORS to configured frontend origin only
+const ALLOWED_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:3000';
+app.use(cors({ origin: ALLOWED_ORIGIN, credentials: true }));
 app.use(express.json());
 
 // Phục vụ file tĩnh trong thư mục uploads
@@ -61,13 +64,15 @@ const upload = multer({
   }
 });
 
-// API upload ảnh đại diện
-app.post('/api/upload', upload.single('image'), (req: any, res: any) => {
+// FIX [SEC-2]: Upload endpoint now requires authentication
+app.post('/api/upload', authMiddleware as any, upload.single('image'), (req: any, res: any) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Vui lòng cung cấp file ảnh' });
     }
-    const fileUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+    // FIX [BUG-10]: Build URL from request instead of hardcoded localhost
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
     res.status(200).json({ success: true, url: fileUrl });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Lỗi tải ảnh lên server', error: error.message });
@@ -651,40 +656,39 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// API test kết nối, ghi & đọc dữ liệu thực tế trên MongoDB
-app.get('/api/test-db', async (req, res) => {
-  try {
-    const randomSuffix = Math.floor(Math.random() * 10000);
-    const testUser = new User({
-      username: `testuser_${randomSuffix}`,
-      email: `test_${randomSuffix}@motov.com`,
-      passwordHash: 'hashed_password_123',
-      firstName: 'Test',
-      lastName: 'User',
-      phoneNumber: '0912345678',
-      roles: ['Customer']
-    });
+// FIX [SEC-3]: Gate test-db endpoint to development environment only
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/api/test-db', async (req, res) => {
+    try {
+      const randomSuffix = Math.floor(Math.random() * 10000);
+      const testUser = new User({
+        username: `testuser_${randomSuffix}`,
+        email: `test_${randomSuffix}@motov.com`,
+        passwordHash: 'hashed_password_123',
+        firstName: 'Test',
+        lastName: 'User',
+        phoneNumber: '0912345678',
+        roles: ['Customer']
+      });
 
-    // Ghi dữ liệu vào MongoDB
-    const savedUser = await testUser.save();
+      const savedUser = await testUser.save();
+      const usersSample = await User.find({}).limit(5);
 
-    // Đọc ngược lại dữ liệu từ MongoDB
-    const usersSample = await User.find({}).limit(5);
-
-    res.json({
-      success: true,
-      message: 'Kết nối và đọc/ghi MongoDB hoàn toàn thành công!',
-      newlyCreatedUser: savedUser,
-      databaseSampleUsers: usersSample
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      message: 'Không thể ghi/đọc dữ liệu từ MongoDB',
-      error: error.message
-    });
-  }
-});
+      res.json({
+        success: true,
+        message: 'Kết nối và đọc/ghi MongoDB hoàn toàn thành công!',
+        newlyCreatedUser: savedUser,
+        databaseSampleUsers: usersSample
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Không thể ghi/đọc dữ liệu từ MongoDB',
+        error: error.message
+      });
+    }
+  });
+}
 
 app.get('/api/bikes', (req, res) => {
   res.json(BIKES);

@@ -17,7 +17,8 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'motov_super_secret_key_998877') as any;
+    // FIX [SEC-1]: Use env variable only — authController already guards against missing JWT_SECRET at startup
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
     req.user = {
       id: decoded.id,
       email: decoded.email,
