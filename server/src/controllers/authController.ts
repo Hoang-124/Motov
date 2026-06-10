@@ -8,6 +8,12 @@ import crypto from 'crypto';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { mapBackendRoleToFrontend, mapFrontendRoleToBackend } from '../utils/roleMapper.js';
 
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Tell dotenv to look one folder up from the current working directory
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
+
 // FIX [SEC-1]: Throw at startup if JWT_SECRET is not configured — never use a fallback literal
 if (!process.env.JWT_SECRET) {
   throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start.');
