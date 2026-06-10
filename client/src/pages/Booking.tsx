@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getBikes, Bike } from '../data/bikes';
 import { CalendarDays, MapPin, Phone, User, CreditCard, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { bookingService } from '../services/bookingService'; // Import Service API
 
 export const Booking = () => {
   const { bikeId } = useParams();
@@ -12,17 +13,18 @@ export const Booking = () => {
   const [activeImage, setActiveImage] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Form states
+  // Form states chuẩn hóa theo Backend
   const [step, setStep] = useState(1);
-  const [dateRange, setDateRange] = useState('');
-  const [location, setLocation] = useState('Da Nang Airport');
+  const [pickupDate, setPickupDate] = useState('');
+  const [returnDate, setReturnDate] = useState('');
+  const [location, setLocation] = useState('Sân bay Đà Nẵng'); // Đổi value option sang tiếng Việt khớp text hiển thị
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [license, setLicense] = useState('');
   const [success, setSuccess] = useState(false);
+  const [apiError, setApiError] = useState(''); // Lưu lỗi từ server nếu có
 
   useEffect(() => {
-    // Load dynamic bike
     const list = getBikes();
     const found = list.find(b => b.id === bikeId);
     setBike(found);
@@ -31,12 +33,11 @@ export const Booking = () => {
     }
     setLoading(false);
 
-    // Auto fill user details if logged in
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
         const u = JSON.parse(storedUser);
-        setFullName(u.name || '');
+        setFullName(u.name || u.firstName ? `${u.lastName || ''} ${u.firstName || ''}`.trim() : '');
       } catch (e) {}
     }
   }, [bikeId]);
@@ -60,35 +61,38 @@ export const Booking = () => {
     );
   }
 
-  const handleNextStep = (e: React.FormEvent) => {
+  // Hàm xử lý gửi Đơn lên Backend
+  const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
+    setApiError('');
+
     if (step < 2) {
+      // Validate ngày tháng ở bước 1 trước khi sang bước 2
+      if (new Date(pickupDate) >= new Date(returnDate)) {
+        setApiError('Ngày trả xe phải sau ngày nhận xe!');
+        return;
+      }
       setStep(step + 1);
     } else {
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      try {
+        setLoading(true);
+        
+        // Gọi API tạo đơn thuê xe thực tế
+        await bookingService.createBooking({
+          vehicleId: bike.id, // ID xe liên kết database
+          pickupDateTime: new Date(pickupDate).toISOString(),
+          returnDateTime: new Date(returnDate).toISOString(),
+          pickupLocation: { address: location },
+          returnLocation: { address: location }
+        });
 
-      // Save order to localStorage
-      const newBooking = {
-        id: 'BK-' + Math.floor(100000 + Math.random() * 900000),
-        userEmail: currentUser.email || 'guest@example.com',
-        bikeId: bike.id,
-        bikeName: bike.name,
-        image: bike.image,
-        price: bike.price,
-        date: dateRange || 'Hôm nay - Ngày mai',
-        location,
-        fullName,
-        phone,
-        license,
-        status: 'Chờ duyệt',
-        createdAt: new Date().toLocaleDateString('vi-VN'),
-      };
-
-      const existingBookings = JSON.parse(localStorage.getItem('bookings') || '[]');
-      existingBookings.unshift(newBooking);
-      localStorage.setItem('bookings', JSON.stringify(existingBookings));
-
-      setSuccess(true);
+        setSuccess(true);
+      } catch (error: any) {
+        // Bắt mọi message thông báo lỗi (hết xe, trùng lịch, thiếu thông tin) từ BE trả về
+        setApiError(error.response?.data?.message || 'Có lỗi xảy ra khi đặt xe. Vui lòng thử lại!');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -125,50 +129,59 @@ export const Booking = () => {
     <div className="pt-28 pb-20 min-h-screen bg-dark">
       <div className="max-w-6xl mx-auto px-4 lg:px-8">
         
-        {/* Back Button */}
         <Link to="/bikes" className="inline-flex items-center gap-2 text-gray-400 hover:text-neon transition-colors mb-8 text-sm group">
           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
           Quay lại danh sách xe
         </Link>
 
-        {/* Layout Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Form Side */}
           <div className="lg:col-span-7 bg-surface border border-gray-800 rounded-2xl p-6 md:p-8 shadow-xl">
-            {/* Progress Stepper */}
             <div className="flex items-center gap-4 mb-8">
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${step >= 1 ? 'bg-neon text-dark' : 'bg-gray-800 text-gray-400'}`}>
-                1
-              </div>
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${step >= 1 ? 'bg-neon text-dark' : 'bg-gray-800 text-gray-400'}`}>1</div>
               <div className={`h-0.5 flex-grow ${step >= 2 ? 'bg-neon' : 'bg-gray-800'}`}></div>
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${step >= 2 ? 'bg-neon text-dark' : 'bg-gray-800 text-gray-400'}`}>
-                2
-              </div>
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${step >= 2 ? 'bg-neon text-dark' : 'bg-gray-800 text-gray-400'}`}>2</div>
             </div>
 
             <h2 className="font-display font-black text-2xl text-white mb-6 uppercase">
               {step === 1 ? 'Thông Tin Nhận Xe' : 'Thông Tin Cá Nhân'}
             </h2>
 
+            {apiError && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
+                ⚠️ {apiError}
+              </div>
+            )}
+
             <form onSubmit={handleNextStep} className="space-y-6">
               {step === 1 && (
                 <>
-                  {/* Step 1 Form fields */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-300">Thời gian nhận & trả xe</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <CalendarDays size={18} className="text-neon" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-300">Thời gian lấy xe</label>
+                      <div className="relative">
+                        <input 
+                          type="datetime-local" 
+                          required
+                          value={pickupDate}
+                          onChange={(e) => setPickupDate(e.target.value)}
+                          className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3.5 outline-none transition-all duration-300"
+                        />
                       </div>
-                      <input 
-                        type="text" 
-                        required
-                        placeholder="Ví dụ: 25/05 - 28/05"
-                        value={dateRange}
-                        onChange={(e) => setDateRange(e.target.value)}
-                        className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none transition-all duration-300"
-                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-300">Thời gian trả xe</label>
+                      <div className="relative">
+                        <input 
+                          type="datetime-local" 
+                          required
+                          value={returnDate}
+                          onChange={(e) => setReturnDate(e.target.value)}
+                          className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3.5 outline-none transition-all duration-300"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -183,10 +196,10 @@ export const Booking = () => {
                         onChange={(e) => setLocation(e.target.value)}
                         className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none appearance-none cursor-pointer transition-all duration-300"
                       >
-                        <option value="Da Nang Airport">Sân bay Đà Nẵng</option>
-                        <option value="Da Nang Train Station">Ga Đà Nẵng</option>
-                        <option value="Son Tra Peninsula">Bán đảo Sơn Trà</option>
-                        <option value="My Khe Beach Hotel">Khách sạn khu vực Mỹ Khê</option>
+                        <option value="Sân bay Đà Nẵng">Sân bay Đà Nẵng</option>
+                        <option value="Ga Đà Nẵng">Ga Đà Nẵng</option>
+                        <option value="Bán đảo Sơn Trà">Bán đảo Sơn Trà</option>
+                        <option value="Khách sạn khu vực Mỹ Khê">Khách sạn khu vực Mỹ Khê</option>
                       </select>
                     </div>
                   </div>
@@ -195,9 +208,8 @@ export const Booking = () => {
 
               {step === 2 && (
                 <>
-                  {/* Step 2 Form fields */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-300">Họ và tên của bạn</label>
+                    <label className="block text-sm font-semibold text-gray-300">Họ và tên khách hàng</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <User size={18} className="text-neon" />
@@ -205,10 +217,9 @@ export const Booking = () => {
                       <input 
                         type="text" 
                         required
-                        placeholder="Nhập đầy đủ họ tên"
+                        disabled // Khóa lại vì BE lấy thông tin dựa trên Account Login
                         value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none transition-all duration-300"
+                        className="w-full bg-gray-900/50 border border-gray-800 text-gray-500 text-sm rounded-lg block pl-10 p-3.5 outline-none"
                       />
                     </div>
                   </div>
@@ -222,7 +233,7 @@ export const Booking = () => {
                       <input 
                         type="tel" 
                         required
-                        placeholder="Nhập số điện thoại"
+                        placeholder="Nhập số điện thoại nhận xe"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none transition-all duration-300"
@@ -239,7 +250,7 @@ export const Booking = () => {
                       <input 
                         type="text" 
                         required
-                        placeholder="Số GPLX để đối chiếu khi nhận xe"
+                        placeholder="Nhập số GPLX đối chiếu"
                         value={license}
                         onChange={(e) => setLicense(e.target.value)}
                         className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none transition-all duration-300"
@@ -249,7 +260,6 @@ export const Booking = () => {
                 </>
               )}
 
-              {/* Action Buttons */}
               <div className="flex gap-4 pt-4">
                 {step === 2 && (
                   <button 
@@ -262,9 +272,10 @@ export const Booking = () => {
                 )}
                 <button 
                   type="submit"
-                  className="flex-grow bg-neon text-dark font-bold py-3.5 rounded-lg hover:bg-[#bbf000] focus:ring-4 focus:ring-neon/30 transition-all shadow-[0_0_15px_rgba(204,255,0,0.3)] cursor-pointer text-center"
+                  disabled={loading}
+                  className="flex-grow bg-neon text-dark font-bold py-3.5 rounded-lg hover:bg-[#bbf000] focus:ring-4 focus:ring-neon/30 transition-all shadow-[0_0_15px_rgba(204,255,0,0.3)] cursor-pointer text-center disabled:bg-gray-700"
                 >
-                  {step === 1 ? 'Tiếp Theo' : 'XÁC NHẬN ĐẶT XE'}
+                  {loading ? 'ĐANG XỬ LÝ...' : step === 1 ? 'Tiếp Theo' : 'XÁC NHẬN ĐẶT XE'}
                 </button>
               </div>
             </form>
@@ -272,47 +283,15 @@ export const Booking = () => {
 
           {/* Bike Info Summary Side */}
           <div className="lg:col-span-5 bg-surface border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6">
-            <h3 className="font-display font-bold text-xl text-white uppercase border-b border-gray-800 pb-4">
-              Tóm Tắt Đơn Thuê Xe
-            </h3>
-
+            <h3 className="font-display font-bold text-xl text-white uppercase border-b border-gray-800 pb-4">Tóm Tắt Đơn Thuê Xe</h3>
             <div className="space-y-3">
               <div className="aspect-video w-full rounded-lg overflow-hidden bg-black border border-gray-800 relative">
-                <img src={activeImage} alt={bike.name} className="w-full h-full object-cover transition-all duration-300" />
+                <img src={activeImage} alt={bike.name} className="w-full h-full object-cover" />
               </div>
-              
-              {/* Thumbnail Gallery */}
-              {bike.images && bike.images.length > 0 && (
-                <div className="grid grid-cols-3 gap-2">
-                  {bike.images.map((imgUrl, index) => {
-                    const labels = ["Mặt trước", "Nhìn nghiêng", "Mặt sau"];
-                    const isSelected = activeImage === imgUrl;
-                    return (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => setActiveImage(imgUrl)}
-                        className={`group relative aspect-video rounded-md overflow-hidden bg-black border transition-all duration-200 cursor-pointer ${
-                          isSelected ? 'border-neon ring-1 ring-neon' : 'border-gray-800 hover:border-gray-600'
-                        }`}
-                      >
-                        <img src={imgUrl} alt={labels[index]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
-                        <div className={`absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-center text-[10px] font-bold ${
-                          isSelected ? 'text-neon' : 'text-gray-400 group-hover:text-white'
-                        }`}>
-                          {labels[index]}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
             </div>
 
             <div>
-              <span className="text-xs text-neon font-semibold uppercase px-2.5 py-1 rounded bg-neon/10 border border-neon/30">
-                {bike.type}
-              </span>
+              <span className="text-xs text-neon font-semibold uppercase px-2.5 py-1 rounded bg-neon/10 border border-neon/30">{bike.type}</span>
               <h2 className="font-display font-black text-2xl text-white mt-3">{bike.name}</h2>
               <p className="text-neon font-semibold text-lg mt-1">{bike.price} VNĐ / Ngày</p>
             </div>
@@ -326,21 +305,22 @@ export const Booking = () => {
                 <span className="text-gray-500">Bảo hiểm:</span>
                 <span className="text-white font-medium">Bảo hiểm trách nhiệm dân sự</span>
               </div>
-              {dateRange && (
+              {pickupDate && returnDate && (
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Thời gian thuê:</span>
-                  <span className="text-neon font-medium">{dateRange}</span>
+                  <span className="text-neon font-medium">
+                    {new Date(pickupDate).toLocaleDateString('vi-VN')} - {new Date(returnDate).toLocaleDateString('vi-VN')}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Giao nhận tại:</span>
-                <span className="text-white font-medium">{location === 'Da Nang Airport' ? 'Sân bay Đà Nẵng' : location === 'Da Nang Train Station' ? 'Ga Đà Nẵng' : location === 'Son Tra Peninsula' ? 'Bán đảo Sơn Trà' : 'Khách sạn Mỹ Khê'}</span>
+                <span className="text-white font-medium">{location}</span>
               </div>
             </div>
           </div>
 
         </div>
-
       </div>
     </div>
   );
