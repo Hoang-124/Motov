@@ -8,9 +8,16 @@ import {
   TouchableOpacity,
   Text,
   Alert,
+  Platform,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Provider } from 'react-redux';
+import { CustomAlert, CustomAlertProvider } from './src/components/CustomAlert';
+
+// Overwrite Alert.alert globally with our custom beautiful modal alert
+Alert.alert = (title: string, message?: string, buttons?: any[]) => {
+  CustomAlert.alert(title, message, buttons);
+};
 
 // Imports from modular structure
 import { store, useAppDispatch, useAppSelector } from './src/app/store';
@@ -104,8 +111,8 @@ function MainApp() {
 
   const handleOpenBooking = (bike: Bike) => {
     if (role === 'guest') {
-      Alert.alert('Yêu Cầu Đăng Nhập', 'Vui lòng chuyển đổi sang phân hệ Khách Thuê Xe trong tab Cá nhân để đăng ký đặt xe!', [
-        { text: 'Đến Cá nhân', onPress: () => setActiveTab('profile') },
+      Alert.alert('Yêu Cầu Đăng Nhập', 'Vui lòng Đăng Nhập hoặc Đăng Ký tài khoản trong tab Cá nhân để đặt xe!', [
+        { text: 'Đăng nhập', onPress: () => setActiveTab('profile') },
         { text: 'Hủy', style: 'cancel' }
       ]);
       return;
@@ -272,6 +279,7 @@ export default function App() {
   return (
     <Provider store={store}>
       <MainApp />
+      <CustomAlertProvider />
     </Provider>
   );
 }

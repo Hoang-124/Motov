@@ -5,7 +5,9 @@ export interface Bike {
   type: string;
   specs: string[];
   image: string;
+  images?: string[];
   featured: boolean;
+  ownerEmail?: string;
 }
 
 export interface Booking {
