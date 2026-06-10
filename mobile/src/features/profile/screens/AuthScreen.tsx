@@ -37,6 +37,7 @@ export const AuthScreen: React.FC = () => {
 
   // Form states
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
@@ -52,7 +53,7 @@ export const AuthScreen: React.FC = () => {
         return;
       }
     } else {
-      if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+      if (!name.trim() || !username.trim() || !password.trim() || !confirmPassword.trim()) {
         setError('Vui lòng điền đầy đủ các thông tin bắt buộc.');
         return;
       }
@@ -104,14 +105,13 @@ export const AuthScreen: React.FC = () => {
         const nameParts = name.trim().split(' ');
         const lastName = nameParts[0] || '';
         const firstName = nameParts.slice(1).join(' ') || nameParts[0] || '';
-        const username = email.split('@')[0] + '_' + Math.floor(1000 + Math.random() * 9000);
 
         const response = await fetch(`${API_BASE_URL}/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            username,
-            email,
+            username: username.trim(),
+            email: email.trim() !== '' ? email.trim() : undefined,
             password,
             firstName,
             lastName,
@@ -313,16 +313,34 @@ export const AuthScreen: React.FC = () => {
               </View>
             )}
 
+            {/* Tên đăng nhập (Sign Up only) */}
+            {!isLogin && (
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Tên đăng nhập</Text>
+                <View style={styles.inputContainer}>
+                  <Feather name="key" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, styles.monoText]}
+                    placeholder="Nhập tên đăng nhập"
+                    placeholderTextColor="#555"
+                    autoCapitalize="none"
+                    value={username}
+                    onChangeText={setUsername}
+                  />
+                </View>
+              </View>
+            )}
+
             {/* Email / Username */}
             <View style={styles.inputWrapper}>
               <Text style={styles.label}>
-                {isLogin ? 'Tên đăng nhập hoặc Email' : 'Địa chỉ Email'}
+                {isLogin ? 'Tên đăng nhập hoặc Email' : 'Địa chỉ Email (Không bắt buộc)'}
               </Text>
               <View style={styles.inputContainer}>
                 <Feather name="mail" size={16} color={COLORS.accent} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, styles.monoText]}
-                  placeholder={isLogin ? "Nhập tên đăng nhập hoặc email" : "name@example.com"}
+                  placeholder={isLogin ? "Nhập tên đăng nhập hoặc email" : "name@example.com (Nếu có)"}
                   placeholderTextColor="#555"
                   autoCapitalize="none"
                   keyboardType={isLogin ? 'default' : 'email-address'}

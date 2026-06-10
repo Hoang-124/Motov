@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { User } from './models/User.js';
+import { Vehicle } from './models/Vehicle.js';
 import authRoutes from './routes/authRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import vehicleRoutes from './routes/vehicleRoutes.js';
@@ -21,9 +22,23 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/Motov';
 
-// FIX [SEC-5]: Restrict CORS to configured frontend origin only
-const ALLOWED_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:3000';
-app.use(cors({ origin: ALLOWED_ORIGIN, credentials: true }));
+// FIX [SEC-5]: Restrict CORS to configured frontend origin only, supporting multiple ports in development
+const ALLOWED_ORIGINS = [
+  process.env.CLIENT_ORIGIN || 'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001'
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // Phục vụ file tĩnh trong thư mục uploads
@@ -161,11 +176,66 @@ async function seedUsers() {
   }
 }
 
+async function seedVehicles() {
+  try {
+    const count = await Vehicle.countDocuments();
+    if (count > 0) {
+      return;
+    }
+
+    const ownerUser = await User.findOne({ email: 'owner@motov.com' });
+    if (!ownerUser) {
+      console.log('⚠️ Owner user not found. Cannot seed vehicles.');
+      return;
+    }
+
+    const seededVehicles = BIKES.map((bike, idx) => {
+      let transmissionType: 'Manual' | 'Automatic' | 'Semi-Automatic' = 'Automatic';
+      if (bike.type === 'Xe Côn Tay' || bike.type === 'Sport' || bike.type === 'Cruiser' || bike.type === 'Classic' || bike.type === 'Sport Cafe') {
+        transmissionType = 'Manual';
+      } else if (bike.type === 'Xe Số') {
+        transmissionType = 'Semi-Automatic';
+      }
+
+      const rentalPrice = parseInt(bike.price.replace(/\./g, ''), 10) || 100000;
+
+      const CLOUD_NAME = 'dsxbuk4pe';
+      const BASE_URL = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_auto,q_auto/bikes`;
+      const num = idx + 1;
+      const imageUrls = [
+        `${BASE_URL}/${num}_3.jpg.png`,
+        `${BASE_URL}/${num}_1.jpg.png`,
+        `${BASE_URL}/${num}_4.jpg.png`
+      ];
+
+      return {
+        ownerId: ownerUser._id,
+        vehicleModel: bike.name,
+        licensePlate: `43-C1 ${String(10000 + idx).slice(0, 5)}`,
+        seats: 2,
+        odometer: Math.floor(1000 + Math.random() * 10000),
+        rentalPrice,
+        status: 'Available',
+        category: bike.type,
+        transmissionType,
+        imageUrls,
+        features: bike.specs
+      };
+    });
+
+    await Vehicle.insertMany(seededVehicles);
+    console.log(`✅ Seeded ${seededVehicles.length} vehicles successfully into MongoDB!`);
+  } catch (err) {
+    console.error('❌ Lỗi khi seed xe mẫu:', err);
+  }
+}
+
 // Kết nối MongoDB
 mongoose.connect(MONGODB_URI)
   .then(async () => {
     console.log('✅ Connected to MongoDB successfully!');
     await seedUsers();
+    await seedVehicles();
   })
   .catch((err: any) => console.error('❌ Failed to connect to MongoDB:', err));
 

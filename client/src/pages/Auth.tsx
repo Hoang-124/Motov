@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Lock, ChevronRight, Shield, Briefcase, Award, UserCheck, KeyRound } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -10,6 +10,7 @@ export const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   // Form states
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
@@ -168,7 +169,6 @@ export const Auth = () => {
         const nameParts = name.trim().split(' ');
         const lastName = nameParts[0] || '';
         const firstName = nameParts.slice(1).join(' ') || nameParts[0] || '';
-        const username = email.split('@')[0] + '_' + Math.floor(1000 + Math.random() * 9000);
 
         const response = await fetch(`${API_BASE_URL}/auth/register`, {
           method: 'POST',
@@ -176,8 +176,8 @@ export const Auth = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            username,
-            email,
+            username: username.trim(),
+            email: email.trim() !== '' ? email.trim() : undefined,
             password,
             firstName,
             lastName,
@@ -319,10 +319,30 @@ export const Auth = () => {
               </div>
             )}
 
+            {/* Tên đăng nhập (Sign Up only) */}
+            {!isLogin && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Tên đăng nhập</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <KeyRound size={16} className="text-neon" />
+                  </div>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="Nhập tên đăng nhập"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Username or Email */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                {isLogin ? 'Tên đăng nhập hoặc Email' : 'Địa chỉ Email'}
+                {isLogin ? 'Tên đăng nhập hoặc Email' : 'Địa chỉ Email (Không bắt buộc)'}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -330,8 +350,8 @@ export const Auth = () => {
                 </div>
                 <input 
                   type={isLogin ? 'text' : 'email'} 
-                  required
-                  placeholder={isLogin ? 'Nhập tên đăng nhập hoặc email' : 'name@example.com'}
+                  required={isLogin}
+                  placeholder={isLogin ? 'Nhập tên đăng nhập hoặc email' : 'name@example.com (Nếu có)'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all font-mono"
@@ -344,7 +364,7 @@ export const Auth = () => {
               <div className="flex justify-between items-center">
                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Mật khẩu</label>
                 {isLogin && (
-                  <a href="#" className="text-xs text-neon hover:underline">Quên mật khẩu?</a>
+                  <Link to="/forgot-password" className="text-xs text-neon hover:underline">Quên mật khẩu?</Link>
                 )}
               </div>
               <div className="relative">

@@ -7,6 +7,7 @@ import { PasswordResetToken } from '../models/PasswordResetToken.js';
 import crypto from 'crypto';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { mapBackendRoleToFrontend, mapFrontendRoleToBackend } from '../utils/roleMapper.js';
+import { sendPasswordReset } from '../utils/emailService.js';
 
 // FIX [SEC-1]: Throw at startup if JWT_SECRET is not configured — never use a fallback literal
 if (!process.env.JWT_SECRET) {
@@ -20,16 +21,22 @@ export const register = async (req: Request, res: Response) => {
   try {
     const { username, email, password, firstName, lastName, phoneNumber, role } = req.body;
 
-    if (!username || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ các thông tin bắt buộc (Username, Email, Mật khẩu)' });
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ các thông tin bắt buộc (Username, Mật khẩu)' });
     }
 
     // Kiểm tra trùng lặp email hoặc username
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const query: any[] = [{ username }];
+    const hasEmail = email && typeof email === 'string' && email.trim() !== "";
+    if (hasEmail) {
+      query.push({ email: email.trim() });
+    }
+
+    const existingUser = await User.findOne({ $or: query });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: existingUser.email === email 
+        message: hasEmail && existingUser.email === email.trim()
           ? 'Email này đã được sử dụng bởi một tài khoản khác' 
           : 'Tên đăng nhập này đã được sử dụng'
       });
@@ -47,7 +54,7 @@ export const register = async (req: Request, res: Response) => {
 
     const newUser = new User({
       username,
-      email,
+      email: hasEmail ? email.trim() : undefined,
       passwordHash,
       firstName: firstName || '',
       lastName: lastName || '',
@@ -473,6 +480,14 @@ export const forgotPassword = async (req: Request, res: Response) => {
       return res.status(200).json({ success: true, message: 'Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.' });
     }
 
+    // Kiểm tra tài khoản đăng ký/liên kết thông qua Google
+    if (user.googleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tài khoản này được đăng ký thông qua Google. Vui lòng chọn đăng nhập bằng Google.'
+      });
+    }
+
     const resetToken = crypto.randomBytes(32).toString('hex');
     const expiryTime = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
@@ -483,13 +498,13 @@ export const forgotPassword = async (req: Request, res: Response) => {
       isUsed: false
     });
 
-    // FIX [BUG-7]: Token must NEVER be logged — send via email service instead
-    // TODO: Integrate Nodemailer/SendGrid to email the reset link to the user
-    // Example: await emailService.sendPasswordReset(email, resetToken);
+    // Gửi email thật chứa link reset mật khẩu (hoặc email ảo trong môi trường phát triển)
+    const previewUrl = await sendPasswordReset(email, resetToken);
 
     res.status(200).json({
       success: true,
-      message: 'Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.'
+      message: 'Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.',
+      previewUrl: typeof previewUrl === 'string' ? previewUrl : undefined
     });
   } catch (error: any) {
     console.error('Lỗi quên mật khẩu:', error);

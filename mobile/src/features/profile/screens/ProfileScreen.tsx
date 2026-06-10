@@ -44,6 +44,12 @@ export const ProfileScreen: React.FC = () => {
   const [showPresets, setShowPresets] = useState(false);
   const [switching, setSwitching] = useState(false);
 
+  // Change Password States
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+
   // Sync state with redux user
   useEffect(() => {
     setFirstName(user.firstName || '');
@@ -211,6 +217,52 @@ export const ProfileScreen: React.FC = () => {
       Alert.alert('Lỗi', err.message || 'Không thể lưu thông tin cá nhân.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Change Password Action
+  const handleChangePassword = async () => {
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Thông báo', 'Vui lòng nhập đầy đủ thông tin mật khẩu.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert('Thông báo', 'Mật khẩu mới phải có ít nhất 6 ký tự.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Thông báo', 'Mật khẩu mới và xác nhận mật khẩu không trùng khớp.');
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify({
+          oldPassword,
+          newPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Đổi mật khẩu thất bại.');
+      }
+
+      Alert.alert('Thành Công 🎉', 'Đổi mật khẩu thành công!');
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      Alert.alert('Lỗi', err.message || 'Không thể đổi mật khẩu.');
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -563,6 +615,74 @@ export const ProfileScreen: React.FC = () => {
               <>
                 <Feather name="save" size={14} color={COLORS.accentDark} style={{ marginRight: 6 }} />
                 <Text style={styles.saveBtnText}>LƯU THAY ĐỔI</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Form Change Password */}
+      <View style={styles.formSection}>
+        <View style={styles.formHeader}>
+          <Feather name="lock" size={14} color={COLORS.accent} />
+          <Text style={styles.formTitle}>ĐỔI MẬT KHẨU</Text>
+        </View>
+
+        <View style={styles.fieldsContainer}>
+          {/* Old Password */}
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.fieldLabel}>Mật khẩu hiện tại</Text>
+            <TextInput
+              style={styles.fieldInput}
+              placeholder="••••••••"
+              placeholderTextColor="#444"
+              secureTextEntry
+              value={oldPassword}
+              onChangeText={setOldPassword}
+              autoCapitalize="none"
+            />
+          </View>
+
+          {/* New Password */}
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.fieldLabel}>Mật khẩu mới</Text>
+            <TextInput
+              style={styles.fieldInput}
+              placeholder="••••••••"
+              placeholderTextColor="#444"
+              secureTextEntry
+              value={newPassword}
+              onChangeText={setNewPassword}
+              autoCapitalize="none"
+            />
+          </View>
+
+          {/* Confirm Password */}
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.fieldLabel}>Xác nhận mật khẩu mới</Text>
+            <TextInput
+              style={styles.fieldInput}
+              placeholder="••••••••"
+              placeholderTextColor="#444"
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              autoCapitalize="none"
+            />
+          </View>
+
+          {/* Change Password Button */}
+          <TouchableOpacity
+            style={[styles.saveBtn, passwordSaving && styles.disabledBtn]}
+            onPress={handleChangePassword}
+            disabled={passwordSaving}
+          >
+            {passwordSaving ? (
+              <ActivityIndicator size="small" color={COLORS.accentDark} />
+            ) : (
+              <>
+                <Feather name="key" size={14} color={COLORS.accentDark} style={{ marginRight: 6 }} />
+                <Text style={styles.saveBtnText}>ĐỔI MẬT KHẨU</Text>
               </>
             )}
           </TouchableOpacity>

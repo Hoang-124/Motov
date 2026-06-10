@@ -8,7 +8,7 @@ export interface IUserVoucher extends Document {
 
 export interface IUser extends Document {
   username: string;
-  email: string;
+  email?: string;
   passwordHash?: string;
   googleId?: string;
   firstName?: string;
@@ -33,7 +33,7 @@ const UserVoucherSchema = new Schema<IUserVoucher>({
 
 const UserSchema = new Schema<IUser>({
   username: { type: String, required: true, unique: true, index: true },
-  email: { type: String, required: true, unique: true, index: true },
+  email: { type: String, unique: true, sparse: true, index: true },
   passwordHash: { type: String },
   googleId: { type: String, unique: true, sparse: true },
   firstName: { type: String },

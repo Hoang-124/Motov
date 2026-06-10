@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck } from 'lucide-react';
+import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const Header = () => {
@@ -17,6 +17,7 @@ export const Header = () => {
   }, []);
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -138,29 +139,28 @@ export const Header = () => {
         {/* User profile / Login button */}
         <div className="hidden md:flex items-center gap-4">
           {user ? (
-            <div className="flex items-center gap-3">
-              {user.role === 'customer' && (
-                <button
-                  onClick={handleBecomeOwner}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface border border-gray-800 text-xs font-semibold text-gray-300 hover:border-cyan-500 hover:text-cyan-400 transition-all duration-300 cursor-pointer"
-                >
-                  <UserCheck size={12} className="text-cyan-400" />
-                  Đăng Ký Chủ Xe
-                </button>
-              )}
-              <Link to="/profile" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-gray-800 hover:border-neon text-xs font-semibold text-gray-300 hover:text-white transition-all duration-300">
+            <div 
+              className="relative animate-fade-in"
+              onMouseEnter={() => setIsDropdownOpen(true)}
+              onMouseLeave={() => setIsDropdownOpen(false)}
+            >
+              {/* Profile Trigger Button */}
+              <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-gray-800 hover:border-neon text-xs font-semibold text-gray-300 hover:text-white transition-all duration-300 cursor-pointer"
+              >
                 {user.avatarUrl ? (
                   <img src={user.avatarUrl} alt={user.name} className="w-5 h-5 rounded-full object-cover border border-white/10" />
                 ) : (
-                  <>
-                    {user.role === 'admin' && <Shield size={14} className="text-neon" />}
-                    {user.role === 'staff' && <Briefcase size={14} className="text-yellow-500" />}
-                    {user.role === 'owner' && <UserCheck size={14} className="text-cyan-400" />}
-                    {user.role === 'customer' && <Award size={14} className="text-green-500" />}
-                  </>
+                  <div className="w-5 h-5 rounded-full bg-gray-800 flex items-center justify-center border border-white/10">
+                    {user.role === 'admin' && <Shield size={10} className="text-neon" />}
+                    {user.role === 'staff' && <Briefcase size={10} className="text-yellow-500" />}
+                    {user.role === 'owner' && <UserCheck size={10} className="text-cyan-400" />}
+                    {user.role === 'customer' && <Award size={10} className="text-green-500" />}
+                  </div>
                 )}
-                <span className="font-medium text-gray-300">{user.name}</span>
-                <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded font-bold ${
+                <span className="font-medium text-gray-300 max-w-[100px] truncate">{user.name}</span>
+                <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-bold ${
                   user.role === 'admin' ? 'bg-neon/10 text-neon border border-neon/20' :
                   user.role === 'staff' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' :
                   user.role === 'owner' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' :
@@ -168,14 +168,152 @@ export const Header = () => {
                 }`}>
                   {user.role === 'admin' ? 'Admin' : user.role === 'staff' ? 'Staff' : user.role === 'owner' ? 'Owner' : 'Khách'}
                 </span>
-              </Link>
-              <button 
-                onClick={() => setShowLogoutModal(true)}
-                className="flex items-center justify-center p-2 rounded-full border border-gray-800 text-gray-400 hover:text-red-500 hover:border-red-500/30 transition-all cursor-pointer"
-                title="Đăng xuất"
-              >
-                <LogOut size={16} />
               </button>
+
+              {/* Dropdown Menu (GitHub Style) */}
+              <AnimatePresence>
+                {isDropdownOpen && (
+                  <>
+                    {/* Click outside to close overlay */}
+                    <div 
+                      className="fixed inset-0 z-40 bg-transparent cursor-default"
+                      onClick={() => setIsDropdownOpen(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl w-[260px] overflow-hidden text-gray-300 font-sans"
+                    >
+                    {/* Top neon indicator line */}
+                    <div className="absolute top-0 inset-x-0 h-[3px] bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+
+                    {/* Header info */}
+                    <div className="p-4 flex items-center gap-3 border-b border-white/5 bg-black/20">
+                      {user.avatarUrl ? (
+                        <img src={user.avatarUrl} alt={user.name} className="w-10 h-10 rounded-full object-cover border border-white/10" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-800 border border-white/10 flex items-center justify-center text-gray-500">
+                          <User size={20} />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-white truncate">{user.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      </div>
+                    </div>
+
+                    {/* Role Tag & Info */}
+                    <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between text-xs text-gray-400 bg-black/10">
+                      <span className="font-medium uppercase tracking-wider text-[10px]">Vai trò</span>
+                      <span className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-bold ${
+                        user.role === 'admin' ? 'bg-neon/10 text-neon border border-neon/20' :
+                        user.role === 'staff' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' :
+                        user.role === 'owner' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' :
+                        'bg-green-500/10 text-green-500 border border-green-500/20'
+                      }`}>
+                        {user.role === 'admin' ? 'Quản trị viên' : user.role === 'staff' ? 'Nhân viên' : user.role === 'owner' ? 'Chủ xe' : 'Khách thuê'}
+                      </span>
+                    </div>
+
+                    {/* Main links section */}
+                    <div className="py-2 border-b border-white/5">
+                      <Link to="/profile" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                        <User size={15} />
+                        <span>Trang cá nhân</span>
+                      </Link>
+
+                      {/* Customer-specific links */}
+                      {user.role === 'customer' && (
+                        <>
+                          <Link to="/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <ClipboardList size={15} />
+                            <span>Đơn thuê của tôi</span>
+                          </Link>
+                          <button 
+                            onClick={handleBecomeOwner}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-cyan-400 hover:bg-white/5 transition-all text-left cursor-pointer"
+                          >
+                            <UserCheck size={15} className="text-cyan-400" />
+                            <span>Đăng ký chủ xe</span>
+                          </button>
+                        </>
+                      )}
+
+                      {/* Owner-specific links */}
+                      {user.role === 'owner' && (
+                        <>
+                          <Link to="/owner/dashboard" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <Activity size={15} />
+                            <span>Doanh thu / Thống kê</span>
+                          </Link>
+                          <Link to="/owner/bikes" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <BookOpen size={15} />
+                            <span>Xe của tôi</span>
+                          </Link>
+                          <Link to="/owner/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <ClipboardList size={15} />
+                            <span>Lịch sử thuê xe</span>
+                          </Link>
+                        </>
+                      )}
+
+                      {/* Staff-specific links */}
+                      {user.role === 'staff' && (
+                        <>
+                          <Link to="/staff/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <ClipboardList size={15} />
+                            <span>Duyệt đơn thuê</span>
+                          </Link>
+                          <Link to="/staff/bikes" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <BookOpen size={15} />
+                            <span>Tình trạng xe</span>
+                          </Link>
+                        </>
+                      )}
+
+                      {/* Admin-specific links */}
+                      {user.role === 'admin' && (
+                        <>
+                          <Link to="/admin/dashboard" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <Activity size={15} />
+                            <span>Thống kê hệ thống</span>
+                          </Link>
+                          <Link to="/admin/bikes" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <BookOpen size={15} />
+                            <span>Quản lý xe</span>
+                          </Link>
+                          <Link to="/admin/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <ClipboardList size={15} />
+                            <span>Đơn toàn hệ thống</span>
+                          </Link>
+                          <Link to="/admin/users" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <UserCheck size={15} />
+                            <span>Phân quyền thành viên</span>
+                          </Link>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Settings & Sign out */}
+                    <div className="py-1 bg-black/10">
+                      <Link to="/profile" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all">
+                        <Settings size={15} />
+                        <span>Cài đặt tài khoản</span>
+                      </Link>
+                      <button 
+                        onClick={() => setShowLogoutModal(true)}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all text-left cursor-pointer font-semibold"
+                      >
+                        <LogOut size={15} />
+                        <span>Đăng xuất</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+              </AnimatePresence>
             </div>
           ) : (
             <Link 

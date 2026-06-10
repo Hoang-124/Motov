@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getBikes, Bike } from '../data/bikes';
+import { getMotorbikeById, Motorbike } from '../services/vehicleService';
 import { CalendarDays, MapPin, Phone, User, CreditCard, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { bookingService } from '../services/bookingService'; // Import Service API
@@ -9,7 +9,7 @@ export const Booking = () => {
   const { bikeId } = useParams();
   const navigate = useNavigate();
   
-  const [bike, setBike] = useState<Bike | undefined>(undefined);
+  const [bike, setBike] = useState<Motorbike | undefined>(undefined);
   const [activeImage, setActiveImage] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -25,13 +25,22 @@ export const Booking = () => {
   const [apiError, setApiError] = useState(''); // Lưu lỗi từ server nếu có
 
   useEffect(() => {
-    const list = getBikes();
-    const found = list.find(b => b.id === bikeId);
-    setBike(found);
-    if (found) {
-      setActiveImage(found.image);
-    }
-    setLoading(false);
+    const fetchBike = async () => {
+      if (!bikeId) return;
+      try {
+        setLoading(true);
+        const data = await getMotorbikeById(bikeId);
+        setBike(data);
+        if (data.imageUrls && data.imageUrls.length > 0) {
+          setActiveImage(data.imageUrls[0]);
+        }
+      } catch (err) {
+        console.error('Error fetching bike details:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBike();
 
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -79,7 +88,7 @@ export const Booking = () => {
         
         // Gọi API tạo đơn thuê xe thực tế
         await bookingService.createBooking({
-          vehicleId: bike.id, // ID xe liên kết database
+          vehicleId: bike._id!, // ID xe liên kết database
           pickupDateTime: new Date(pickupDate).toISOString(),
           returnDateTime: new Date(returnDate).toISOString(),
           pickupLocation: { address: location },
@@ -286,20 +295,20 @@ export const Booking = () => {
             <h3 className="font-display font-bold text-xl text-white uppercase border-b border-gray-800 pb-4">Tóm Tắt Đơn Thuê Xe</h3>
             <div className="space-y-3">
               <div className="aspect-video w-full rounded-lg overflow-hidden bg-black border border-gray-800 relative">
-                <img src={activeImage} alt={bike.name} className="w-full h-full object-cover" />
+                <img src={activeImage} alt={bike.vehicleModel} className="w-full h-full object-cover" />
               </div>
             </div>
 
             <div>
-              <span className="text-xs text-neon font-semibold uppercase px-2.5 py-1 rounded bg-neon/10 border border-neon/30">{bike.type}</span>
-              <h2 className="font-display font-black text-2xl text-white mt-3">{bike.name}</h2>
-              <p className="text-neon font-semibold text-lg mt-1">{bike.price} VNĐ / Ngày</p>
+              <span className="text-xs text-neon font-semibold uppercase px-2.5 py-1 rounded bg-neon/10 border border-neon/30">{bike.category}</span>
+              <h2 className="font-display font-black text-2xl text-white mt-3">{bike.vehicleModel}</h2>
+              <p className="text-neon font-semibold text-lg mt-1">{bike.rentalPrice ? bike.rentalPrice.toLocaleString() : '0'} VNĐ / Ngày</p>
             </div>
 
             <div className="border-t border-gray-800 pt-4 space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Loại xe:</span>
-                <span className="text-white font-medium">{bike.type}</span>
+                <span className="text-white font-medium">{bike.category}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Bảo hiểm:</span>
