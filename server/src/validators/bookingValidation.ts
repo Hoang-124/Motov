@@ -1,0 +1,212 @@
+import { Booking } from '../models/Booking.js';
+import { Vehicle } from '../models/Vehicle.js';
+
+/**
+ * Validate booking input data
+ */
+export function validateBookingInput(data: any): { valid: boolean; error?: string } {
+  const { vehicleId, pickupDateTime, returnDateTime, pickupLocation, returnLocation } = data;
+
+  // Check required fields
+  if (!vehicleId || !pickupDateTime || !returnDateTime) {
+    return { valid: false, error: 'Vui lòng cung cấp đầy đủ thông tin: vehicleId, pickupDateTime, returnDateTime' };
+  }
+
+  // Validate dates
+  const pickup = new Date(pickupDateTime);
+  const returnDate = new Date(returnDateTime);
+  const now = new Date();
+
+  if (isNaN(pickup.getTime()) || isNaN(returnDate.getTime())) {
+    return { valid: false, error: 'Định dạng ngày tháng không hợp lệ. Vui lòng sử dụng format ISO (YYYY-MM-DD)' };
+  }
+
+  // Check if pickup date is in the future
+  if (pickup < now) {
+    return { valid: false, error: 'Ngày lấy xe phải là ngày trong tương lai' };
+  }
+
+  // Check if return date is after pickup date
+  if (returnDate <= pickup) {
+    return { valid: false, error: 'Ngày trả xe phải sau ngày lấy xe' };
+  }
+
+  // Check minimum rental period (at least 1 hour)
+  const minRentalHours = 1;
+  const rentalHours = (returnDate.getTime() - pickup.getTime()) / (1000 * 60 * 60);
+  if (rentalHours < minRentalHours) {
+    return { valid: false, error: `Thời gian cho thuê tối thiểu là ${minRentalHours} giờ` };
+  }
+
+  // Maximum rental period (30 days)
+  const maxRentalDays = 30;
+  const rentalDays = Math.ceil((returnDate.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24));
+  if (rentalDays > maxRentalDays) {
+    return { valid: false, error: `Thời gian cho thuê tối đa là ${maxRentalDays} ngày` };
+  }
+
+  // Validate location if provided
+  if (pickupLocation && pickupLocation.coordinates) {
+    if (!Array.isArray(pickupLocation.coordinates) || pickupLocation.coordinates.length !== 2) {
+      return { valid: false, error: 'Tọa độ vị trí lấy xe không hợp lệ (phải là [longitude, latitude])' };
+    }
+  }
+
+  if (returnLocation && returnLocation.coordinates) {
+    if (!Array.isArray(returnLocation.coordinates) || returnLocation.coordinates.length !== 2) {
+      return { valid: false, error: 'Tọa độ vị trí trả xe không hợp lệ (phải là [longitude, latitude])' };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Check if vehicle is available during the booking period
+ */
+export async function checkVehicleAvailability(
+  vehicleId: string,
+  pickupDateTime: string | Date,
+  returnDateTime: string | Date
+): Promise<boolean> {
+  const pickup = new Date(pickupDateTime);
+  const returnDate = new Date(returnDateTime);
+
+  try {
+    // Find overlapping bookings
+    const overlappingBookings = await Booking.findOne({
+      vehicleId,
+      status: { $in: ['Confirmed', 'Ongoing'] }, // Only these statuses block availability
+      $or: [
+        // Overlap scenarios
+        {
+          // New booking starts during existing booking
+          pickupDateTime: { $lt: returnDate },
+          returnDateTime: { $gt: pickup }
+        }
+      ]
+    });
+
+    return !overlappingBookings;
+  } catch (error) {
+    console.error('Error checking vehicle availability:', error);
+    return false;
+  }
+}
+
+/**
+ * Validate booking status transition
+ */
+export function validateUpdateBooking(
+  currentStatus: string,
+  newStatus: string
+): { valid: boolean; error?: string } {
+  const validTransitions: Record<string, string[]> = {
+    'Pending': ['Confirmed', 'Cancelled'],
+    'Confirmed': ['Ongoing', 'Cancelled'],
+    'Ongoing': ['Completed'],
+    'Completed': [],
+    'Cancelled': []
+  };
+
+  if (!validTransitions[currentStatus]) {
+    return { valid: false, error: `Trạng thái hiện tại không hợp lệ: ${currentStatus}` };
+  }
+
+  if (!validTransitions[currentStatus].includes(newStatus)) {
+    return {
+      valid: false,
+      error: `Không thể chuyển từ "${currentStatus}" sang "${newStatus}". Chuyển đổi hợp lệ: ${validTransitions[currentStatus].join(', ')}`
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Validate booking cancellation
+ */
+export function validateCancellation(currentStatus: string): { valid: boolean; error?: string } {
+  const cancellableStatuses = ['Pending', 'Confirmed'];
+
+  if (!cancellableStatuses.includes(currentStatus)) {
+    return {
+      valid: false,
+      error: `Không thể hủy booking ở trạng thái "${currentStatus}". Chỉ có thể hủy booking ở trạng thái Pending hoặc Confirmed.`
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Calculate total rental amount
+ */
+export function calculateTotalAmount(rentalPricePerDay: number, days: number): number {
+  if (days < 1) days = 1;
+  return Math.round(rentalPricePerDay * days);
+}
+
+/**
+ * Generate unique booking code
+ */
+export function generateBookingCode(): string {
+  // Format: BK + YYYYMMDD + Random 6 digits
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const randomStr = Math.random().toString().slice(2, 8);
+  return `BK${dateStr}${randomStr}`;
+}
+
+/**
+ * Validate surcharge data
+ */
+export function validateSurcharge(data: any): { valid: boolean; error?: string } {
+  const { surchargeType, amount } = data;
+
+  if (!surchargeType || amount === undefined) {
+    return { valid: false, error: 'Vui lòng cung cấp surchargeType và amount' };
+  }
+
+  if (typeof amount !== 'number' || amount < 0) {
+    return { valid: false, error: 'Số tiền phí phụ phải là số không âm' };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Calculate late return fees
+ */
+export function calculateLateFees(returnedTime: Date, scheduledReturnTime: Date, hourlyRate: number): number {
+  const lateHours = Math.ceil((returnedTime.getTime() - scheduledReturnTime.getTime()) / (1000 * 60 * 60));
+  if (lateHours <= 0) return 0;
+  return lateHours * hourlyRate;
+}
+
+/**
+ * Calculate damage fees
+ */
+export function calculateDamageFees(damageType: string, vehicleValue: number): number {
+  const damageFeePercentages: Record<string, number> = {
+    'minor': 0.05,      // 5% - minor scratches
+    'moderate': 0.15,   // 15% - dents, broken parts
+    'severe': 0.50,     // 50% - major damage
+    'total_loss': 1.0   // 100% - total loss
+  };
+
+  const percentage = damageFeePercentages[damageType] || 0.05;
+  return Math.round(vehicleValue * percentage);
+}
+
+export default {
+  validateBookingInput,
+  checkVehicleAvailability,
+  validateUpdateBooking,
+  validateCancellation,
+  calculateTotalAmount,
+  generateBookingCode,
+  validateSurcharge,
+  calculateLateFees,
+  calculateDamageFees
+};

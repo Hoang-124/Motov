@@ -265,6 +265,7 @@ export const googleLogin = async (req: Request, res: Response) => {
         'Authorization': `Bearer ${accessToken}`
       }
     });
+
     
     if (!googleResponse.ok) {
       return res.status(400).json({ success: false, message: 'Xác thực Access Token từ Google thất bại' });
@@ -287,7 +288,6 @@ export const googleLogin = async (req: Request, res: Response) => {
 
     // Tìm user bằng googleId trước
     let user = await User.findOne({ googleId });
-
 
     if (!user) {
       // Nếu chưa có googleId, kiểm tra xem có user nào đăng ký bằng email này trước đó chưa
