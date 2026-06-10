@@ -5,7 +5,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -21,8 +22,9 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
-    "babel-preset-expo": "~55.0.22",
     "@types/react": "~19.0.8",
+    "babel-preset-expo": "~55.0.22",
+    "patch-package": "^8.0.1",
     "typescript": "~5.9.2"
   },
   "private": true
