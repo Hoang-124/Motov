@@ -10,6 +10,11 @@
     },
     "android": {
       "package": "com.motov.app"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "76f1b3b6-f3d1-4248-812b-90cd24091e75"
+      }
     }
   }
 }

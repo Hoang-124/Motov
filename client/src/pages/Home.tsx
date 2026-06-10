@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, MapPin, ChevronDown } from 'lucide-react';
 import { motion } from 'motion/react';
-import { getBikes, Bike } from '../data/bikes';
+import { getAllMotorbikes, Motorbike } from '../services/vehicleService';
 import { BikeCard } from '../components/BikeCard';
 
 const HeroSearch = () => {
@@ -114,11 +114,11 @@ const HeroSection = () => {
 };
 
 interface SectionProps {
-  bikes: Bike[];
+  bikes: Motorbike[];
 }
 
 const PopularSection = ({ bikes }: SectionProps) => {
-  const featuredBikes = bikes.filter(b => b.featured);
+  const featuredBikes = bikes.slice(0, 3);
   return (
     <section className="py-20 max-w-7xl mx-auto px-4 lg:px-8">
       <div className="flex flex-col md:flex-row justify-between items-end mb-12">
@@ -129,7 +129,7 @@ const PopularSection = ({ bikes }: SectionProps) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {featuredBikes.map((bike, idx) => (
-          <BikeCard key={bike.id} bike={bike} large={idx === 0} />
+          <BikeCard key={bike._id || idx} bike={bike} large={idx === 0} />
         ))}
       </div>
     </section>
@@ -137,7 +137,7 @@ const PopularSection = ({ bikes }: SectionProps) => {
 };
 
 const HighQualitySection = ({ bikes }: SectionProps) => {
-  const otherBikes = bikes.filter(b => !b.featured).slice(0, 3);
+  const otherBikes = bikes.slice(3, 6);
   return (
     <section className="py-20 border-t border-white/5">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
@@ -173,8 +173,8 @@ const HighQualitySection = ({ bikes }: SectionProps) => {
           
           <div className="lg:col-span-8">
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {otherBikes.map(bike => (
-                  <BikeCard key={bike.id} bike={bike} />
+                {otherBikes.map((bike, idx) => (
+                  <BikeCard key={bike._id || idx} bike={bike} />
                 ))}
              </div>
           </div>
@@ -205,17 +205,25 @@ const BannerCTA = () => {
 };
 
 export const Home = () => {
-  const [bikes, setBikes] = useState<Bike[]>([]);
+  const [bikes, setBikes] = useState<Motorbike[]>([]);
 
   useEffect(() => {
-    setBikes(getBikes());
+    const fetchBikes = async () => {
+      try {
+        const data = await getAllMotorbikes({ status: 'Available' });
+        setBikes(data);
+      } catch (err) {
+        console.error('Error loading home page motorbikes:', err);
+      }
+    };
+    fetchBikes();
   }, []);
 
   return (
     <div className="flex-grow">
       <HeroSection />
-      <PopularSection bikes={bikes} />
-      <HighQualitySection bikes={bikes} />
+      {bikes.length > 0 && <PopularSection bikes={bikes} />}
+      {bikes.length > 3 && <HighQualitySection bikes={bikes} />}
       <BannerCTA />
     </div>
   );

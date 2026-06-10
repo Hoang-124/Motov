@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Calendar, Shield, Award, Briefcase, UserCheck, Check, Save, ArrowLeft, Camera } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Shield, Award, Briefcase, UserCheck, Check, Save, ArrowLeft, Camera, Lock, Key } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const Profile = () => {
@@ -25,6 +25,14 @@ export const Profile = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Change password states
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -186,6 +194,62 @@ export const Profile = () => {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      setPasswordError('Vui lòng nhập đầy đủ thông tin mật khẩu.');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Mật khẩu mới và xác nhận mật khẩu không trùng khớp.');
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
+
+      const { token } = JSON.parse(storedUser);
+
+      const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          oldPassword,
+          newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Thay đổi mật khẩu thất bại.');
+      }
+
+      setPasswordSuccess('Đổi mật khẩu thành công!');
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setPasswordError(err.message || 'Đã xảy ra lỗi khi thay đổi mật khẩu.');
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="pt-28 pb-20 min-h-screen bg-dark flex flex-col items-center justify-center">
@@ -303,7 +367,7 @@ export const Profile = () => {
           </div>
 
           {/* Card Right: Editable fields */}
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 space-y-6">
             <motion.div 
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
@@ -447,6 +511,106 @@ export const Profile = () => {
                   )}
                 </button>
 
+              </form>
+            </motion.div>
+
+            {/* Change Password Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-surface/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl relative"
+            >
+              <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+              
+              <h2 className="font-display font-black text-2xl text-white uppercase mb-6 flex items-center gap-2">
+                <Lock size={20} className="text-neon" />
+                Đổi mật khẩu
+              </h2>
+
+              {passwordError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold text-center mb-4">
+                  ⚠️ {passwordError}
+                </div>
+              )}
+
+              {passwordSuccess && (
+                <div className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-lg text-xs font-semibold text-center mb-4 flex items-center justify-center gap-2">
+                  <Check size={14} />
+                  {passwordSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                {/* Mật khẩu cũ */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                    <Key size={12} />
+                    Mật khẩu hiện tại
+                  </label>
+                  <input 
+                    type="password" 
+                    required
+                    placeholder="Nhập mật khẩu hiện tại"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3 outline-none transition-all"
+                  />
+                </div>
+
+                {/* Mật khẩu mới & Xác nhận */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                      <Lock size={12} />
+                      Mật khẩu mới
+                    </label>
+                    <input 
+                      type="password" 
+                      required
+                      placeholder="Tối thiểu 6 ký tự"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3 outline-none transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                      <Lock size={12} />
+                      Xác nhận mật khẩu mới
+                    </label>
+                    <input 
+                      type="password" 
+                      required
+                      placeholder="Xác nhận mật khẩu mới"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit"
+                  disabled={passwordSaving}
+                  className="w-full bg-neon text-dark font-bold py-3.5 mt-6 rounded-lg hover:bg-[#bbf000] focus:ring-4 focus:outline-none focus:ring-neon/30 transition-all duration-300 shadow-[0_0_15px_rgba(204,255,0,0.3)] hover:shadow-[0_0_20px_rgba(204,255,0,0.5)] flex items-center justify-center gap-2 group text-sm uppercase tracking-wider cursor-pointer disabled:opacity-50"
+                >
+                  {passwordSaving ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <Key size={16} />
+                      Đổi mật khẩu
+                    </>
+                  )}
+                </button>
               </form>
             </motion.div>
           </div>

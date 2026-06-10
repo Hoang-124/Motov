@@ -10,6 +10,8 @@ import { Booking } from './pages/Booking';
 import { Bookings } from './pages/Bookings';
 import { Auth } from './pages/Auth';
 import { Profile } from './pages/Profile';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 
 // Staff pages
 import { StaffBookings } from './pages/staff/StaffBookings';
@@ -79,6 +81,8 @@ export default function App() {
               </ProtectedRoute>
             } />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Customer Protected Route */}
             <Route path="/booking/:bikeId" element={

@@ -50,6 +50,16 @@ describe('register()', () => {
     expect(res._body.user.role).toBe('customer');
   });
 
+  it('should create a user without an email', async () => {
+    const req: any = { body: { username: 'noemailuser', password: 'password123' } };
+    const res = createMockRes();
+    await register(req, res);
+    expect(res._status).toBe(201);
+    expect(res._body.success).toBe(true);
+    expect(res._body.token).toBeDefined();
+    expect(res._body.user.email).toBeUndefined();
+  });
+
   it('should reject duplicate email', async () => {
     await User.create({ username: 'u1', email: 'dup@example.com', roles: ['Customer'], status: 'Active' });
     const req: any = { body: { username: 'u2', email: 'dup@example.com', password: 'password123' } };
@@ -186,6 +196,26 @@ describe('forgotPassword()', () => {
     const token = await PasswordResetToken.findOne({});
     expect(token).not.toBeNull();
     expect(token!.isUsed).toBe(false);
+  });
+
+  it('should reject forgotPassword request for Google-only accounts', async () => {
+    await User.create({ username: 'guser', email: 'g@example.com', googleId: 'gid123', roles: ['Customer'], status: 'Active' });
+    const req: any = { body: { email: 'g@example.com' } };
+    const res = createMockRes();
+    await forgotPassword(req, res);
+    expect(res._status).toBe(400);
+    expect(res._body.success).toBe(false);
+    expect(res._body.message).toContain('Google');
+  });
+
+  it('should reject forgotPassword request for Google-linked accounts (with passwordHash)', async () => {
+    await User.create({ username: 'guser2', email: 'g2@example.com', googleId: 'gid456', passwordHash: 'somehash', roles: ['Customer'], status: 'Active' });
+    const req: any = { body: { email: 'g2@example.com' } };
+    const res = createMockRes();
+    await forgotPassword(req, res);
+    expect(res._status).toBe(400);
+    expect(res._body.success).toBe(false);
+    expect(res._body.message).toContain('Google');
   });
 });
 
