@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import jwt from 'jsonwebtoken';
-import { authMiddleware, restrictTo } from '../../middlewares/authMiddleware.js';
+import { authMiddleware, restrictTo } from '../middlewares/authMiddleware.js';
 
 const JWT_SECRET = 'test-secret-for-vitest';
 process.env.JWT_SECRET = JWT_SECRET;
@@ -76,7 +76,7 @@ describe('restrictTo()', () => {
 
 describe('escapeRegex() from roleMapper utils', () => {
   it('should escape special regex characters', async () => {
-    const { escapeRegex } = await import('../../utils/roleMapper.js');
+    const { escapeRegex } = await import('../utils/roleMapper.js');
     const result = escapeRegex('a.b*c+d(e)f[g]h{i}j^k$l|m?n\\o');
     // Ensure no special chars remain unescaped
     expect(() => new RegExp(result)).not.toThrow();
