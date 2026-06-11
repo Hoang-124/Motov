@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getMotorbikeById, Motorbike } from '../services/vehicleService';
-import { CalendarDays, MapPin, Phone, User, CreditCard, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, MapPin, Phone, User, CreditCard, ArrowLeft, CheckCircle2, Ticket, X as XIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { bookingService } from '../services/bookingService'; // Import Service API
+import { promotionService } from '../services/promotionService'; // Import Promotion Service
 
 export const Booking = () => {
   const { bikeId } = useParams();
@@ -23,6 +24,51 @@ export const Booking = () => {
   const [license, setLicense] = useState('');
   const [success, setSuccess] = useState(false);
   const [apiError, setApiError] = useState(''); // Lưu lỗi từ server nếu có
+
+  // Promotion states
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<any>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
+  const [validatingPromo, setValidatingPromo] = useState(false);
+
+  const getRentalDays = () => {
+    if (!pickupDate || !returnDate) return 0;
+    const start = new Date(pickupDate);
+    const end = new Date(returnDate);
+    if (start >= end) return 0;
+    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const rentalDays = getRentalDays();
+  const totalAmountBeforeDiscount = bike?.rentalPrice ? bike.rentalPrice * rentalDays : 0;
+
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) {
+      setPromoError('Vui lòng nhập mã giảm giá.');
+      return;
+    }
+    if (totalAmountBeforeDiscount <= 0) {
+      setPromoError('Vui lòng chọn thời gian thuê xe hợp lệ trước.');
+      return;
+    }
+
+    setPromoError(null);
+    setPromoSuccess(null);
+    setValidatingPromo(true);
+
+    try {
+      const promo = await promotionService.validatePromoCode(promoCode, totalAmountBeforeDiscount);
+      setAppliedPromo(promo);
+      setPromoSuccess(`Áp dụng thành công! Được giảm ${promo.discountAmount.toLocaleString()} VNĐ`);
+    } catch (err: any) {
+      console.error(err);
+      setPromoError(err.response?.data?.message || 'Mã giảm giá không hợp lệ hoặc đã hết hạn.');
+      setAppliedPromo(null);
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
 
   useEffect(() => {
     const fetchBike = async () => {
@@ -92,7 +138,8 @@ export const Booking = () => {
           pickupDateTime: new Date(pickupDate).toISOString(),
           returnDateTime: new Date(returnDate).toISOString(),
           pickupLocation: { address: location },
-          returnLocation: { address: location }
+          returnLocation: { address: location },
+          promoCode: appliedPromo ? appliedPromo.voucherCode : undefined
         });
 
         setSuccess(true);
@@ -327,6 +374,93 @@ export const Booking = () => {
                 <span className="text-white font-medium">{location}</span>
               </div>
             </div>
+
+            {/* Promotion Section & Billing Details */}
+            {pickupDate && returnDate && rentalDays > 0 ? (
+              <div className="border-t border-gray-800 pt-4 space-y-4 animate-fade-in">
+                {/* Apply Voucher Form */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">Mã giảm giá (Promo Code)</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-grow">
+                      <input
+                        type="text"
+                        placeholder="Nhập mã code..."
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        disabled={appliedPromo !== null || validatingPromo}
+                        className="w-full bg-black/50 border border-gray-800 text-gray-300 text-xs rounded-lg focus:ring-1 focus:ring-neon focus:border-transparent block p-3 outline-none uppercase font-mono tracking-wider disabled:opacity-60"
+                      />
+                      {appliedPromo && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAppliedPromo(null);
+                            setPromoSuccess(null);
+                            setPromoCode('');
+                          }}
+                          className="absolute right-2 top-2.5 text-gray-500 hover:text-red-400 transition-colors cursor-pointer"
+                        >
+                          <XIcon size={14} />
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={appliedPromo !== null || validatingPromo}
+                      onClick={handleApplyPromo}
+                      className="bg-surface border border-gray-800 text-white hover:border-neon hover:text-neon disabled:opacity-40 disabled:border-gray-800 disabled:text-gray-500 font-bold px-4 py-2.5 rounded-lg transition-all text-xs uppercase cursor-pointer shrink-0"
+                    >
+                      {validatingPromo ? '...' : 'Áp dụng'}
+                    </button>
+                  </div>
+                  
+                  {promoError && (
+                    <p className="text-[10px] text-red-500 font-semibold flex items-center gap-1">⚠️ {promoError}</p>
+                  )}
+                  {promoSuccess && (
+                    <p className="text-[10px] text-green-400 font-semibold flex items-center gap-1">✓ {promoSuccess}</p>
+                  )}
+                </div>
+
+                {/* Bill details list */}
+                <div className="bg-black/20 p-4 border border-gray-800 rounded-xl space-y-2.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Đơn giá xe:</span>
+                    <span>{bike.rentalPrice ? bike.rentalPrice.toLocaleString() : '0'} đ/Ngày</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Số ngày thuê:</span>
+                    <span>{rentalDays} Ngày</span>
+                  </div>
+                  <div className="flex justify-between font-semibold border-t border-white/5 pt-2.5">
+                    <span className="text-gray-500">Tạm tính:</span>
+                    <span>{totalAmountBeforeDiscount.toLocaleString()} VNĐ</span>
+                  </div>
+                  
+                  {appliedPromo && (
+                    <div className="flex justify-between text-green-400 font-semibold">
+                      <span className="flex items-center gap-1">
+                        <Ticket size={12} />
+                        Giảm giá ({appliedPromo.voucherCode}):
+                      </span>
+                      <span>-{appliedPromo.discountAmount.toLocaleString()} VNĐ</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between font-bold text-sm text-neon border-t border-white/5 pt-2.5 text-glow">
+                    <span>Tổng cộng:</span>
+                    <span>
+                      {(totalAmountBeforeDiscount - (appliedPromo ? appliedPromo.discountAmount : 0)).toLocaleString()} VNĐ
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="border-t border-gray-800 pt-4 text-center">
+                <p className="text-gray-500 text-xs italic">Vui lòng chọn thời gian lấy/trả xe ở Bước 1 để hiển thị hóa đơn tính tiền.</p>
+              </div>
+            )}
           </div>
 
         </div>
