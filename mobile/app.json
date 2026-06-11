@@ -9,7 +9,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.motov.app"
+      "package": "com.hoang124.motovroot"
     },
     "extra": {
       "eas": {
