@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity } from 'lucide-react';
+import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const Header = () => {
@@ -78,6 +78,7 @@ export const Header = () => {
       return [
         { path: '/', label: 'Trang Chủ' },
         { path: '/bikes', label: 'Dòng Xe' },
+        { path: '/promotions', label: 'Khuyến Mãi' },
       ];
     }
 
@@ -87,6 +88,7 @@ export const Header = () => {
         { path: '/admin/bikes', label: 'Quản Lý Xe' },
         { path: '/admin/bookings', label: 'Đơn Toàn Hệ Thống' },
         { path: '/admin/users', label: 'Phân Quyền' },
+        { path: '/admin/promotions', label: 'Khuyến Mãi' },
       ];
     }
 
@@ -110,6 +112,7 @@ export const Header = () => {
       { path: '/', label: 'Trang Chủ' },
       { path: '/bikes', label: 'Dòng Xe' },
       { path: '/bookings', label: 'Đơn Thuê Của Tôi' },
+      { path: '/promotions', label: 'Khuyến Mãi' },
     ];
   };
 
@@ -231,6 +234,10 @@ export const Header = () => {
                             <ClipboardList size={15} />
                             <span>Đơn thuê của tôi</span>
                           </Link>
+                          <Link to="/promotions" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <Ticket size={15} />
+                            <span>Khuyến mãi / Ưu đãi</span>
+                          </Link>
                           <button 
                             onClick={handleBecomeOwner}
                             className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-cyan-400 hover:bg-white/5 transition-all text-left cursor-pointer"
@@ -291,6 +298,10 @@ export const Header = () => {
                           <Link to="/admin/users" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <UserCheck size={15} />
                             <span>Phân quyền thành viên</span>
+                          </Link>
+                          <Link to="/admin/promotions" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <Ticket size={15} />
+                            <span>Quản lý khuyến mãi</span>
                           </Link>
                         </>
                       )}
