@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { Discount } from '../models/Discount.js';
 import { User } from '../models/User.js';
