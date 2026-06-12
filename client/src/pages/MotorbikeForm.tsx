@@ -192,17 +192,37 @@ export const MotorbikeForm = () => {
           {isEditMode ? 'Back to Motorbike' : 'Back to Bikes'}
         </button>
 
+        {/* Error Toast Notification */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-32 left-1/2 transform -translate-x-1/2 z-[100] max-w-md w-full px-4"
+            >
+              <div className="bg-red-500 text-dark font-bold px-6 py-4 rounded-lg shadow-lg flex items-center gap-2 border border-red-400/20 backdrop-blur-md">
+                <AlertCircle size={18} />
+                {error}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Form Container */}
         <div className="bg-surface border border-gray-800 rounded-2xl p-8">
           <h1 className="font-display font-black text-3xl text-neon mb-6">
             {isEditMode ? 'Edit Motorbike' : 'Add New Motorbike'}
           </h1>
 
-          {/* Error Alert */}
-          {error && (
+          {/* Form Alert Message - Only for validation errors, not API errors */}
+          {Object.keys(formErrors).length > 0 && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6 flex items-center gap-3">
-              <AlertCircle size={20} className="text-red-500" />
-              <p className="text-red-300">{error}</p>
+              <AlertCircle size={20} className="text-red-500 shrink-0" />
+              <div>
+                <p className="text-red-400 font-semibold text-sm">Validation Errors</p>
+                <p className="text-red-300 text-xs mt-1">Please check the highlighted fields and fix them.</p>
+              </div>
             </div>
           )}
 
@@ -453,14 +473,15 @@ export const MotorbikeForm = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 bg-neon text-dark font-bold px-6 py-3 rounded-lg hover:bg-[#bbf000] disabled:opacity-50 transition-colors"
+                className="flex-1 bg-neon text-dark font-bold px-6 py-3 rounded-lg hover:bg-[#bbf000] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_10px_rgba(204,255,0,0.2)]"
               >
-                {submitting ? 'Saving...' : isEditMode ? 'Update Motorbike' : 'Create Motorbike'}
+                {submitting ? '⏳ Saving...' : isEditMode ? 'Update Motorbike' : 'Create Motorbike'}
               </button>
               <button
                 type="button"
+                disabled={submitting}
                 onClick={() => navigate(isEditMode ? `/motorbike/${id}` : '/bikes')}
-                className="bg-gray-700 text-white font-bold px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors"
+                className="bg-gray-700 text-white font-bold px-6 py-3 rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Cancel
               </button>
@@ -485,7 +506,7 @@ export const MotorbikeForm = () => {
               initial={{ scale: 0.95, y: 15, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.95, y: 15, opacity: 0 }}
-              className="bg-surface border border-green-500/20 rounded-2xl p-6 shadow-2xl relative w-full max-w-md z-10 overflow-hidden"
+              className="bg-surface border border-green-500/30 rounded-2xl p-8 shadow-2xl relative w-full max-w-md z-10 overflow-hidden"
             >
               {/* Green top line */}
               <div className="absolute top-0 inset-x-0 h-1 bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)]"></div>
@@ -497,33 +518,39 @@ export const MotorbikeForm = () => {
                 <X size={20} />
               </button>
 
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 bg-green-500/20 border border-green-500/50 rounded-full flex items-center justify-center">
+              <div className="flex justify-center mb-6">
+                <div className="w-16 h-16 bg-green-500/20 border border-green-500/50 rounded-full flex items-center justify-center animate-pulse">
                   <Check size={32} className="text-green-500" />
                 </div>
               </div>
 
-              <h3 className="font-display font-black text-xl text-green-500 uppercase mb-2 text-center">
-                ✓ {isEditMode ? 'Updated' : 'Created'} Successfully
+              <h3 className="font-display font-black text-2xl text-green-400 uppercase mb-3 text-center">
+                Thành Công!
               </h3>
 
               <p className="text-sm text-gray-300 text-center mb-6">
-                {isEditMode ? 'Motorbike has been updated' : 'Motorbike has been created'} with all the details you provided.
+                Xe {isEditMode ? 'đã được cập nhật' : 'đã được thêm'} vào hệ thống thành công.
               </p>
 
               <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl text-xs text-green-400 mb-6 flex items-start gap-2.5">
-                <div className="w-4 h-4 rounded-full bg-green-500 shrink-0 mt-0.5"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0 mt-1"></div>
                 <p>
-                  The motorbike is now visible in the listing and available for customers to book.
+                  Xe này hiện đã sẵn sàng cho khách hàng đặt và có thể được xem trong danh sách các dòng xe.
                 </p>
               </div>
 
-              <div className="flex justify-center">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="flex-1 px-4 py-2 bg-transparent border border-gray-700 hover:border-gray-600 text-gray-300 font-bold rounded-lg transition-all text-sm uppercase tracking-wider cursor-pointer"
+                >
+                  Tiếp tục
+                </button>
                 <button
                   onClick={handleSuccessModalConfirm}
-                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all text-sm uppercase tracking-wider shadow-[0_0_10px_rgba(34,197,94,0.2)] cursor-pointer"
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all text-sm uppercase tracking-wider shadow-[0_0_10px_rgba(34,197,94,0.2)] cursor-pointer"
                 >
-                  View Motorbike
+                  Xem Chi Tiết
                 </button>
               </div>
             </motion.div>
