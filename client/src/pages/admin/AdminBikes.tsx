@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getBikes, saveBikes, Bike } from '../../data/bikes';
-import { Plus, Edit2, Trash2, X, Star, AlertCircle, Sparkles, User } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Star, AlertCircle, Sparkles, User, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const AdminBikes = () => {
@@ -16,6 +16,15 @@ export const AdminBikes = () => {
   const [specsInput, setSpecsInput] = useState('');
   const [featured, setFeatured] = useState(false);
   const [ownerEmail, setOwnerEmail] = useState('system@motov.com');
+  
+  // Notification states
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Delete confirmation modal
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [bikeToDelete, setBikeToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     setBikes(getBikes());
@@ -46,63 +55,121 @@ export const AdminBikes = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa dòng xe này không? Khách hàng sẽ không thể đặt xe này nữa.')) {
-      const updated = bikes.filter(b => b.id !== id);
+    setBikeToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (!bikeToDelete) return;
+    
+    try {
+      const updated = bikes.filter(b => b.id !== bikeToDelete);
       setBikes(updated);
       saveBikes(updated);
+      setDeleteConfirmOpen(false);
+      setBikeToDelete(null);
+      setSuccessMessage('Xe đã được xóa thành công!');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setErrorMessage('Lỗi khi xóa xe. Vui lòng thử lại.');
+      setTimeout(() => setErrorMessage(null), 3000);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
     
-    const parsedSpecs = specsInput
-      .split(',')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
+    try {
+      const parsedSpecs = specsInput
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
 
-    if (currentBike && currentBike.id) {
-      // Edit
-      const updated = bikes.map(b => {
-        if (b.id === currentBike.id) {
-          return {
-            ...b,
-            name,
-            price,
-            type,
-            image,
-            specs: parsedSpecs,
-            featured,
-            ownerEmail
-          };
-        }
-        return b;
-      });
-      setBikes(updated);
-      saveBikes(updated);
-    } else {
-      // Create
-      const newBike: Bike = {
-        id: 'bk-' + Math.floor(1000 + Math.random() * 9000),
-        name,
-        price,
-        type,
-        specs: parsedSpecs,
-        image: image || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800',
-        featured,
-        ownerEmail: ownerEmail || 'system@motov.com'
-      };
-      const updated = [...bikes, newBike];
-      setBikes(updated);
-      saveBikes(updated);
+      if (currentBike && currentBike.id) {
+        // Edit
+        const updated = bikes.map(b => {
+          if (b.id === currentBike.id) {
+            return {
+              ...b,
+              name,
+              price,
+              type,
+              image,
+              specs: parsedSpecs,
+              featured,
+              ownerEmail
+            };
+          }
+          return b;
+        });
+        setBikes(updated);
+        saveBikes(updated);
+        setSuccessMessage(`Xe "${name}" đã được cập nhật thành công!`);
+      } else {
+        // Create
+        const newBike: Bike = {
+          id: 'bk-' + Math.floor(1000 + Math.random() * 9000),
+          name,
+          price,
+          type,
+          specs: parsedSpecs,
+          image: image || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800',
+          featured,
+          ownerEmail: ownerEmail || 'system@motov.com'
+        };
+        const updated = [...bikes, newBike];
+        setBikes(updated);
+        saveBikes(updated);
+        setSuccessMessage(`Xe "${name}" đã được thêm thành công!`);
+      }
+
+      setIsModalOpen(false);
+      setTimeout(() => setSuccessMessage(null), 3500);
+    } catch (err) {
+      setErrorMessage('Lỗi khi lưu thông tin xe. Vui lòng thử lại.');
+      setTimeout(() => setErrorMessage(null), 3000);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsModalOpen(false);
   };
 
   return (
     <div className="pt-28 pb-20 min-h-screen bg-dark">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
+        
+        {/* Notification Toasts */}
+        <AnimatePresence>
+          {successMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-28 left-1/2 transform -translate-x-1/2 z-[100] max-w-md w-full px-4"
+            >
+              <div className="bg-green-500 text-dark font-bold px-6 py-4 rounded-lg shadow-lg flex items-center gap-2 border border-green-400/20 backdrop-blur-md">
+                <Check size={18} />
+                {successMessage}
+              </div>
+            </motion.div>
+          )}
+          
+          {errorMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-28 left-1/2 transform -translate-x-1/2 z-[100] max-w-md w-full px-4"
+            >
+              <div className="bg-red-500 text-dark font-bold px-6 py-4 rounded-lg shadow-lg flex items-center gap-2 border border-red-400/20 backdrop-blur-md">
+                <AlertCircle size={18} />
+                {errorMessage}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         {/* Header section */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-10 gap-4">
@@ -144,11 +211,21 @@ export const AdminBikes = () => {
                 {bikes.map(bike => (
                   <tr key={bike.id} className="hover:bg-black/20 transition-colors">
                     <td className="py-4 px-6">
-                      <div className="w-16 h-12 rounded overflow-hidden border border-gray-800 bg-black">
-                        <img src={bike.image} alt={bike.name} className="w-full h-full object-cover" />
-                      </div>
+                      <button
+                        onClick={() => openEditModal(bike)}
+                        className="w-16 h-12 rounded overflow-hidden border border-gray-800 bg-black hover:border-neon/50 transition-all cursor-pointer group"
+                      >
+                        <img src={bike.image} alt={bike.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                      </button>
                     </td>
-                    <td className="py-4 px-6 font-semibold text-white">{bike.name}</td>
+                    <td className="py-4 px-6 font-semibold text-white">
+                      <button
+                        onClick={() => openEditModal(bike)}
+                        className="hover:text-neon transition-colors cursor-pointer"
+                      >
+                        {bike.name}
+                      </button>
+                    </td>
                     <td className="py-4 px-6">
                       <span className="px-2.5 py-0.5 rounded text-xs bg-black text-neon border border-neon/15">
                         {bike.type}
@@ -265,13 +342,16 @@ export const AdminBikes = () => {
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Giá thuê / ngày (VNĐ)</label>
                       <input
-                        type="text"
+                        type="number"
                         required
-                        placeholder="Ví dụ: 120.000"
+                        placeholder="Ví dụ: 120000"
                         value={price}
                         onChange={(e) => setPrice(e.target.value)}
+                        min="0"
+                        step="1000"
                         className="w-full bg-black/50 border border-gray-800 text-gray-300 rounded-lg p-3 outline-none focus:ring-1 focus:ring-neon focus:border-transparent transition-all font-mono"
                       />
+                      <p className="text-[10px] text-gray-500">Chỉ nhập số, không nhập dấu phẩy hoặc chữ</p>
                     </div>
 
                     {/* Type */}
@@ -348,19 +428,72 @@ export const AdminBikes = () => {
                     <button
                       type="button"
                       onClick={() => setIsModalOpen(false)}
-                      className="flex-grow bg-transparent border border-gray-800 hover:border-gray-700 text-gray-300 font-bold py-3 rounded-lg transition-all cursor-pointer text-center"
+                      disabled={isSubmitting}
+                      className="flex-grow bg-transparent border border-gray-800 hover:border-gray-700 text-gray-300 font-bold py-3 rounded-lg transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Đóng
                     </button>
                     <button
                       type="submit"
-                      className="flex-grow bg-neon text-dark font-bold py-3 rounded-lg hover:bg-[#bbf000] focus:ring-4 focus:ring-neon/30 transition-all shadow-[0_0_10px_rgba(204,255,0,0.2)] cursor-pointer text-center"
+                      disabled={isSubmitting}
+                      className="flex-grow bg-neon text-dark font-bold py-3 rounded-lg hover:bg-[#bbf000] focus:ring-4 focus:ring-neon/30 transition-all shadow-[0_0_10px_rgba(204,255,0,0.2)] cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      LƯU THAY ĐỔI
+                      {isSubmitting ? '⏳ Đang lưu...' : 'LƯU THAY ĐỔI'}
                     </button>
                   </div>
 
                 </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence>
+          {deleteConfirmOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              />
+
+              {/* Modal Card */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                className="bg-surface border border-red-500/30 rounded-2xl w-full max-w-sm p-6 relative z-10 shadow-2xl"
+              >
+                {/* Neon top line */}
+                <div className="absolute top-0 inset-x-0 h-1 bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]"></div>
+
+                <h3 className="font-display font-black text-lg text-red-400 uppercase mb-3 flex items-center gap-2">
+                  <AlertCircle size={20} />
+                  Xác Nhận Xóa Xe
+                </h3>
+
+                <p className="text-gray-300 text-sm mb-6">
+                  Bạn có chắc chắn muốn xóa dòng xe này không? <strong>Khách hàng sẽ không thể đặt xe này nữa.</strong> Hành động này không thể hoàn tác.
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setDeleteConfirmOpen(false)}
+                    className="flex-grow bg-transparent border border-gray-800 hover:border-gray-700 text-gray-300 font-bold py-2.5 rounded-lg transition-all cursor-pointer text-center text-sm"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="flex-grow bg-red-500 text-dark font-bold py-2.5 rounded-lg hover:bg-red-600 focus:ring-4 focus:ring-red-500/30 transition-all shadow-[0_0_10px_rgba(239,68,68,0.3)] cursor-pointer text-center text-sm"
+                  >
+                    Xóa
+                  </button>
+                </div>
               </motion.div>
             </div>
           )}
