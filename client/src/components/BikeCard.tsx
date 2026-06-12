@@ -26,30 +26,40 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
       transition={{ duration: 0.3 }}
       className={`bg-surface neon-border rounded-xl p-5 flex flex-col h-full group ${large ? 'lg:col-span-2' : ''}`}
     >
-      <div className={`relative mb-6 rounded-lg overflow-hidden bg-black ${large ? 'aspect-video lg:aspect-[21/9]' : 'aspect-video'}`}>
+      <Link 
+        to={`/motorbike/${bike._id}`}
+        className={`relative mb-6 rounded-lg overflow-hidden bg-black block ${large ? 'aspect-video lg:aspect-[21/9]' : 'aspect-video'}`}
+      >
         <img 
           src={imageUrl} 
           alt={bike.vehicleModel} 
           loading="lazy"
-          className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500 group-hover:scale-105"
+          className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500 group-hover:scale-105 cursor-pointer"
         />
         <div className="absolute top-3 left-3 bg-dark/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-neon border border-neon/30">
           {bike.category}
         </div>
-        <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold border ${
-          bike.status === 'Available' 
-            ? 'bg-green-500/20 text-green-400 border-green-500/30' 
-            : 'bg-red-500/20 text-red-400 border-red-500/30'
-        }`}>
-          {bike.status}
+        <div className="absolute top-3 right-3">
+          <div className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+            bike.status === 'Available' 
+              ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+              : 'bg-red-500/20 text-red-400 border-red-500/30'
+          }`}>
+            {bike.status}
+          </div>
         </div>
-      </div>
+      </Link>
       
       <div className="flex-grow flex flex-col">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="font-display font-bold text-2xl text-white group-hover:text-neon transition-colors duration-300">
-            {bike.vehicleModel}
-          </h3>
+          <Link 
+            to={`/motorbike/${bike._id}`}
+            className="group/title flex-grow"
+          >
+            <h3 className="font-display font-bold text-2xl text-white group-hover/title:text-neon transition-colors duration-300 cursor-pointer">
+              {bike.vehicleModel}
+            </h3>
+          </Link>
         </div>
         <p className="text-neon font-semibold text-lg mb-1">{bike.rentalPrice ? bike.rentalPrice.toLocaleString() : '0'} VNĐ <span className="text-gray-400 text-xs font-normal">/ Ngày</span></p>
         
