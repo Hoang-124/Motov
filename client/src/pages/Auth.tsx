@@ -137,8 +137,6 @@ export const Auth = () => {
       if (fieldName === 'password') {
         if (!value) {
           errorMsg = 'Vui lòng nhập mật khẩu.';
-        } else if (value.length < 8) {
-          errorMsg = 'Mật khẩu phải dài ít nhất 8 ký tự.';
         }
       }
     }
@@ -262,9 +260,6 @@ export const Auth = () => {
 
       if (!password) {
         errorsList.password = 'Vui lòng nhập mật khẩu.';
-        isValid = false;
-      } else if (password.length < 8) {
-        errorsList.password = 'Mật khẩu phải dài ít nhất 8 ký tự.';
         isValid = false;
       }
     }
