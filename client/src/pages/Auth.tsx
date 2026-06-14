@@ -24,6 +24,7 @@ export const Auth = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
 
   // Field validation states
   const [errors, setErrors] = useState<{
@@ -358,27 +359,47 @@ export const Auth = () => {
     }
   }, [isLogin]);
 
+  const checkVerification = async (isManual = false) => {
+    if (!email) return false;
+    if (isManual) setCheckingStatus(true);
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/auth/check-verification-status?email=${encodeURIComponent(email.trim())}`);
+      const data = await response.json();
+
+      if (response.ok && data.success && data.isVerified) {
+        setSuccess('Kích hoạt tài khoản thành công! Bạn có thể đăng nhập ngay bây giờ.');
+        setNeedsVerificationScreen(false);
+        setIsLogin(true);
+        setPassword('');
+        setConfirmPassword('');
+        setError(null);
+        return true;
+      } else if (isManual && data.success && !data.isVerified) {
+        setError('Tài khoản chưa được kích hoạt. Vui lòng click link kích hoạt trong hòm thư của bạn.');
+        setTimeout(() => setError(null), 3000);
+      }
+    } catch (err) {
+      console.error('Lỗi kiểm tra trạng thái xác thực:', err);
+    } finally {
+      if (isManual) setCheckingStatus(false);
+    }
+    return false;
+  };
+
   // Tự động kiểm tra trạng thái xác minh trong nền
   useEffect(() => {
     let intervalId: any;
 
     if (needsVerificationScreen && email) {
-      intervalId = setInterval(async () => {
-        try {
-          const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-          const response = await fetch(`${API_BASE_URL}/auth/check-verification-status?email=${encodeURIComponent(email.trim())}`);
-          const data = await response.json();
+      // Kiểm tra ngay lập tức lần đầu khi màn hình xuất hiện
+      checkVerification(false);
 
-          if (response.ok && data.success && data.isVerified) {
-            clearInterval(intervalId);
-            setSuccess('Kích hoạt tài khoản thành công! Bạn có thể đăng nhập ngay bây giờ.');
-            setNeedsVerificationScreen(false);
-            setIsLogin(true);
-            setPassword('');
-            setConfirmPassword('');
-          }
-        } catch (err) {
-          console.error('Lỗi kiểm tra trạng thái xác thực trong nền:', err);
+      // Định kỳ kiểm tra mỗi 3 giây
+      intervalId = setInterval(async () => {
+        const isVerified = await checkVerification(false);
+        if (isVerified && intervalId) {
+          clearInterval(intervalId);
         }
       }, 3000);
     }
@@ -608,6 +629,25 @@ export const Auth = () => {
                   </a>
                 </div>
               )}
+
+              <button
+                type="button"
+                onClick={() => checkVerification(true)}
+                disabled={checkingStatus}
+                className={`w-full border border-neon/50 text-neon font-bold py-3 px-4 rounded-lg text-xs uppercase tracking-widest hover:bg-neon/10 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${checkingStatus ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {checkingStatus ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-neon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Đang kiểm tra...
+                  </>
+                ) : (
+                  'Tôi đã kích hoạt - Kiểm tra ngay'
+                )}
+              </button>
 
               <button
                 type="button"
