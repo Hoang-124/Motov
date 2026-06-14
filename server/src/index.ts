@@ -117,7 +117,7 @@ app.post('/api/upload', authMiddleware as any, upload.single('image'), (req: any
 // Hàm tạo tài khoản mẫu (Seed data) để kiểm thử
 async function seedUsers() {
   try {
-    const passwordHash = await bcrypt.hash('123456', 10);
+    const passwordHash = await bcrypt.hash('admin123', 10);
     const testAccounts: {
       username: string;
       email: string;
@@ -174,14 +174,13 @@ async function seedUsers() {
       const exists = await User.findOne({ email: acc.email });
       if (!exists) {
         await User.create(acc);
-        console.log(`✅ Seeded tài khoản mẫu: ${acc.email} (${acc.username} / Mật khẩu: 123456)`);
+        console.log(`✅ Seeded tài khoản mẫu: ${acc.email} (${acc.username} / Mật khẩu: admin123)`);
       } else {
-        // Cập nhật username để đồng bộ với kiểm thử
-        if (exists.username !== acc.username) {
-          exists.username = acc.username;
-          await exists.save();
-          console.log(`🔄 Cập nhật username tài khoản mẫu: ${acc.email} thành ${acc.username}`);
-        }
+        // Cập nhật username và passwordHash để đồng bộ với kiểm thử
+        exists.username = acc.username;
+        exists.passwordHash = passwordHash;
+        await exists.save();
+        console.log(`🔄 Đồng bộ tài khoản mẫu: ${acc.email} (Mật khẩu mới: admin123)`);
       }
     }
   } catch (err) {
