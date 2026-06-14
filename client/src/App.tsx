@@ -12,6 +12,7 @@ import { Auth } from './pages/Auth';
 import { Profile } from './pages/Profile';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
+import { VerifyEmail } from './pages/VerifyEmail';
 
 // Staff pages
 import { StaffBookings } from './pages/staff/StaffBookings';
@@ -83,6 +84,7 @@ export default function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
 
             {/* Customer Protected Route */}
             <Route path="/booking/:bikeId" element={

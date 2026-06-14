@@ -3,17 +3,24 @@ import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { User } from '../models/User.js';
 
-let mongod: MongoMemoryServer;
+let mongod: MongoMemoryServer | null = null;
 
 beforeAll(async () => {
-  mongod = await MongoMemoryServer.create();
-  await mongoose.connect(mongod.getUri());
+  try {
+    mongod = await MongoMemoryServer.create();
+    await mongoose.connect(mongod.getUri());
+  } catch (err) {
+    console.warn('Could not start MongoMemoryServer. Falling back to local MongoDB test database.');
+    await mongoose.connect('mongodb://localhost:27017/Motov_test');
+  }
   process.env.JWT_SECRET = 'test-secret-for-vitest';
 });
 
 afterAll(async () => {
   await mongoose.disconnect();
-  await mongod.stop();
+  if (mongod) {
+    await mongod.stop();
+  }
 });
 
 afterEach(async () => {

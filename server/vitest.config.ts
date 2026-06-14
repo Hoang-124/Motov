@@ -9,6 +9,8 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       include: ['src/controllers/**', 'src/middlewares/**', 'src/utils/**'],
     },
+    hookTimeout: 180000,
+    testTimeout: 60000,
     // Run tests sequentially to avoid in-memory MongoDB conflicts
     pool: 'forks',
     poolOptions: {
