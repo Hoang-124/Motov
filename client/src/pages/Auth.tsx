@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Mail, Lock, ChevronRight, Shield, Briefcase, Award, UserCheck, KeyRound } from 'lucide-react';
+import { User, Mail, Lock, ChevronRight, Shield, Briefcase, Award, UserCheck, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 
 type UserRole = 'customer' | 'owner' | 'staff' | 'admin';
@@ -14,11 +14,264 @@ export const Auth = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
+  const [verificationMailUrl, setVerificationMailUrl] = useState<string | null>(null);
+  const [needsVerificationScreen, setNeedsVerificationScreen] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // API loading & error states
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Field validation states
+  const [errors, setErrors] = useState<{
+    name?: string;
+    username?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
+
+  const [touched, setTouched] = useState<{
+    name?: boolean;
+    username?: boolean;
+    email?: boolean;
+    password?: boolean;
+    confirmPassword?: boolean;
+  }>({});
+
+  const getPasswordStrength = (pass: string) => {
+    if (!pass) return 0;
+    let score = 0;
+    if (pass.length >= 8) score++;
+    if (/[a-z]/.test(pass) && /[A-Z]/.test(pass)) score++;
+    if (/[0-9]/.test(pass)) score++;
+    if (/[\W_]/.test(pass)) score++;
+    return score;
+  };
+
+  const passwordStrength = getPasswordStrength(password);
+
+  const validateField = (fieldName: string, value: string, currentPassword?: string) => {
+    let errorMsg = '';
+    if (!isLogin) {
+      if (fieldName === 'name') {
+        if (!value.trim()) {
+          errorMsg = 'Họ và tên là bắt buộc.';
+        } else {
+          const nameRegex = /[0-9!@#$%^&*(),.?":{}|<>]/;
+          if (nameRegex.test(value)) {
+            errorMsg = 'Họ và tên không được chứa số hoặc ký tự đặc biệt.';
+          }
+        }
+      }
+
+      if (fieldName === 'username') {
+        if (!value.trim()) {
+          errorMsg = 'Tên đăng nhập là bắt buộc.';
+        } else if (value.length < 3 || value.length > 30) {
+          errorMsg = 'Tên đăng nhập phải dài từ 3 đến 30 ký tự.';
+        } else {
+          const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+          if (!usernameRegex.test(value)) {
+            errorMsg = 'Tên đăng nhập chỉ được chứa chữ cái không dấu, số, "_" hoặc "-".';
+          }
+        }
+      }
+
+      if (fieldName === 'email') {
+        if (!value.trim()) {
+          errorMsg = 'Địa chỉ email là bắt buộc.';
+        } else {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value.trim())) {
+            errorMsg = 'Địa chỉ email không đúng định dạng.';
+          }
+        }
+      }
+
+      if (fieldName === 'password') {
+        if (!value) {
+          errorMsg = 'Mật khẩu là bắt buộc.';
+        } else if (value.length < 8) {
+          errorMsg = 'Mật khẩu phải dài ít nhất 8 ký tự.';
+        } else {
+          const hasLowercase = /[a-z]/.test(value);
+          const hasUppercase = /[A-Z]/.test(value);
+          const hasDigit = /[0-9]/.test(value);
+          const hasSpecial = /[\W_]/.test(value);
+          if (!hasLowercase || !hasUppercase || !hasDigit || !hasSpecial) {
+            errorMsg = 'Mật khẩu phải gồm chữ thường, chữ hoa, số và ký tự đặc biệt.';
+          }
+        }
+      }
+
+      if (fieldName === 'confirmPassword') {
+        const passwordToCompare = currentPassword !== undefined ? currentPassword : password;
+        if (!value) {
+          errorMsg = 'Vui lòng xác nhận mật khẩu.';
+        } else if (value !== passwordToCompare) {
+          errorMsg = 'Mật khẩu xác nhận không trùng khớp.';
+        }
+      }
+    } else {
+      if (fieldName === 'email') {
+        if (!value.trim()) {
+          errorMsg = 'Vui lòng nhập tên đăng nhập hoặc email.';
+        } else if (value.includes('@')) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value.trim())) {
+            errorMsg = 'Email không đúng định dạng.';
+          }
+        } else {
+          const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+          if (value.length < 3 || value.length > 30) {
+            errorMsg = 'Tên đăng nhập phải dài từ 3 đến 30 ký tự.';
+          } else if (!usernameRegex.test(value)) {
+            errorMsg = 'Tên đăng nhập chỉ chứa chữ cái không dấu, số, "_" hoặc "-".';
+          }
+        }
+      }
+      if (fieldName === 'password') {
+        if (!value) {
+          errorMsg = 'Vui lòng nhập mật khẩu.';
+        } else if (value.length < 8) {
+          errorMsg = 'Mật khẩu phải dài ít nhất 8 ký tự.';
+        }
+      }
+    }
+
+    setErrors(prev => ({ ...prev, [fieldName]: errorMsg || undefined }));
+  };
+
+  const handleBlur = (fieldName: string) => {
+    setTouched(prev => ({ ...prev, [fieldName]: true }));
+    let val = '';
+    if (fieldName === 'name') val = name;
+    if (fieldName === 'username') val = username;
+    if (fieldName === 'email') val = email;
+    if (fieldName === 'password') val = password;
+    if (fieldName === 'confirmPassword') val = confirmPassword;
+    validateField(fieldName, val);
+  };
+
+  const handleFieldChange = (fieldName: string, value: string) => {
+    if (fieldName === 'name') setName(value);
+    if (fieldName === 'username') setUsername(value);
+    if (fieldName === 'email') setEmail(value);
+    if (fieldName === 'password') {
+      setPassword(value);
+      if (touched.confirmPassword) {
+        validateField('confirmPassword', confirmPassword, value);
+      }
+    }
+    if (fieldName === 'confirmPassword') setConfirmPassword(value);
+
+    if (touched[fieldName as keyof typeof touched]) {
+      validateField(fieldName, value, fieldName === 'password' ? value : password);
+    }
+  };
+
+  const validateForm = () => {
+    const newTouched = {
+      name: true,
+      username: true,
+      email: true,
+      password: true,
+      confirmPassword: true
+    };
+    setTouched(newTouched);
+
+    let isValid = true;
+    const errorsList: any = {};
+
+    if (!isLogin) {
+      if (!name.trim()) {
+        errorsList.name = 'Họ và tên là bắt buộc.';
+        isValid = false;
+      } else if (/[0-9!@#$%^&*(),.?":{}|<>]/.test(name)) {
+        errorsList.name = 'Họ và tên không được chứa số hoặc ký tự đặc biệt.';
+        isValid = false;
+      }
+
+      if (!username.trim()) {
+        errorsList.username = 'Tên đăng nhập là bắt buộc.';
+        isValid = false;
+      } else if (username.length < 3 || username.length > 30) {
+        errorsList.username = 'Tên đăng nhập phải dài từ 3 đến 30 ký tự.';
+        isValid = false;
+      } else if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+        errorsList.username = 'Tên đăng nhập chỉ được chứa chữ cái không dấu, số, "_" hoặc "-".';
+        isValid = false;
+      }
+
+      if (!email.trim()) {
+        errorsList.email = 'Địa chỉ email là bắt buộc.';
+        isValid = false;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        errorsList.email = 'Địa chỉ email không đúng định dạng.';
+        isValid = false;
+      }
+
+      if (!password) {
+        errorsList.password = 'Mật khẩu là bắt buộc.';
+        isValid = false;
+      } else if (password.length < 8) {
+        errorsList.password = 'Mật khẩu phải dài ít nhất 8 ký tự.';
+        isValid = false;
+      } else {
+        const hasLowercase = /[a-z]/.test(password);
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasDigit = /[0-9]/.test(password);
+        const hasSpecial = /[\W_]/.test(password);
+        if (!hasLowercase || !hasUppercase || !hasDigit || !hasSpecial) {
+          errorsList.password = 'Mật khẩu phải gồm chữ thường, chữ hoa, số và ký tự đặc biệt.';
+          isValid = false;
+        }
+      }
+
+      if (!confirmPassword) {
+        errorsList.confirmPassword = 'Vui lòng xác nhận mật khẩu.';
+        isValid = false;
+      } else if (confirmPassword !== password) {
+        errorsList.confirmPassword = 'Mật khẩu xác nhận không trùng khớp.';
+        isValid = false;
+      }
+    } else {
+      if (!email.trim()) {
+        errorsList.email = 'Vui lòng nhập tên đăng nhập hoặc email.';
+        isValid = false;
+      } else if (email.includes('@')) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+          errorsList.email = 'Email không đúng định dạng.';
+          isValid = false;
+        }
+      } else {
+        const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+        if (email.length < 3 || email.length > 30) {
+          errorsList.email = 'Tên đăng nhập phải dài từ 3 đến 30 ký tự.';
+          isValid = false;
+        } else if (!usernameRegex.test(email)) {
+          errorsList.email = 'Tên đăng nhập chỉ chứa chữ cái không dấu, số, "_" hoặc "-".';
+          isValid = false;
+        }
+      }
+
+      if (!password) {
+        errorsList.password = 'Vui lòng nhập mật khẩu.';
+        isValid = false;
+      } else if (password.length < 8) {
+        errorsList.password = 'Mật khẩu phải dài ít nhất 8 ký tự.';
+        isValid = false;
+      }
+    }
+
+    setErrors(errorsList);
+    return isValid;
+  };
 
   const tokenClientRef = useRef<any>(null);
 
@@ -105,6 +358,38 @@ export const Auth = () => {
     }
   }, [isLogin]);
 
+  // Tự động kiểm tra trạng thái xác minh trong nền
+  useEffect(() => {
+    let intervalId: any;
+
+    if (needsVerificationScreen && email) {
+      intervalId = setInterval(async () => {
+        try {
+          const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+          const response = await fetch(`${API_BASE_URL}/auth/check-verification-status?email=${encodeURIComponent(email.trim())}`);
+          const data = await response.json();
+
+          if (response.ok && data.success && data.isVerified) {
+            clearInterval(intervalId);
+            setSuccess('Kích hoạt tài khoản thành công! Bạn có thể đăng nhập ngay bây giờ.');
+            setNeedsVerificationScreen(false);
+            setIsLogin(true);
+            setPassword('');
+            setConfirmPassword('');
+          }
+        } catch (err) {
+          console.error('Lỗi kiểm tra trạng thái xác thực trong nền:', err);
+        }
+      }, 3000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [needsVerificationScreen, email]);
+
   const handleGoogleSignInClick = () => {
     if (tokenClientRef.current) {
       tokenClientRef.current.requestAccessToken();
@@ -115,8 +400,14 @@ export const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) {
+      setError('Vui lòng kiểm tra lại thông tin nhập vào.');
+      return;
+    }
     setError(null);
     setSuccess(null);
+    setNeedsVerificationScreen(false);
+    setVerificationMailUrl(null);
     setLoading(true);
 
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -191,6 +482,15 @@ export const Auth = () => {
           throw new Error(data.message || 'Đăng ký tài khoản thất bại.');
         }
 
+        if (data.needsVerification) {
+          setSuccess(data.message || 'Đăng ký tài khoản thành công! Vui lòng kiểm tra email để kích hoạt tài khoản.');
+          setNeedsVerificationScreen(true);
+          if (data.previewUrl) {
+            setVerificationMailUrl(data.previewUrl);
+          }
+          return;
+        }
+
         const userObj = {
           email: data.user.email,
           name: data.user.name,
@@ -242,13 +542,31 @@ export const Auth = () => {
         {/* Toggle tabs */}
         <div className="flex border-b border-white/5 mb-8 max-w-[200px] mx-auto justify-center">
           <button 
-            onClick={() => { setIsLogin(true); setConfirmPassword(''); setError(null); }}
+            onClick={() => { 
+              setIsLogin(true); 
+              setConfirmPassword(''); 
+              setError(null); 
+              setSuccess(null);
+              setNeedsVerificationScreen(false);
+              setVerificationMailUrl(null);
+              setErrors({});
+              setTouched({});
+            }}
             className={`flex-grow pb-3 text-sm font-semibold uppercase tracking-wider transition-colors cursor-pointer ${isLogin ? 'text-neon border-b-2 border-neon' : 'text-gray-500 hover:text-gray-300'}`}
           >
             Đăng Nhập
           </button>
           <button 
-            onClick={() => { setIsLogin(false); setConfirmPassword(''); setError(null); }}
+            onClick={() => { 
+              setIsLogin(false); 
+              setConfirmPassword(''); 
+              setError(null); 
+              setSuccess(null);
+              setNeedsVerificationScreen(false);
+              setVerificationMailUrl(null);
+              setErrors({});
+              setTouched({});
+            }}
             className={`flex-grow pb-3 text-sm font-semibold uppercase tracking-wider transition-colors cursor-pointer ${!isLogin ? 'text-neon border-b-2 border-neon' : 'text-gray-500 hover:text-gray-300'}`}
           >
             Đăng Ký
@@ -263,38 +581,84 @@ export const Auth = () => {
         >
           <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
           
-          <div className="text-center mb-6">
-            <h2 className="font-display font-black text-2xl text-white uppercase mb-2">
-              {isLogin ? 'Cổng Đăng Nhập' : 'Đăng Ký Thành Viên'}
-            </h2>
-            <p className="text-gray-500 text-xs">
-              {isLogin 
-                ? 'Đăng nhập vào hệ thống để tiếp tục' 
-                : 'Tạo tài khoản mới để trải nghiệm dịch vụ hoặc chia sẻ xe'}
-            </p>
-          </div>
+          {needsVerificationScreen ? (
+            <div className="space-y-6 text-center py-4">
+              <div className="w-16 h-16 bg-neon/10 border border-neon/30 text-neon rounded-full flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(204,255,0,0.15)] animate-pulse">
+                <Mail size={32} />
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-display font-bold text-white text-lg uppercase tracking-wide">Xác Minh Tài Khoản</h3>
+                <p className="text-gray-400 text-xs leading-relaxed">
+                  Chúng tôi đã gửi liên kết kích hoạt đến địa chỉ email <strong className="text-white font-mono">{email}</strong>. Vui lòng kiểm tra hộp thư để kích hoạt tài khoản của bạn.
+                </p>
+              </div>
+              
+              {verificationMailUrl && (
+                <div className="bg-black/40 border border-gray-800 p-4 rounded-xl space-y-3">
+                  <p className="text-gray-500 text-[11px] leading-normal">
+                    Bạn đang ở môi trường thử nghiệm (Local). Hãy nhấp nút bên dưới để truy cập hòm thư ảo Ethereal và kích hoạt tài khoản:
+                  </p>
+                  <a 
+                    href={verificationMailUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-full bg-neon text-dark font-black py-3 px-4 rounded-lg text-xs uppercase tracking-widest hover:bg-[#bbf000] shadow-[0_0_15px_rgba(204,255,0,0.3)] transition-all block text-center cursor-pointer"
+                  >
+                    Mở Hòm Thư Thử Nghiệm
+                  </a>
+                </div>
+              )}
 
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold text-center mb-4 flex items-center justify-center gap-2"
-            >
-              <span>⚠️ {error}</span>
-            </motion.div>
-          )}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(true);
+                  setSuccess(null);
+                  setError(null);
+                  setNeedsVerificationScreen(false);
+                  setVerificationMailUrl(null);
+                  setEmail('');
+                  setPassword('');
+                }}
+                className="text-neon hover:underline text-xs font-semibold uppercase tracking-wider block mx-auto cursor-pointer"
+              >
+                ← Quay lại đăng nhập
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="text-center mb-6">
+                <h2 className="font-display font-black text-2xl text-white uppercase mb-2">
+                  {isLogin ? 'Cổng Đăng Nhập' : 'Đăng Ký Thành Viên'}
+                </h2>
+                <p className="text-gray-500 text-xs">
+                  {isLogin 
+                    ? 'Đăng nhập vào hệ thống để tiếp tục' 
+                    : 'Tạo tài khoản mới để trải nghiệm dịch vụ hoặc chia sẻ xe'}
+                </p>
+              </div>
 
-          {success && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-lg text-xs font-semibold text-center mb-4 flex items-center justify-center gap-2"
-            >
-              <span>✅ {success}</span>
-            </motion.div>
-          )}
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold text-center mb-4 flex items-center justify-center gap-2"
+                >
+                  <span>⚠️ {error}</span>
+                </motion.div>
+              )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+              {success && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-lg text-xs font-semibold text-center mb-4 flex items-center justify-center gap-2"
+                >
+                  <span>✅ {success}</span>
+                </motion.div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
             
 
 
@@ -312,10 +676,14 @@ export const Auth = () => {
                     required
                     placeholder="Nhập họ và tên"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all"
+                    onChange={(e) => handleFieldChange('name', e.target.value)}
+                    onBlur={() => handleBlur('name')}
+                    className={`w-full bg-black/50 border text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all ${touched.name && errors.name ? 'border-red-500/50 focus:ring-red-500/50' : 'border-gray-800'}`}
                   />
                 </div>
+                {touched.name && errors.name && (
+                  <p className="text-red-400 text-[11px] font-semibold mt-1">⚠️ {errors.name}</p>
+                )}
               </div>
             )}
 
@@ -332,17 +700,21 @@ export const Auth = () => {
                     required
                     placeholder="Nhập tên đăng nhập"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all"
+                    onChange={(e) => handleFieldChange('username', e.target.value)}
+                    onBlur={() => handleBlur('username')}
+                    className={`w-full bg-black/50 border text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all ${touched.username && errors.username ? 'border-red-500/50 focus:ring-red-500/50' : 'border-gray-800'}`}
                   />
                 </div>
+                {touched.username && errors.username && (
+                  <p className="text-red-400 text-[11px] font-semibold mt-1">⚠️ {errors.username}</p>
+                )}
               </div>
             )}
 
             {/* Username or Email */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                {isLogin ? 'Tên đăng nhập hoặc Email' : 'Địa chỉ Email (Không bắt buộc)'}
+                {isLogin ? 'Tên đăng nhập hoặc Email' : 'Địa chỉ Email'}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -350,13 +722,22 @@ export const Auth = () => {
                 </div>
                 <input 
                   type={isLogin ? 'text' : 'email'} 
-                  required={isLogin}
-                  placeholder={isLogin ? 'Nhập tên đăng nhập hoặc email' : 'name@example.com (Nếu có)'}
+                  required
+                  placeholder={isLogin ? 'Nhập tên đăng nhập hoặc email' : 'name@example.com'}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all font-mono"
+                  onChange={(e) => handleFieldChange('email', e.target.value)}
+                  onBlur={() => handleBlur('email')}
+                  className={`w-full bg-black/50 border text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all font-mono ${touched.email && errors.email ? 'border-red-500/50 focus:ring-red-500/50' : 'border-gray-800'}`}
                 />
               </div>
+              {touched.email && errors.email && (
+                <p className="text-red-400 text-[11px] font-semibold mt-1">⚠️ {errors.email}</p>
+              )}
+              {!isLogin && (
+                <p className="text-[10px] text-gray-500 mt-1 italic leading-normal">
+                  * Nếu dùng email Google thì vui lòng chọn phiên Đăng Nhập (Đăng nhập với Google). Còn nếu dùng email loại khác thì vui lòng điền ở đây.
+                </p>
+              )}
             </div>
 
             {/* Password */}
@@ -372,14 +753,60 @@ export const Auth = () => {
                   <Lock size={16} className="text-neon" />
                 </div>
                 <input 
-                  type="password" 
+                  type={showPassword ? "text" : "password"} 
                   required
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all font-mono"
+                  onChange={(e) => handleFieldChange('password', e.target.value)}
+                  onBlur={() => handleBlur('password')}
+                  className={`w-full bg-black/50 border text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 pr-10 p-3 outline-none transition-all font-mono ${touched.password && errors.password ? 'border-red-500/50 focus:ring-red-500/50' : 'border-gray-800'}`}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white cursor-pointer"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
+              {touched.password && errors.password && (
+                <p className="text-red-400 text-[11px] font-semibold mt-1">⚠️ {errors.password}</p>
+              )}
+
+              {/* Password Strength Meter (Sign Up only) */}
+              {!isLogin && password && (
+                <div className="space-y-1.5 mt-2">
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-gray-500 uppercase tracking-wider font-semibold">Độ mạnh mật khẩu:</span>
+                    <span className={
+                      passwordStrength === 1 ? 'text-red-400 font-bold' :
+                      passwordStrength === 2 ? 'text-orange-400 font-bold' :
+                      passwordStrength === 3 ? 'text-yellow-400 font-bold' :
+                      passwordStrength === 4 ? 'text-green-400 font-bold' : 'text-gray-500'
+                    }>
+                      {passwordStrength === 1 && 'Rất yếu'}
+                      {passwordStrength === 2 && 'Yếu'}
+                      {passwordStrength === 3 && 'Trung bình'}
+                      {passwordStrength === 4 && 'Mạnh'}
+                    </span>
+                  </div>
+                  <div className="flex gap-1 h-1">
+                    {[1, 2, 3, 4].map((index) => (
+                      <div 
+                        key={index} 
+                        className={`flex-grow rounded-full transition-all duration-300 ${
+                          index <= passwordStrength 
+                            ? (passwordStrength === 1 ? 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]' :
+                               passwordStrength === 2 ? 'bg-orange-500 shadow-[0_0_5px_rgba(249,115,22,0.5)]' :
+                               passwordStrength === 3 ? 'bg-yellow-500 shadow-[0_0_5px_rgba(234,179,8,0.5)]' :
+                               'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]')
+                            : 'bg-gray-800'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Confirm Password (Sign Up only) */}
@@ -391,14 +818,25 @@ export const Auth = () => {
                     <Lock size={16} className="text-neon" />
                   </div>
                   <input 
-                    type="password" 
+                    type={showConfirmPassword ? "text" : "password"} 
                     required
                     placeholder="••••••••"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all font-mono"
+                    onChange={(e) => handleFieldChange('confirmPassword', e.target.value)}
+                    onBlur={() => handleBlur('confirmPassword')}
+                    className={`w-full bg-black/50 border text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 pr-10 p-3 outline-none transition-all font-mono ${touched.confirmPassword && errors.confirmPassword ? 'border-red-500/50 focus:ring-red-500/50' : 'border-gray-800'}`}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white cursor-pointer"
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
+                {touched.confirmPassword && errors.confirmPassword && (
+                  <p className="text-red-400 text-[11px] font-semibold mt-1">⚠️ {errors.confirmPassword}</p>
+                )}
               </div>
             )}
 
@@ -425,30 +863,36 @@ export const Auth = () => {
               )}
             </button>
 
-            {/* Divider */}
-            <div className="relative flex py-3 items-center">
-              <div className="flex-grow border-t border-gray-800"></div>
-              <span className="flex-shrink mx-4 text-gray-500 text-xs font-semibold uppercase tracking-wider">Hoặc</span>
-              <div className="flex-grow border-t border-gray-800"></div>
-            </div>
+            {/* Divider and Google Sign-in */}
+            {isLogin && (
+              <>
+                <div className="relative flex py-3 items-center">
+                  <div className="flex-grow border-t border-gray-800"></div>
+                  <span className="flex-shrink mx-4 text-gray-500 text-xs font-semibold uppercase tracking-wider">Hoặc</span>
+                  <div className="flex-grow border-t border-gray-800"></div>
+                </div>
 
-            {/* Custom Google Sign-in Button */}
-            <button
-              type="button"
-              onClick={handleGoogleSignInClick}
-              disabled={loading}
-              className="w-full bg-surface border border-gray-800 text-gray-300 font-semibold py-3 px-4 rounded-lg hover:border-neon hover:text-white hover:shadow-[0_0_15px_rgba(204,255,0,0.15)] transition-all duration-300 flex items-center justify-center gap-3 cursor-pointer text-sm uppercase tracking-wider"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path
-                  fill="#EA4335"
-                  d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.137 4.114-3.466 0-6.277-2.81-6.277-6.277 0-3.466 2.81-6.277 6.277-6.277 1.503 0 2.873.53 3.96 1.402l3.07-3.07C18.847 1.836 15.753 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.262 0 11.36-4.996 11.36-11.24 0-.713-.082-1.393-.227-1.955H12.24z"
-                />
-              </svg>
-              Đăng nhập với Google
-            </button>
+                {/* Custom Google Sign-in Button */}
+                <button
+                  type="button"
+                  onClick={handleGoogleSignInClick}
+                  disabled={loading}
+                  className="w-full bg-surface border border-gray-800 text-gray-300 font-semibold py-3 px-4 rounded-lg hover:border-neon hover:text-white hover:shadow-[0_0_15px_rgba(204,255,0,0.15)] transition-all duration-300 flex items-center justify-center gap-3 cursor-pointer text-sm uppercase tracking-wider"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path
+                      fill="#EA4335"
+                      d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.137 4.114-3.466 0-6.277-2.81-6.277-6.277 0-3.466 2.81-6.277 6.277-6.277 1.503 0 2.873.53 3.96 1.402l3.07-3.07C18.847 1.836 15.753 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.262 0 11.36-4.996 11.36-11.24 0-.713-.082-1.393-.227-1.955H12.24z"
+                    />
+                  </svg>
+                  Đăng nhập với Google
+                </button>
+              </>
+            )}
           </form>
-        </motion.div>
+        </>
+      )}
+    </motion.div>
 
       </div>
     </div>
