@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { Booking, IBooking } from '../models/Booking.js';
 import { Vehicle } from '../models/Vehicle.js';
 import { User } from '../models/User.js';
+import { Discount } from '../models/Discount.js';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import {
   validateBookingInput,
@@ -23,7 +24,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, message: 'Yêu cầu đăng nhập trước khi đặt chỗ' });
     }
 
-    const { vehicleId, pickupDateTime, returnDateTime, pickupLocation, returnLocation } = req.body;
+    const { vehicleId, pickupDateTime, returnDateTime, pickupLocation, returnLocation, promoCode } = req.body;
 
     // Validate input
     const validation = validateBookingInput(req.body);
@@ -64,7 +65,71 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     const pickupDate = new Date(pickupDateTime);
     const returnDate = new Date(returnDateTime);
     const rentalDays = Math.ceil((returnDate.getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24));
-    const totalAmount = calculateTotalAmount(vehicle.rentalPrice, rentalDays);
+    let initialTotalAmount = calculateTotalAmount(vehicle.rentalPrice, rentalDays);
+
+    let discountId = undefined;
+    let discountAmount = 0;
+    let promoCodeUsed = undefined;
+
+    // Áp dụng promo code nếu có
+    if (promoCode) {
+      const cleanCode = promoCode.trim().toUpperCase().replace(/\s+/g, '');
+      const discount = await Discount.findOne({ voucherCode: cleanCode });
+      
+      if (!discount) {
+        return res.status(400).json({ success: false, message: 'Mã giảm giá không tồn tại' });
+      }
+
+      if (!discount.isActive) {
+        return res.status(400).json({ success: false, message: 'Mã giảm giá hiện không hoạt động' });
+      }
+
+      const now = new Date();
+      if (now < discount.startDate) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Mã giảm giá chưa bắt đầu (Bắt đầu từ: ${discount.startDate.toLocaleDateString('vi-VN')})` 
+        });
+      }
+      if (now > discount.endDate) {
+        return res.status(400).json({ success: false, message: 'Mã giảm giá đã hết hạn sử dụng' });
+      }
+
+      if (discount.usageLimit !== undefined && discount.usedCount >= discount.usageLimit) {
+        return res.status(400).json({ success: false, message: 'Mã giảm giá đã hết lượt sử dụng' });
+      }
+
+      const alreadyUsed = user.usedVouchers.some(v => v.discountId.toString() === discount._id.toString());
+      if (alreadyUsed) {
+        return res.status(400).json({ success: false, message: 'Tài khoản của bạn đã sử dụng mã giảm giá này' });
+      }
+
+      if (discount.minOrderAmount && initialTotalAmount < discount.minOrderAmount) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Mã giảm giá yêu cầu đơn hàng tối thiểu ${discount.minOrderAmount.toLocaleString()} VNĐ` 
+        });
+      }
+
+      // Tính toán tiền giảm
+      if (discount.discountType === 'FixedAmount') {
+        discountAmount = discount.discountValue;
+      } else if (discount.discountType === 'Percentage') {
+        discountAmount = Math.floor((initialTotalAmount * discount.discountValue) / 100);
+        if (discount.maxDiscountAmount && discountAmount > discount.maxDiscountAmount) {
+          discountAmount = discount.maxDiscountAmount;
+        }
+      }
+
+      if (discountAmount > initialTotalAmount) {
+        discountAmount = initialTotalAmount;
+      }
+
+      discountId = discount._id as any;
+      promoCodeUsed = discount.voucherCode;
+    }
+
+    const totalAmount = initialTotalAmount - discountAmount;
 
     // Create vehicle snapshot
     const vehicleSnapshot = {
@@ -88,10 +153,27 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       totalAmount,
       status: 'Pending',
       bookingCode,
-      surcharges: []
+      surcharges: [],
+      discountId,
+      discountAmount,
+      promoCodeUsed
     });
 
     const savedBooking = await newBooking.save();
+
+    // Ghi nhận lượt sử dụng khuyến mãi
+    if (discountId) {
+      await Discount.findByIdAndUpdate(discountId, { $inc: { usedCount: 1 } });
+      await User.findByIdAndUpdate(userId, {
+        $push: {
+          usedVouchers: {
+            discountId,
+            usedAt: new Date(),
+            bookingId: savedBooking._id
+          }
+        }
+      });
+    }
 
     // Populate references
     await savedBooking.populate('userId', 'firstName lastName email phoneNumber');
@@ -109,6 +191,8 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         totalAmount: savedBooking.totalAmount,
         status: savedBooking.status,
         rentalDays,
+        discountAmount: savedBooking.discountAmount,
+        promoCodeUsed: savedBooking.promoCodeUsed,
         message: '⏳ Đợi chủ xe xác nhận. Bạn sẽ nhận được thông báo khi được phê duyệt.'
       }
     });
