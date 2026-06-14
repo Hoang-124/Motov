@@ -32,6 +32,9 @@ export interface IBooking extends Document {
   bookingCode: string;
   surcharges: ISurcharge[];
   cancelReason?: string;
+  discountId?: mongoose.Types.ObjectId;
+  discountAmount?: number;
+  promoCodeUsed?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -67,7 +70,10 @@ const BookingSchema = new Schema<IBooking>({
   status: { type: String, enum: ['Pending', 'Confirmed', 'Ongoing', 'Completed', 'Cancelled'], default: 'Pending', index: true },
   bookingCode: { type: String, required: true, unique: true, index: true },
   surcharges: [SurchargeSchema],
-  cancelReason: { type: String }
+  cancelReason: { type: String },
+  discountId: { type: Schema.Types.ObjectId, ref: 'Discount' },
+  discountAmount: { type: Number, default: 0 },
+  promoCodeUsed: { type: String }
 }, {
   timestamps: true
 });

@@ -13,6 +13,7 @@ import authRoutes from './routes/authRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import vehicleRoutes from './routes/vehicleRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import promotionRoutes from './routes/promotionRoutes.js';
 import { authMiddleware } from './middlewares/authMiddleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -32,10 +33,21 @@ const ALLOWED_ORIGINS = [
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (ALLOWED_ORIGINS.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
+    
+    const isAllowed = 
+      ALLOWED_ORIGINS.includes(origin) || 
+      /^http:\/\/localhost:\d+$/.test(origin) || 
+      /^http:\/\/127\.0\.0\.1:\d+$/.test(origin) ||
+      /^http:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin) ||
+      /^http:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+:\d+$/.test(origin) ||
+      /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/.test(origin);
+
+    if (isAllowed) {
       return callback(null, true);
     }
-    return callback(new Error('Not allowed by CORS'));
+    
+    console.error(`[CORS Blocked] Origin: ${origin}`);
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
   credentials: true
 }));
@@ -53,6 +65,7 @@ app.use('/api/auth', authRoutes);
 // Routes Booking (Booking APIs)
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/promotions', promotionRoutes);
 
 // Routes quản lý xe (Vehicle/Bike Management APIs)
 app.use('/api/vehicles', vehicleRoutes);
