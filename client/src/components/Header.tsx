@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2 } from 'lucide-react';
+import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { notificationService, NotificationItem } from '../services/notificationService.js';
 
@@ -192,6 +192,7 @@ export const Header = () => {
         { path: '/admin/bookings', label: 'Đơn Toàn Hệ Thống' },
         { path: '/admin/users', label: 'Phân Quyền' },
         { path: '/admin/promotions', label: 'Khuyến Mãi' },
+        { path: '/admin/feedbacks', label: 'Quản Lý Đánh Giá' },
       ];
     }
 
@@ -503,6 +504,10 @@ export const Header = () => {
                           <Link to="/admin/promotions" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <Ticket size={15} />
                             <span>Quản lý khuyến mãi</span>
+                          </Link>
+                          <Link to="/admin/feedbacks" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <MessageSquare size={15} />
+                            <span>Quản lý đánh giá</span>
                           </Link>
                         </>
                       )}
