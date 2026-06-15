@@ -28,6 +28,7 @@ interface Booking {
 
 interface OwnerRequest {
   id: string;
+  _id?: string; // Bổ sung để tránh lỗi compile TypeScript khi dùng fallback _id
   username: string;
   email: string;
   name: string;
@@ -66,7 +67,8 @@ export const StaffBookings = () => {
       setLoading(true);
       setError('');
       const data = await bookingService.getAllBookings();
-      setBookings(data);
+      // Đảm bảo dữ liệu luôn là mảng để không bị lỗi hàm .filter hoặc .length
+      setBookings(Array.isArray(data) ? data : data?.bookings || data?.data || []);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Không thể kết nối đến máy chủ để lấy danh sách đơn!');
     } finally {
@@ -81,7 +83,7 @@ export const StaffBookings = () => {
       const headers = getAuthHeaders();
       const res = await axios.get(`${API_BASE_URL}/auth/owner-requests`, headers);
       if (res.data.success) {
-        setOwnerRequests(res.data.data);
+        setOwnerRequests(res.data.data || []);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Không thể lấy danh sách yêu cầu đăng ký làm chủ xe!');
@@ -98,7 +100,7 @@ export const StaffBookings = () => {
     }
   }, [activeTab]);
 
-  const handleUpdateStatus = async (id: string, newStatus: 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled') => {
+  const handleUpdateStatus = async (id: string, newStatus: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled') => {
     let reason = '';
     if (newStatus === 'Cancelled') {
       const promptReason = window.prompt('Vui lòng nhập lý do hủy/từ chối đơn đặt xe:');
@@ -114,9 +116,13 @@ export const StaffBookings = () => {
       setLoading(true);
       await bookingService.updateStatus(id, newStatus, reason);
       window.alert('Cập nhật trạng thái đơn thành công!');
-      await loadStaffBookings();
+
+      setBookings(prev =>
+        prev.map(b => (b.id === id || (b as any)._id === id) ? { ...b, status: newStatus } : b)
+      );
     } catch (err: any) {
       window.alert(err.response?.data?.message || 'Không thể cập nhật trạng thái đơn!');
+    } finally {
       setLoading(false);
     }
   };
@@ -135,6 +141,7 @@ export const StaffBookings = () => {
       }
     } catch (err: any) {
       window.alert(err.response?.data?.message || 'Lỗi khi phê duyệt chủ xe!');
+    } finally {
       setLoading(false);
     }
   };
@@ -153,6 +160,7 @@ export const StaffBookings = () => {
       }
     } catch (err: any) {
       window.alert(err.response?.data?.message || 'Lỗi khi từ chối yêu cầu!');
+    } finally {
       setLoading(false);
     }
   };
@@ -167,7 +175,7 @@ export const StaffBookings = () => {
   return (
     <div className="pt-28 pb-20 min-h-screen bg-black text-white">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
-        
+
         {/* Title and Top Header Actions */}
         <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -179,7 +187,7 @@ export const StaffBookings = () => {
               Phê duyệt đối tác và xử lý nhanh quy trình giao nhận xe thực tế cho khách hàng
             </p>
           </div>
-          <button 
+          <button
             onClick={activeTab === 'bookings' ? loadStaffBookings : loadOwnerRequests}
             className="flex items-center gap-2 text-xs bg-surface border border-gray-800 hover:border-neon hover:text-white px-4 py-2.5 rounded-lg text-gray-300 transition-all cursor-pointer"
           >
@@ -192,21 +200,19 @@ export const StaffBookings = () => {
         <div className="flex border-b border-gray-800 mb-6 gap-6">
           <button
             onClick={() => setActiveTab('bookings')}
-            className={`pb-3 font-bold text-sm tracking-wide transition-all uppercase cursor-pointer ${
-              activeTab === 'bookings'
-                ? 'text-neon border-b-2 border-neon'
-                : 'text-gray-400 hover:text-white'
-            }`}
+            className={`pb-3 font-bold text-sm tracking-wide transition-all uppercase cursor-pointer ${activeTab === 'bookings'
+              ? 'text-neon border-b-2 border-neon'
+              : 'text-gray-400 hover:text-white'
+              }`}
           >
             📋 Điều phối đơn xe ({bookings.length})
           </button>
           <button
             onClick={() => setActiveTab('ownerRequests')}
-            className={`pb-3 font-bold text-sm tracking-wide transition-all uppercase cursor-pointer ${
-              activeTab === 'ownerRequests'
-                ? 'text-neon border-b-2 border-neon'
-                : 'text-gray-400 hover:text-white'
-            }`}
+            className={`pb-3 font-bold text-sm tracking-wide transition-all uppercase cursor-pointer ${activeTab === 'ownerRequests'
+              ? 'text-neon border-b-2 border-neon'
+              : 'text-gray-400 hover:text-white'
+              }`}
           >
             🤝 Duyệt chủ xe mới ({ownerRequests.length})
           </button>
@@ -234,9 +240,8 @@ export const StaffBookings = () => {
                 <button
                   key={status.key}
                   onClick={() => setFilterStatus(status.key)}
-                  className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                    filterStatus === status.key ? 'bg-neon text-dark font-bold' : 'bg-surface border border-gray-800 text-gray-400 hover:border-gray-700'
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${filterStatus === status.key ? 'bg-neon text-dark font-bold' : 'bg-surface border border-gray-800 text-gray-400 hover:border-gray-700'
+                    }`}
                 >
                   {status.label}
                 </button>
@@ -252,19 +257,18 @@ export const StaffBookings = () => {
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    key={booking.id}
+                    key={booking.id || (booking as any)._id}
                     className="bg-surface border border-gray-800 rounded-2xl p-5 flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex justify-between items-center mb-3">
                         <span className="font-mono text-xs font-bold text-neon">{booking.bookingCode}</span>
-                        <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${
-                          booking.status === 'Ongoing' ? 'text-green-400 border-green-500/20 bg-green-500/5' : 
-                          booking.status === 'Pending' ? 'text-yellow-400 border-yellow-500/20 bg-yellow-500/5' : 
-                          booking.status === 'Confirmed' ? 'text-blue-400 border-blue-500/20 bg-blue-500/5' : 
-                          booking.status === 'Completed' ? 'text-purple-400 border-purple-500/20 bg-purple-500/5' :
-                          'text-red-400 border-red-500/20 bg-red-500/5'
-                        }`}>
+                        <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${booking.status === 'Ongoing' ? 'text-green-400 border-green-500/20 bg-green-500/5' :
+                          booking.status === 'Pending' ? 'text-yellow-400 border-yellow-500/20 bg-yellow-500/5' :
+                            booking.status === 'Confirmed' ? 'text-blue-400 border-blue-500/20 bg-blue-500/5' :
+                              booking.status === 'Completed' ? 'text-purple-400 border-purple-500/20 bg-purple-500/5' :
+                                'text-red-400 border-red-500/20 bg-red-500/5'
+                          }`}>
                           {booking.statusLabel}
                         </span>
                       </div>
@@ -275,7 +279,7 @@ export const StaffBookings = () => {
                       <div className="p-3 bg-black/40 border border-gray-900 rounded-xl mb-4 space-y-2 text-xs text-gray-400">
                         <div className="flex items-center gap-2"><User size={13} /> Khách: <span className="text-white font-medium">{booking.userName}</span></div>
                         <div className="flex items-center gap-2"><Phone size={13} /> SĐT: <span className="text-white font-mono">{booking.userPhone}</span></div>
-                        <div className="flex items-center gap-2"><CreditCard size={13} /> Tổng thu: <span className="text-neon font-semibold">{booking.totalAmount.toLocaleString('vi-VN')} VNĐ</span></div>
+                        <div className="flex items-center gap-2"><CreditCard size={13} /> Tổng thu: <span className="text-neon font-semibold">{(booking.totalAmount || 0).toLocaleString('vi-VN')} VNĐ</span></div>
                       </div>
 
                       {/* Giao nhận địa chỉ */}
@@ -298,30 +302,58 @@ export const StaffBookings = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className="mt-auto pt-3 border-t border-gray-800 grid gap-2">
+                    <div className="mt-auto pt-3 border-t border-gray-800 flex flex-col gap-2">
                       {booking.status === 'Pending' && (
-                        <div className="text-center text-xs text-yellow-400 font-semibold py-2 bg-yellow-500/5 border border-yellow-500/10 rounded-lg">
-                          ⏳ Đang chờ Chủ xe duyệt đơn
+                        <div className="flex flex-col gap-2">
+                          <div className="text-center text-[11px] text-yellow-400 font-semibold py-1.5 bg-yellow-500/5 border border-yellow-500/10 rounded-lg">
+                            ⏳ Đang chờ Chủ xe duyệt đơn
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => handleUpdateStatus(booking.id || (booking as any)._id, 'Confirmed')}
+                              disabled={loading}
+                              className="bg-neon text-dark font-bold py-2 rounded-lg text-xs hover:opacity-95 transition-all cursor-pointer disabled:opacity-50 text-center"
+                            >
+                              Duyệt hộ đơn
+                            </button>
+                            <button
+                              onClick={() => handleUpdateStatus(booking.id || (booking as any)._id, 'Cancelled')}
+                              disabled={loading}
+                              className="bg-red-500/10 text-red-500 border border-red-500/20 py-2 rounded-lg text-xs hover:bg-red-500/20 transition-all cursor-pointer disabled:opacity-50 text-center"
+                            >
+                              Từ chối đơn
+                            </button>
+                          </div>
                         </div>
                       )}
 
                       {booking.status === 'Confirmed' && (
-                        <button
-                          onClick={() => handleUpdateStatus(booking.id, 'Ongoing')}
-                          disabled={loading}
-                          className="w-full flex items-center justify-center gap-1 bg-blue-500 text-white font-bold py-2.5 rounded-lg text-xs hover:bg-blue-600 transition-colors cursor-pointer disabled:opacity-50"
-                        >
-                          Bàn giao xe (Bắt đầu thuê)
-                        </button>
+                        <div className="grid grid-cols-4 gap-2">
+                          <button
+                            onClick={() => handleUpdateStatus(booking.id || (booking as any)._id, 'Ongoing')}
+                            disabled={loading}
+                            className="col-span-3 flex items-center justify-center gap-1 bg-blue-500 text-white font-bold py-2.5 rounded-lg text-xs hover:bg-blue-600 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            Bàn giao xe (Bắt đầu thuê)
+                          </button>
+                          <button
+                            onClick={() => handleUpdateStatus(booking.id || (booking as any)._id, 'Cancelled')}
+                            disabled={loading}
+                            className="col-span-1 flex items-center justify-center bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-xs hover:bg-red-500/20 transition-all cursor-pointer disabled:opacity-50"
+                            title="Hủy đơn hàng"
+                          >
+                            Hủy
+                          </button>
+                        </div>
                       )}
 
                       {booking.status === 'Ongoing' && (
                         <button
-                          onClick={() => handleUpdateStatus(booking.id, 'Completed')}
+                          onClick={() => handleUpdateStatus(booking.id || (booking as any)._id, 'Completed')}
                           disabled={loading}
                           className="w-full flex items-center justify-center gap-1 bg-green-600 text-white font-bold py-2.5 rounded-lg text-xs hover:bg-green-700 transition-colors cursor-pointer disabled:opacity-50"
                         >
-                          <CheckSquare size={14} /> Xác nhận khách trả xe
+                          <CheckSquare size={14} /> Xác nhận khách trả xe (Hoàn thành)
                         </button>
                       )}
 
@@ -361,7 +393,7 @@ export const StaffBookings = () => {
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    key={req.id}
+                    key={req.id || req._id} // SỬA ĐỂ AN TOÀN KEY
                     className="bg-surface border border-gray-800 rounded-2xl p-5 flex flex-col justify-between"
                   >
                     <div>
@@ -374,7 +406,6 @@ export const StaffBookings = () => {
 
                       <h3 className="font-bold text-base text-white mb-3">{req.name}</h3>
 
-                      {/* User Details */}
                       <div className="p-3 bg-black/40 border border-gray-900 rounded-xl mb-6 space-y-2 text-xs text-gray-400">
                         <div>Tài khoản: <span className="text-white font-mono font-medium">{req.username}</span></div>
                         <div>Email: <span className="text-white font-medium">{req.email}</span></div>
@@ -386,14 +417,14 @@ export const StaffBookings = () => {
 
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => handleApproveOwner(req.id)}
+                        onClick={() => handleApproveOwner(req.id || (req as any)._id)} // SỬA LỖI FALLBACK ID CHỦ XE
                         disabled={loading}
                         className="flex items-center justify-center gap-1 bg-neon text-dark font-bold py-2 rounded-lg text-xs hover:opacity-95 transition-all cursor-pointer disabled:opacity-50"
                       >
                         <Check size={14} /> Phê duyệt
                       </button>
                       <button
-                        onClick={() => handleRejectOwner(req.id)}
+                        onClick={() => handleRejectOwner(req.id || (req as any)._id)} // SỬA LỖI FALLBACK ID CHỦ XE
                         disabled={loading}
                         className="flex items-center justify-center gap-1 bg-red-500/10 text-red-500 border border-red-500/20 py-2 rounded-lg text-xs hover:bg-red-500/20 transition-all cursor-pointer disabled:opacity-50"
                       >

@@ -7,7 +7,9 @@ import {
   updateBooking,
   cancelBooking,
   deleteBooking,
-  getBookingsByVehicle
+  getBookingsByVehicle,
+  confirmBookingByStaff,
+  confirmBikePickupByStaff
 } from '../controllers/bookingController.js';
 import { authMiddleware, restrictTo } from '../middlewares/authMiddleware.js';
 
@@ -32,14 +34,14 @@ router.post('/', createBooking as any);
  * Get all bookings of current user
  * Access: All authenticated users
  */
-router.get('/my-bookings', getMyBookings as any);
+router.get('/my-bookings', getMyBookings as any); // Thằng này phải nằm TRÊN thằng /:id
 
 /**
  * GET /api/bookings/:id
  * Get booking by ID
  * Access: Booking owner, Vehicle owner, Admin, Staff
  */
-router.get('/:id', getBookingById as any);
+router.get('/:id', getBookingById as any); // Thằng động nhận ID này nằm dưới cùng của cụm GET
 
 /**
  * PUT /api/bookings/:id
@@ -84,5 +86,20 @@ router.get('/', getAllBookings as any);
  * Access: Admin only
  */
 router.delete('/:id', restrictTo('Admin') as any, deleteBooking as any);
+
+/**
+ * PUT /api/staff/bookings/:id/confirm
+ * Staff thực hiện duyệt đơn đặt chỗ
+ * Access: Staff, Admin
+ */
+router.put('/staff/bookings/:id/confirm', restrictTo('Staff', 'Admin') as any, confirmBookingByStaff as any);
+
+/**
+ * PUT /api/staff/bookings/:id/pickup
+ * Staff xác nhận khách đã đến lấy xe thành công
+ * Access: Staff, Admin
+ */
+// THÊM ĐOẠN NÀY:
+router.put('/staff/bookings/:id/pickup', restrictTo('Staff', 'Admin') as any, confirmBikePickupByStaff as any);
 
 export default router;
