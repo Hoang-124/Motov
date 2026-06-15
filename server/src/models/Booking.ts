@@ -35,6 +35,8 @@ export interface IBooking extends Document {
   discountId?: mongoose.Types.ObjectId;
   discountAmount?: number;
   promoCodeUsed?: string;
+  isPickupReminded?: boolean;
+  isReturnReminded?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,7 +75,9 @@ const BookingSchema = new Schema<IBooking>({
   cancelReason: { type: String },
   discountId: { type: Schema.Types.ObjectId, ref: 'Discount' },
   discountAmount: { type: Number, default: 0 },
-  promoCodeUsed: { type: String }
+  promoCodeUsed: { type: String },
+  isPickupReminded: { type: Boolean, default: false, index: true },
+  isReturnReminded: { type: Boolean, default: false, index: true }
 }, {
   timestamps: true
 });

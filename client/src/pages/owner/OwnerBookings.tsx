@@ -222,23 +222,15 @@ export const OwnerBookings = () => {
                   )}
 
                   {booking.status === 'Confirmed' && (
-                    <button
-                      onClick={() => handleUpdateStatus(booking.id, 'Ongoing')}
-                      disabled={loading}
-                      className="w-full flex items-center justify-center gap-1 bg-blue-500 text-white font-bold py-2.5 rounded-lg text-xs hover:bg-blue-600 transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      Bàn giao xe (Đang thuê)
-                    </button>
+                    <div className="text-center text-xs text-blue-400 font-semibold py-2 bg-blue-500/5 border border-blue-500/10 rounded-lg">
+                      ✓ Đã duyệt - Chờ nhân viên bàn giao xe
+                    </div>
                   )}
 
                   {booking.status === 'Ongoing' && (
-                    <button
-                      onClick={() => handleUpdateStatus(booking.id, 'Completed')}
-                      disabled={loading}
-                      className="w-full flex items-center justify-center gap-1 bg-green-600 text-white font-bold py-2.5 rounded-lg text-xs hover:bg-green-700 transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      <CheckSquare size={14} /> Xác nhận trả xe
-                    </button>
+                    <div className="text-center text-xs text-green-400 font-semibold py-2 bg-green-500/5 border border-green-500/10 rounded-lg">
+                      🚴 Khách hàng đang thuê xe
+                    </div>
                   )}
 
                   {booking.status === 'Completed' && (
