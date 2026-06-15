@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { User, IUser } from '../models/User.js';
+import { Notification } from '../models/Notification.js';
 import { PasswordResetToken } from '../models/PasswordResetToken.js';
 import { EmailVerificationToken } from '../models/EmailVerificationToken.js';
 import crypto from 'crypto';
@@ -321,7 +322,7 @@ export const getMe = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Nâng cấp tài khoản lên Chủ xe đối tác
+// Nâng cấp tài khoản lên Chủ xe đối tác (Gửi yêu cầu chờ duyệt)
 export const becomeOwner = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
@@ -338,16 +339,13 @@ export const becomeOwner = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Tài khoản của bạn đã là Chủ xe đối tác' });
     }
 
-    // Cập nhật vai trò thành Owner
-    user.roles = ['Owner'];
-    const savedUser = await user.save();
+    if (user.ownerRequestStatus === 'Pending') {
+      return res.status(400).json({ success: false, message: 'Yêu cầu đăng ký làm Chủ xe của bạn đang chờ phê duyệt.' });
+    }
 
-    // Sinh token mới với vai trò mới
-    const token = jwt.sign(
-      { id: savedUser._id, email: savedUser.email, roles: savedUser.roles },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN as any }
-    );
+    // Đặt trạng thái yêu cầu nâng cấp lên Owner
+    user.ownerRequestStatus = 'Pending';
+    const savedUser = await user.save();
 
     const displayName = savedUser.firstName && savedUser.lastName
       ? `${savedUser.lastName} ${savedUser.firstName}`
@@ -355,21 +353,146 @@ export const becomeOwner = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: 'Đăng ký làm chủ xe đối tác thành công!',
-      token,
+      message: 'Đăng ký làm chủ xe thành công! Vui lòng chờ nhân viên phê duyệt.',
       user: {
         id: savedUser._id,
         username: savedUser.username,
         email: savedUser.email,
         name: displayName,
-        role: 'owner',
+        role: mapBackendRoleToFrontend(savedUser.roles),
         phoneNumber: savedUser.phoneNumber,
-        status: savedUser.status
+        status: savedUser.status,
+        ownerRequestStatus: savedUser.ownerRequestStatus
       }
     });
   } catch (error: any) {
     console.error('Lỗi khi nâng cấp lên chủ xe:', error);
     res.status(500).json({ success: false, message: 'Lỗi máy chủ khi đăng ký làm chủ xe đối tác', error: error.message });
+  }
+};
+
+// Lấy danh sách yêu cầu đăng ký làm chủ xe (Staff/Admin)
+export const getOwnerRequests = async (req: AuthRequest, res: Response) => {
+  try {
+    // Chỉ cho phép Staff hoặc Admin
+    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
+    if (!hasPermission) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền xem các yêu cầu này' });
+    }
+
+    const requests = await User.find({ ownerRequestStatus: 'Pending' })
+      .select('username email firstName lastName phoneNumber status ownerRequestStatus createdAt')
+      .sort('-updatedAt');
+
+    const formattedRequests = requests.map(u => {
+      const displayName = u.firstName && u.lastName
+        ? `${u.lastName} ${u.firstName}`
+        : (u.firstName || u.lastName || u.username);
+      return {
+        id: u._id,
+        username: u.username,
+        email: u.email,
+        name: displayName,
+        phoneNumber: u.phoneNumber,
+        status: u.status,
+        ownerRequestStatus: u.ownerRequestStatus,
+        createdAt: u.createdAt
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: formattedRequests
+    });
+  } catch (error: any) {
+    console.error('Lỗi lấy danh sách yêu cầu làm chủ xe:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
+};
+
+// Phê duyệt yêu cầu nâng cấp lên Owner (Staff/Admin)
+export const approveOwnerRequest = async (req: AuthRequest, res: Response) => {
+  try {
+    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
+    if (!hasPermission) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện thao tác này' });
+    }
+
+    const { id } = req.params;
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản người dùng' });
+    }
+
+    if (user.roles.includes('Owner')) {
+      user.ownerRequestStatus = 'Approved';
+      await user.save();
+      return res.status(400).json({ success: false, message: 'Người dùng này đã là Chủ xe đối tác' });
+    }
+
+    // Nâng cấp lên Owner và cập nhật trạng thái
+    user.roles = ['Owner'];
+    user.ownerRequestStatus = 'Approved';
+    await user.save();
+
+    // Tạo thông báo in-app cho đối tác
+    try {
+      await Notification.create({
+        userId: user._id,
+        title: 'Yêu cầu làm đối tác Chủ xe đã được phê duyệt',
+        message: 'Chúc mừng! Yêu cầu đăng ký làm đối tác Chủ xe của bạn đã được phê duyệt thành công. Bạn đã có quyền đăng tải xe mới và theo dõi doanh thu.',
+        type: 'System'
+      });
+    } catch (notiErr) {
+      console.error('Lỗi tạo thông báo duyệt chủ xe:', notiErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Đã phê duyệt yêu cầu làm chủ xe của ${user.username} thành công.`
+    });
+  } catch (error: any) {
+    console.error('Lỗi phê duyệt yêu cầu làm chủ xe:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
+};
+
+// Từ chối yêu cầu nâng cấp lên Owner (Staff/Admin)
+export const rejectOwnerRequest = async (req: AuthRequest, res: Response) => {
+  try {
+    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
+    if (!hasPermission) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện thao tác này' });
+    }
+
+    const { id } = req.params;
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản người dùng' });
+    }
+
+    user.ownerRequestStatus = 'Rejected';
+    await user.save();
+
+    // Tạo thông báo in-app cho đối tác
+    try {
+      await Notification.create({
+        userId: user._id,
+        title: 'Yêu cầu làm đối tác Chủ xe bị từ chối',
+        message: 'Rất tiếc, yêu cầu đăng ký làm đối tác Chủ xe của bạn đã bị từ chối bởi nhân viên hệ thống. Vui lòng liên hệ hỗ trợ để biết thêm chi tiết.',
+        type: 'System'
+      });
+    } catch (notiErr) {
+      console.error('Lỗi tạo thông báo từ chối chủ xe:', notiErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Đã từ chối yêu cầu làm chủ xe của ${user.username} thành công.`
+    });
+  } catch (error: any) {
+    console.error('Lỗi từ chối yêu cầu làm chủ xe:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
   }
 };
 

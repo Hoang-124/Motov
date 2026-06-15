@@ -4,6 +4,13 @@ import { Booking, IBooking } from '../models/Booking.js';
 import { Vehicle } from '../models/Vehicle.js';
 import { User } from '../models/User.js';
 import { Discount } from '../models/Discount.js';
+import { Notification } from '../models/Notification.js';
+import {
+  sendBookingCreatedEmail,
+  sendNewBookingAlertToOwnerEmail,
+  sendBookingConfirmedEmail,
+  sendBookingCancelledEmail
+} from '../utils/emailService.js';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import {
   validateBookingInput,
@@ -179,6 +186,56 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     await savedBooking.populate('userId', 'firstName lastName email phoneNumber');
     await savedBooking.populate('vehicleId', 'vehicleModel licensePlate rentalPrice');
 
+    // Gửi thông báo & email (In-app & SMTP)
+    try {
+      const emailDetails = {
+        bookingCode: savedBooking.bookingCode,
+        vehicleName: savedBooking.vehicleSnapshot.name,
+        pickupDateTime: savedBooking.pickupDateTime,
+        returnDateTime: savedBooking.returnDateTime,
+        pickupLocation: savedBooking.pickupLocation?.address || 'Nhận tại cửa hàng',
+        totalAmount: savedBooking.totalAmount,
+        rentalDays,
+        discountAmount: savedBooking.discountAmount
+      };
+
+      // 1. Tạo thông báo in-app cho khách hàng
+      await Notification.create({
+        userId: userId,
+        title: 'Đơn đặt xe mới đang chờ duyệt',
+        message: `Đơn đặt xe ${savedBooking.bookingCode} của bạn đã được tạo thành công và đang chờ duyệt.`,
+        type: 'BookingPending',
+        relatedId: savedBooking._id
+      });
+
+      // 2. Tìm chủ xe để tạo thông báo in-app & gửi email
+      const owner = await User.findById(vehicle.ownerId);
+      if (owner) {
+        await Notification.create({
+          userId: owner._id,
+          title: 'Yêu cầu duyệt đơn đặt xe mới',
+          message: `Bạn có đơn đặt xe mới ${savedBooking.bookingCode} đang chờ duyệt.`,
+          type: 'BookingPending',
+          relatedId: savedBooking._id
+        });
+
+        if (owner.email) {
+          sendNewBookingAlertToOwnerEmail(owner.email, emailDetails).catch(err => 
+            console.error('Lỗi khi gửi email thông báo cho chủ xe:', err)
+          );
+        }
+      }
+
+      // 3. Gửi email xác nhận cho khách hàng
+      if (savedBooking.userId && (savedBooking.userId as any).email) {
+        sendBookingCreatedEmail((savedBooking.userId as any).email, emailDetails).catch(err =>
+          console.error('Lỗi khi gửi email xác nhận cho khách hàng:', err)
+        );
+      }
+    } catch (notiError) {
+      console.error('Lỗi khi tạo thông báo đặt xe:', notiError);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Đặt chỗ thành công. Vui lòng chờ xác nhận từ chủ xe.',
@@ -307,17 +364,20 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
 // ============================================
 export const getAllBookings = async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.user?.id;
     const userRoles = req.user?.roles || [];
+    const isAdminOrStaff = userRoles.includes('Admin') || userRoles.includes('Staff');
+    const isOwner = userRoles.includes('Owner');
     
-    // Only Admin and Staff can view all bookings
-    if (!userRoles.includes('Admin') && !userRoles.includes('Staff')) {
+    // Allow Admin, Staff, and Owner to view bookings
+    if (!isAdminOrStaff && !isOwner) {
       return res.status(403).json({
         success: false,
-        message: 'Bạn không có quyền xem tất cả bookings'
+        message: 'Bạn không có quyền xem danh sách đơn hàng'
       });
     }
 
-    const { status, vehicleId, userId, page = 1, limit = 20 } = req.query;
+    const { status, vehicleId, userId: queryUserId, page = 1, limit = 20 } = req.query;
     const pageNum = parseInt(page as string) || 1;
     const limitNum = parseInt(limit as string) || 20;
     const skip = (pageNum - 1) * limitNum;
@@ -325,7 +385,26 @@ export const getAllBookings = async (req: AuthRequest, res: Response) => {
     let query: any = {};
     if (status) query.status = status;
     if (vehicleId) query.vehicleId = vehicleId;
-    if (userId) query.userId = userId;
+    if (queryUserId) query.userId = queryUserId;
+
+    // For Owner: Restrict to bookings associated with the Owner's vehicles
+    if (isOwner && !isAdminOrStaff) {
+      const myVehicles = await Vehicle.find({ ownerId: userId }, '_id');
+      const myVehicleIds = myVehicles.map(v => v._id);
+      
+      if (vehicleId) {
+        // If owner requests a specific vehicle, ensure they own it
+        const hasAccess = myVehicleIds.some(id => id.toString() === vehicleId.toString());
+        if (!hasAccess) {
+          return res.status(403).json({
+            success: false,
+            message: 'Bạn không có quyền xem thông tin của xe này'
+          });
+        }
+      } else {
+        query.vehicleId = { $in: myVehicleIds };
+      }
+    }
 
     const bookings = await Booking.find(query)
       .populate('userId', 'firstName lastName email phoneNumber')
@@ -414,6 +493,64 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
 
     const updatedBooking = await booking.save();
 
+    // Gửi thông báo & email sau khi cập nhật trạng thái (In-app & SMTP)
+    try {
+      const customer = await User.findById(updatedBooking.userId);
+      if (customer) {
+        const pickupDate = new Date(updatedBooking.pickupDateTime);
+        const returnDate = new Date(updatedBooking.returnDateTime);
+        const rentalDays = Math.ceil((returnDate.getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        const emailDetails = {
+          bookingCode: updatedBooking.bookingCode,
+          vehicleName: updatedBooking.vehicleSnapshot?.name || 'Xe máy',
+          pickupDateTime: updatedBooking.pickupDateTime,
+          returnDateTime: updatedBooking.returnDateTime,
+          pickupLocation: updatedBooking.pickupLocation?.address || 'Nhận tại cửa hàng',
+          totalAmount: updatedBooking.totalAmount,
+          rentalDays,
+          discountAmount: updatedBooking.discountAmount,
+          cancelReason: notes || 'Đã bị hủy bởi Chủ xe / Quản trị viên'
+        };
+
+        if (status === 'Confirmed') {
+          // Tạo thông báo in-app
+          await Notification.create({
+            userId: customer._id,
+            title: 'Đơn đặt xe được phê duyệt',
+            message: `Chúc mừng! Đơn đặt xe ${updatedBooking.bookingCode} của bạn đã được phê duyệt thành công.`,
+            type: 'BookingConfirmed',
+            relatedId: updatedBooking._id
+          });
+
+          // Gửi email
+          if (customer.email) {
+            sendBookingConfirmedEmail(customer.email, emailDetails).catch(err => 
+              console.error('Lỗi khi gửi email xác nhận duyệt xe:', err)
+            );
+          }
+        } else if (status === 'Cancelled') {
+          // Tạo thông báo in-app
+          await Notification.create({
+            userId: customer._id,
+            title: 'Đơn đặt xe bị hủy',
+            message: `Rất tiếc! Đơn đặt xe ${updatedBooking.bookingCode} của bạn đã bị hủy bỏ. Lý do: ${notes || 'Chủ xe từ chối duyệt'}`,
+            type: 'BookingCancelled',
+            relatedId: updatedBooking._id
+          });
+
+          // Gửi email
+          if (customer.email) {
+            sendBookingCancelledEmail(customer.email, emailDetails).catch(err =>
+              console.error('Lỗi khi gửi email hủy đặt xe:', err)
+            );
+          }
+        }
+      }
+    } catch (notiError) {
+      console.error('Lỗi khi gửi thông báo cập nhật booking:', notiError);
+    }
+
     res.status(200).json({
       success: true,
       message: `Cập nhật booking sang trạng thái "${getStatusLabel(status)}" thành công`,
@@ -471,6 +608,58 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
     await Vehicle.findByIdAndUpdate(booking.vehicleId._id, { status: 'Available' });
 
     const cancelledBooking = await booking.save();
+
+    // Gửi thông báo & email sau khi hủy booking (In-app & SMTP)
+    try {
+      const customer = await User.findById(cancelledBooking.userId);
+      const owner = await User.findById((booking.vehicleId as any).ownerId);
+
+      const pickupDate = new Date(cancelledBooking.pickupDateTime);
+      const returnDate = new Date(cancelledBooking.returnDateTime);
+      const rentalDays = Math.ceil((returnDate.getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      const emailDetails = {
+        bookingCode: cancelledBooking.bookingCode,
+        vehicleName: cancelledBooking.vehicleSnapshot?.name || 'Xe máy',
+        pickupDateTime: cancelledBooking.pickupDateTime,
+        returnDateTime: cancelledBooking.returnDateTime,
+        pickupLocation: cancelledBooking.pickupLocation?.address || 'Nhận tại cửa hàng',
+        totalAmount: cancelledBooking.totalAmount,
+        rentalDays,
+        discountAmount: cancelledBooking.discountAmount,
+        cancelReason: cancelReason || 'Đã bị hủy bởi khách hàng hoặc quản trị viên'
+      };
+
+      // 1. Thông báo cho khách hàng
+      if (customer) {
+        await Notification.create({
+          userId: customer._id,
+          title: 'Hủy đơn đặt xe thành công',
+          message: `Đơn đặt xe ${cancelledBooking.bookingCode} của bạn đã được hủy thành công. Lý do: ${cancelReason || 'Người dùng yêu cầu hủy'}`,
+          type: 'BookingCancelled',
+          relatedId: cancelledBooking._id
+        });
+
+        if (customer.email) {
+          sendBookingCancelledEmail(customer.email, emailDetails).catch(err =>
+            console.error('Lỗi khi gửi email hủy đơn cho khách hàng:', err)
+          );
+        }
+      }
+
+      // 2. Thông báo cho chủ xe
+      if (owner) {
+        await Notification.create({
+          userId: owner._id,
+          title: 'Đơn đặt xe đã bị hủy',
+          message: `Đơn đặt xe ${cancelledBooking.bookingCode} liên quan đến xe của bạn đã bị hủy. Lý do: ${cancelReason || 'Khách hàng yêu cầu hủy'}`,
+          type: 'BookingCancelled',
+          relatedId: cancelledBooking._id
+        });
+      }
+    } catch (notiError) {
+      console.error('Lỗi khi gửi thông báo hủy booking:', notiError);
+    }
 
     res.status(200).json({
       success: true,
