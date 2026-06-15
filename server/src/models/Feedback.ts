@@ -13,6 +13,10 @@ export interface IFeedback extends Document {
   rating: number; // 1-5
   content: string;
   staffReply?: IStaffReply;
+  isBlocked?: boolean;
+  blockReason?: string;
+  blockedBy?: mongoose.Types.ObjectId;
+  blockedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,7 +33,11 @@ const FeedbackSchema = new Schema<IFeedback>({
   bookingId: { type: Schema.Types.ObjectId, ref: 'Booking', required: true, unique: true }, // 1 booking only gets 1 review
   rating: { type: Number, required: true, min: 1, max: 5 },
   content: { type: String, required: true },
-  staffReply: StaffReplySchema
+  staffReply: StaffReplySchema,
+  isBlocked: { type: Boolean, default: false, index: true },
+  blockReason: { type: String },
+  blockedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  blockedAt: { type: Date }
 }, {
   timestamps: true
 });

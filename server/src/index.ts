@@ -1,11 +1,11 @@
 import './loadEnv.js';
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { User } from './models/User.js';
 import { Vehicle } from './models/Vehicle.js';
@@ -14,7 +14,11 @@ import bookingRoutes from './routes/bookingRoutes.js';
 import vehicleRoutes from './routes/vehicleRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import promotionRoutes from './routes/promotionRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import feedbackRoutes from './routes/feedbackRoutes.js';
 import { authMiddleware } from './middlewares/authMiddleware.js';
+import { initBookingReminderScheduler } from './utils/bookingReminderScheduler.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,6 +70,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/promotions', promotionRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/feedbacks', feedbackRoutes);
 
 // Routes quản lý xe (Vehicle/Bike Management APIs)
 app.use('/api/vehicles', vehicleRoutes);
@@ -117,7 +123,7 @@ app.post('/api/upload', authMiddleware as any, upload.single('image'), (req: any
 // Hàm tạo tài khoản mẫu (Seed data) để kiểm thử
 async function seedUsers() {
   try {
-    const passwordHash = await bcrypt.hash('123456', 10);
+    const passwordHash = await bcrypt.hash('admin123', 10);
     const testAccounts: {
       username: string;
       email: string;
@@ -174,14 +180,13 @@ async function seedUsers() {
       const exists = await User.findOne({ email: acc.email });
       if (!exists) {
         await User.create(acc);
-        console.log(`✅ Seeded tài khoản mẫu: ${acc.email} (${acc.username} / Mật khẩu: 123456)`);
+        console.log(`✅ Seeded tài khoản mẫu: ${acc.email} (${acc.username} / Mật khẩu: admin123)`);
       } else {
-        // Cập nhật username để đồng bộ với kiểm thử
-        if (exists.username !== acc.username) {
-          exists.username = acc.username;
-          await exists.save();
-          console.log(`🔄 Cập nhật username tài khoản mẫu: ${acc.email} thành ${acc.username}`);
-        }
+        // Cập nhật username và passwordHash để đồng bộ với kiểm thử
+        exists.username = acc.username;
+        exists.passwordHash = passwordHash;
+        await exists.save();
+        console.log(`🔄 Đồng bộ tài khoản mẫu: ${acc.email} (Mật khẩu mới: admin123)`);
       }
     }
   } catch (err) {
@@ -249,6 +254,7 @@ mongoose.connect(MONGODB_URI)
     console.log('✅ Connected to MongoDB successfully!');
     await seedUsers();
     await seedVehicles();
+    initBookingReminderScheduler();
   })
   .catch((err: any) => console.error('❌ Failed to connect to MongoDB:', err));
 

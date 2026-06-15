@@ -12,6 +12,7 @@ import { Auth } from './pages/Auth';
 import { Profile } from './pages/Profile';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
+import { VerifyEmail } from './pages/VerifyEmail';
 
 // Staff pages
 import { StaffBookings } from './pages/staff/StaffBookings';
@@ -30,6 +31,7 @@ import { AdminBikes } from './pages/admin/AdminBikes';
 import { AdminBookings } from './pages/admin/AdminBookings';
 import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminPromotions } from './pages/admin/AdminPromotions';
+import { AdminFeedbacks } from './pages/admin/AdminFeedbacks';
 
 // Route Guard component
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: ('customer' | 'staff' | 'admin' | 'owner')[] }) => {
@@ -86,6 +88,7 @@ export default function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
 
             {/* Customer Protected Route */}
             <Route path="/booking/:bikeId" element={
@@ -157,6 +160,11 @@ export default function App() {
             <Route path="/admin/promotions" element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminPromotions />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/feedbacks" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminFeedbacks />
               </ProtectedRoute>
             } />
             <Route path="/promotions" element={<Promotions />} />

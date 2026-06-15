@@ -3,11 +3,20 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { User, IUser } from '../models/User.js';
+import { Notification } from '../models/Notification.js';
 import { PasswordResetToken } from '../models/PasswordResetToken.js';
+import { EmailVerificationToken } from '../models/EmailVerificationToken.js';
 import crypto from 'crypto';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { mapBackendRoleToFrontend, mapFrontendRoleToBackend } from '../utils/roleMapper.js';
-import { sendPasswordReset } from '../utils/emailService.js';
+import { sendPasswordReset, sendEmailVerification } from '../utils/emailService.js';
+import firebaseAdmin from '../config/firebase.js';
+
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Tell dotenv to look one folder up from the current working directory
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 
 // FIX [SEC-1]: Throw at startup if JWT_SECRET is not configured — never use a fallback literal
 if (!process.env.JWT_SECRET) {
@@ -21,8 +30,55 @@ export const register = async (req: Request, res: Response) => {
   try {
     const { username, email, password, firstName, lastName, phoneNumber, role } = req.body;
 
-    if (!username || !password) {
-      return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ các thông tin bắt buộc (Username, Mật khẩu)' });
+    if (!username || !password || !email) {
+      return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ các thông tin bắt buộc (Username, Email, Mật khẩu)' });
+    }
+
+    // 1. Validate Username
+    const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+    if (username.length < 3 || username.length > 30) {
+      return res.status(400).json({ success: false, message: 'Tên đăng nhập phải dài từ 3 đến 30 ký tự.' });
+    }
+    if (!usernameRegex.test(username)) {
+      return res.status(400).json({ success: false, message: 'Tên đăng nhập chỉ được chứa các ký tự chữ cái không dấu, số, dấu gạch dưới (_) hoặc gạch ngang (-).' });
+    }
+
+    // 2. Validate Email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({ success: false, message: 'Địa chỉ email không đúng định dạng.' });
+    }
+
+    // 3. Validate Password
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu phải chứa ít nhất 8 ký tự.' });
+    }
+    const hasLowercase = /[a-z]/.test(password);
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasDigit = /[0-9]/.test(password);
+    const hasSpecial = /[\W_]/.test(password);
+    if (!hasLowercase || !hasUppercase || !hasDigit || !hasSpecial) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mật khẩu phải chứa ít nhất 1 chữ thường, 1 chữ hoa, 1 chữ số và 1 ký tự đặc biệt.'
+      });
+    }
+
+    // 4. Validate First Name & Last Name if provided
+    const nameRegex = /[0-9!@#$%^&*(),.?":{}|<>]/;
+    if (firstName && nameRegex.test(firstName)) {
+      return res.status(400).json({ success: false, message: 'Tên không được chứa số hoặc ký tự đặc biệt.' });
+    }
+    if (lastName && nameRegex.test(lastName)) {
+      return res.status(400).json({ success: false, message: 'Họ không được chứa số hoặc ký tự đặc biệt.' });
+    }
+
+    // 5. Validate Phone Number if provided
+    if (phoneNumber && phoneNumber.trim() !== '') {
+      const phoneRegex = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/;
+      if (!phoneRegex.test(phoneNumber.trim())) {
+        return res.status(400).json({ success: false, message: 'Số điện thoại không đúng định dạng Việt Nam.' });
+      }
     }
 
     // Kiểm tra trùng lặp email hoặc username
@@ -42,6 +98,26 @@ export const register = async (req: Request, res: Response) => {
       });
     }
 
+    // Kiểm tra trùng lặp trong các yêu cầu đăng ký chưa xác thực (đang chờ kích hoạt)
+    if (hasEmail) {
+      const pendingUser = await EmailVerificationToken.findOne({
+        isUsed: false,
+        expiryTime: { $gt: new Date() },
+        $or: [
+          { 'pendingUserData.username': username },
+          { 'pendingUserData.email': email.trim() }
+        ]
+      });
+      if (pendingUser) {
+        return res.status(400).json({
+          success: false,
+          message: pendingUser.pendingUserData?.email === email.trim()
+            ? 'Email này đã được đăng ký và đang chờ xác minh.' 
+            : 'Tên đăng nhập này đã được đăng ký và đang chờ xác minh.'
+        });
+      }
+    }
+
     // Hash mật khẩu
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
@@ -52,9 +128,52 @@ export const register = async (req: Request, res: Response) => {
     const backendRole = mapFrontendRoleToBackend(safeRole);
     const assignedRoles: ('Admin' | 'Staff' | 'Owner' | 'Customer')[] = [backendRole];
 
+    if (hasEmail) {
+      // Luồng cần xác thực Email: Lưu thông tin tạm thời và gửi link xác nhận (Không tạo User ngay)
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      await EmailVerificationToken.create({
+        token: verificationToken,
+        pendingUserData: {
+          username,
+          email: email.trim(),
+          passwordHash,
+          firstName: firstName || '',
+          lastName: lastName || '',
+          phoneNumber: phoneNumber || '',
+          roles: assignedRoles
+        },
+        expiryTime,
+        isUsed: false
+      });
+
+      const previewUrl = await sendEmailVerification(email.trim(), verificationToken);
+
+      const displayName = firstName && lastName
+        ? `${lastName} ${firstName}`
+        : (firstName || lastName || username);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Đăng ký tài khoản thành công! Vui lòng kiểm tra email để kích hoạt tài khoản.',
+        needsVerification: true,
+        previewUrl: typeof previewUrl === 'string' ? previewUrl : undefined,
+        user: {
+          username,
+          email: email.trim(),
+          name: displayName,
+          role: mapBackendRoleToFrontend(assignedRoles),
+          phoneNumber: phoneNumber || '',
+          avatarUrl: '',
+          status: 'Unverified'
+        }
+      });
+    }
+
+    // Sinh token JWT trực tiếp nếu không điền email (đăng nhập trực tiếp)
     const newUser = new User({
       username,
-      email: hasEmail ? email.trim() : undefined,
       passwordHash,
       firstName: firstName || '',
       lastName: lastName || '',
@@ -65,16 +184,15 @@ export const register = async (req: Request, res: Response) => {
 
     const savedUser = await newUser.save();
 
-    // Sinh token JWT
+    const displayName = savedUser.firstName && savedUser.lastName
+      ? `${savedUser.lastName} ${savedUser.firstName}`
+      : (savedUser.firstName || savedUser.lastName || savedUser.username);
+
     const token = jwt.sign(
       { id: savedUser._id, email: savedUser.email, roles: savedUser.roles },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN as any }
     );
-
-    const displayName = savedUser.firstName && savedUser.lastName
-      ? `${savedUser.lastName} ${savedUser.firstName}`
-      : (savedUser.firstName || savedUser.lastName || savedUser.username);
 
     res.status(201).json({
       success: true,
@@ -114,6 +232,10 @@ export const login = async (req: Request, res: Response) => {
 
     if (user.status === 'Suspended') {
       return res.status(403).json({ success: false, message: 'Tài khoản của bạn đã bị khóa, vui lòng liên hệ quản trị viên' });
+    }
+
+    if (user.status === 'Unverified') {
+      return res.status(403).json({ success: false, message: 'Tài khoản của bạn chưa được kích hoạt. Vui lòng kiểm tra email để kích hoạt tài khoản.' });
     }
 
     // So sánh mật khẩu
@@ -200,7 +322,7 @@ export const getMe = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Nâng cấp tài khoản lên Chủ xe đối tác
+// Nâng cấp tài khoản lên Chủ xe đối tác (Gửi yêu cầu chờ duyệt)
 export const becomeOwner = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
@@ -217,16 +339,13 @@ export const becomeOwner = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Tài khoản của bạn đã là Chủ xe đối tác' });
     }
 
-    // Cập nhật vai trò thành Owner
-    user.roles = ['Owner'];
-    const savedUser = await user.save();
+    if (user.ownerRequestStatus === 'Pending') {
+      return res.status(400).json({ success: false, message: 'Yêu cầu đăng ký làm Chủ xe của bạn đang chờ phê duyệt.' });
+    }
 
-    // Sinh token mới với vai trò mới
-    const token = jwt.sign(
-      { id: savedUser._id, email: savedUser.email, roles: savedUser.roles },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN as any }
-    );
+    // Đặt trạng thái yêu cầu nâng cấp lên Owner
+    user.ownerRequestStatus = 'Pending';
+    const savedUser = await user.save();
 
     const displayName = savedUser.firstName && savedUser.lastName
       ? `${savedUser.lastName} ${savedUser.firstName}`
@@ -234,21 +353,146 @@ export const becomeOwner = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: 'Đăng ký làm chủ xe đối tác thành công!',
-      token,
+      message: 'Đăng ký làm chủ xe thành công! Vui lòng chờ nhân viên phê duyệt.',
       user: {
         id: savedUser._id,
         username: savedUser.username,
         email: savedUser.email,
         name: displayName,
-        role: 'owner',
+        role: mapBackendRoleToFrontend(savedUser.roles),
         phoneNumber: savedUser.phoneNumber,
-        status: savedUser.status
+        status: savedUser.status,
+        ownerRequestStatus: savedUser.ownerRequestStatus
       }
     });
   } catch (error: any) {
     console.error('Lỗi khi nâng cấp lên chủ xe:', error);
     res.status(500).json({ success: false, message: 'Lỗi máy chủ khi đăng ký làm chủ xe đối tác', error: error.message });
+  }
+};
+
+// Lấy danh sách yêu cầu đăng ký làm chủ xe (Staff/Admin)
+export const getOwnerRequests = async (req: AuthRequest, res: Response) => {
+  try {
+    // Chỉ cho phép Staff hoặc Admin
+    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
+    if (!hasPermission) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền xem các yêu cầu này' });
+    }
+
+    const requests = await User.find({ ownerRequestStatus: 'Pending' })
+      .select('username email firstName lastName phoneNumber status ownerRequestStatus createdAt')
+      .sort('-updatedAt');
+
+    const formattedRequests = requests.map(u => {
+      const displayName = u.firstName && u.lastName
+        ? `${u.lastName} ${u.firstName}`
+        : (u.firstName || u.lastName || u.username);
+      return {
+        id: u._id,
+        username: u.username,
+        email: u.email,
+        name: displayName,
+        phoneNumber: u.phoneNumber,
+        status: u.status,
+        ownerRequestStatus: u.ownerRequestStatus,
+        createdAt: u.createdAt
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: formattedRequests
+    });
+  } catch (error: any) {
+    console.error('Lỗi lấy danh sách yêu cầu làm chủ xe:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
+};
+
+// Phê duyệt yêu cầu nâng cấp lên Owner (Staff/Admin)
+export const approveOwnerRequest = async (req: AuthRequest, res: Response) => {
+  try {
+    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
+    if (!hasPermission) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện thao tác này' });
+    }
+
+    const { id } = req.params;
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản người dùng' });
+    }
+
+    if (user.roles.includes('Owner')) {
+      user.ownerRequestStatus = 'Approved';
+      await user.save();
+      return res.status(400).json({ success: false, message: 'Người dùng này đã là Chủ xe đối tác' });
+    }
+
+    // Nâng cấp lên Owner và cập nhật trạng thái
+    user.roles = ['Owner'];
+    user.ownerRequestStatus = 'Approved';
+    await user.save();
+
+    // Tạo thông báo in-app cho đối tác
+    try {
+      await Notification.create({
+        userId: user._id,
+        title: 'Yêu cầu làm đối tác Chủ xe đã được phê duyệt',
+        message: 'Chúc mừng! Yêu cầu đăng ký làm đối tác Chủ xe của bạn đã được phê duyệt thành công. Bạn đã có quyền đăng tải xe mới và theo dõi doanh thu.',
+        type: 'System'
+      });
+    } catch (notiErr) {
+      console.error('Lỗi tạo thông báo duyệt chủ xe:', notiErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Đã phê duyệt yêu cầu làm chủ xe của ${user.username} thành công.`
+    });
+  } catch (error: any) {
+    console.error('Lỗi phê duyệt yêu cầu làm chủ xe:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
+};
+
+// Từ chối yêu cầu nâng cấp lên Owner (Staff/Admin)
+export const rejectOwnerRequest = async (req: AuthRequest, res: Response) => {
+  try {
+    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
+    if (!hasPermission) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện thao tác này' });
+    }
+
+    const { id } = req.params;
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản người dùng' });
+    }
+
+    user.ownerRequestStatus = 'Rejected';
+    await user.save();
+
+    // Tạo thông báo in-app cho đối tác
+    try {
+      await Notification.create({
+        userId: user._id,
+        title: 'Yêu cầu làm đối tác Chủ xe bị từ chối',
+        message: 'Rất tiếc, yêu cầu đăng ký làm đối tác Chủ xe của bạn đã bị từ chối bởi nhân viên hệ thống. Vui lòng liên hệ hỗ trợ để biết thêm chi tiết.',
+        type: 'System'
+      });
+    } catch (notiErr) {
+      console.error('Lỗi tạo thông báo từ chối chủ xe:', notiErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Đã từ chối yêu cầu làm chủ xe của ${user.username} thành công.`
+    });
+  } catch (error: any) {
+    console.error('Lỗi từ chối yêu cầu làm chủ xe:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
   }
 };
 
@@ -551,5 +795,187 @@ export const resetPassword = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Lỗi đặt lại mật khẩu:', error);
     res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
+};
+
+// Đặt lại mật khẩu qua số điện thoại (Firebase OTP)
+export const resetPasswordPhone = async (req: Request, res: Response) => {
+  try {
+    const { idToken, newPassword } = req.body;
+
+    if (!idToken || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp token và mật khẩu mới' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+    }
+
+    // Mock mode for local testing without Firebase config
+    if (idToken.startsWith('mock-token-')) {
+      const phoneNumber = idToken.replace('mock-token-', '');
+      let user = await User.findOne({ phoneNumber });
+      if (!user) {
+        // Try mapping E.164 +84... or 84... to local format 0...
+        let domesticPhone = phoneNumber;
+        if (phoneNumber.startsWith('+84')) {
+          domesticPhone = '0' + phoneNumber.slice(3);
+          user = await User.findOne({ phoneNumber: domesticPhone });
+        } else if (phoneNumber.startsWith('84')) {
+          domesticPhone = '0' + phoneNumber.slice(2);
+          user = await User.findOne({ phoneNumber: domesticPhone });
+        }
+      }
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng với số điện thoại này' });
+      }
+      const salt = await bcrypt.genSalt(10);
+      user.passwordHash = await bcrypt.hash(newPassword, salt);
+      await user.save();
+      return res.status(200).json({ success: true, message: 'Đặt lại mật khẩu thành công (Mock)' });
+    }
+
+    if (!firebaseAdmin) {
+      return res.status(500).json({ success: false, message: 'Firebase service chưa được cấu hình trên server.' });
+    }
+
+    // Verify token using Firebase Admin SDK
+    const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
+    const phoneNumber = decodedToken.phone_number;
+
+    if (!phoneNumber) {
+      return res.status(400).json({ success: false, message: 'Token xác thực không chứa thông tin số điện thoại' });
+    }
+
+    // Find user by phone number
+    let user = await User.findOne({ phoneNumber });
+    if (!user) {
+      // Try mapping E.164 +84... to local format 0...
+      let domesticPhone = phoneNumber;
+      if (phoneNumber.startsWith('+84')) {
+        domesticPhone = '0' + phoneNumber.slice(3);
+        user = await User.findOne({ phoneNumber: domesticPhone });
+      }
+    }
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản liên kết với số điện thoại này' });
+    }
+
+    // Update password
+    const salt = await bcrypt.genSalt(10);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.status(200).json({ success: true, message: 'Đặt lại mật khẩu thành công' });
+  } catch (error: any) {
+    console.error('Lỗi đặt lại mật khẩu qua điện thoại:', error);
+    res.status(500).json({ success: false, message: 'Xác thực token thất bại hoặc lỗi server', error: error.message });
+  }
+};
+
+// Xác minh email
+export const verifyEmail = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã xác minh.' });
+    }
+
+    const record = await EmailVerificationToken.findOne({
+      token,
+      isUsed: false,
+      expiryTime: { $gt: new Date() }
+    });
+
+    if (!record) {
+      return res.status(400).json({ success: false, message: 'Liên kết xác minh không hợp lệ hoặc đã hết hạn.' });
+    }
+
+    // Nếu có thông tin đăng ký tạm thời (Trì hoãn tạo user - Option 2)
+    if (record.pendingUserData && record.pendingUserData.username) {
+      const { username, email, passwordHash, firstName, lastName, phoneNumber, roles } = record.pendingUserData;
+
+      // Kiểm tra trùng lặp lần cuối trước khi tạo tài khoản chính thức
+      const query: any[] = [{ username }];
+      if (email) {
+        query.push({ email });
+      }
+      const existingUser = await User.findOne({ $or: query });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: existingUser.email === email
+            ? 'Email này đã được sử dụng bởi một tài khoản khác.'
+            : 'Tên đăng nhập này đã được sử dụng.'
+        });
+      }
+
+      // Tạo và lưu tài khoản vào database
+      const newUser = new User({
+        username,
+        email,
+        passwordHash,
+        firstName: firstName || '',
+        lastName: lastName || '',
+        phoneNumber: phoneNumber || '',
+        roles: roles || ['Customer'],
+        status: 'Active'
+      });
+
+      try {
+        await newUser.save();
+      } catch (saveError: any) {
+        if (saveError.code === 11000) {
+          const alreadyCreated = await User.findOne({ username });
+          if (alreadyCreated && alreadyCreated.email === email) {
+            console.log(`User ${username} đã được tạo bởi một request xác minh song song.`);
+          } else {
+            throw saveError;
+          }
+        } else {
+          throw saveError;
+        }
+      }
+    } else if (record.userId) {
+      // Trường hợp cũ (Option 1) - kích hoạt user đã được lưu sẵn
+      const user = await User.findById(record.userId);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'Người dùng không tồn tại.' });
+      }
+
+      user.status = 'Active';
+      await user.save();
+    } else {
+      return res.status(400).json({ success: false, message: 'Dữ liệu xác minh không hợp lệ.' });
+    }
+
+    record.isUsed = true;
+    await record.save();
+
+    res.status(200).json({ success: true, message: 'Kích hoạt tài khoản thành công! Bạn có thể đăng nhập ngay bây giờ.' });
+  } catch (error: any) {
+    console.error('Lỗi xác minh email:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
+};
+
+// Kiểm tra trạng thái xác minh email của tài khoản
+export const checkVerificationStatus = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp địa chỉ email.' });
+    }
+
+    const user = await User.findOne({ email: (email as string).trim() });
+    if (user && user.status === 'Active') {
+      return res.status(200).json({ success: true, isVerified: true });
+    }
+
+    res.status(200).json({ success: true, isVerified: false });
+  } catch (error: any) {
+    console.error('Lỗi kiểm tra trạng thái xác minh:', error);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi kiểm tra trạng thái xác minh', error: error.message });
   }
 };

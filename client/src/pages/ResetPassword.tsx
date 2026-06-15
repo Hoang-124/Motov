@@ -7,6 +7,7 @@ export const ResetPassword = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
+  const firebaseToken = searchParams.get('firebaseToken') || '';
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -22,7 +23,7 @@ export const ResetPassword = () => {
     setError(null);
     setSuccess(null);
 
-    if (!token) {
+    if (!token && !firebaseToken) {
       setError('Token khôi phục mật khẩu không hợp lệ hoặc đã hết hạn.');
       return;
     }
@@ -40,15 +41,20 @@ export const ResetPassword = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      const endpoint = firebaseToken
+        ? `${API_BASE_URL}/auth/reset-password-phone`
+        : `${API_BASE_URL}/auth/reset-password`;
+
+      const body = firebaseToken
+        ? { idToken: firebaseToken, newPassword }
+        : { token, newPassword };
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          token,
-          newPassword,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -118,9 +124,9 @@ export const ResetPassword = () => {
             </p>
           </div>
 
-          {!token && (
+          {!token && !firebaseToken && (
             <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold text-center mb-6">
-              ⚠️ Không tìm thấy Token xác minh mật khẩu trong liên kết của bạn. Vui lòng kiểm tra lại email khôi phục.
+              ⚠️ Không tìm thấy Token xác minh mật khẩu trong liên kết của bạn. Vui lòng kiểm tra lại quy trình khôi phục.
             </div>
           )}
 
@@ -151,7 +157,7 @@ export const ResetPassword = () => {
               <input 
                 type="password" 
                 required
-                disabled={!token || !!success}
+                disabled={(!token && !firebaseToken) || !!success}
                 placeholder="Tối thiểu 6 ký tự"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -168,7 +174,7 @@ export const ResetPassword = () => {
               <input 
                 type="password" 
                 required
-                disabled={!token || !!success}
+                disabled={(!token && !firebaseToken) || !!success}
                 placeholder="Xác nhận mật khẩu mới"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -179,7 +185,7 @@ export const ResetPassword = () => {
             {/* Submit button */}
             <button 
               type="submit"
-              disabled={loading || !token || !!success}
+              disabled={loading || (!token && !firebaseToken) || !!success}
               className="w-full bg-neon text-dark font-bold py-3.5 mt-6 rounded-lg hover:bg-[#bbf000] focus:ring-4 focus:outline-none focus:ring-neon/30 transition-all duration-300 shadow-[0_0_15px_rgba(204,255,0,0.3)] hover:shadow-[0_0_20px_rgba(204,255,0,0.5)] flex items-center justify-center gap-2 group text-sm uppercase tracking-wider cursor-pointer disabled:opacity-50"
             >
               {loading ? (

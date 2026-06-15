@@ -46,6 +46,80 @@ export const AuthScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Forgot Password States
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotStage, setForgotStage] = useState<'phone' | 'otp' | 'reset'>('phone');
+  const [forgotPhone, setForgotPhone] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+
+  const handleSendOtp = () => {
+    const cleanPhone = forgotPhone.replace(/\s+/g, '');
+    if (!/^\d{9,11}$/.test(cleanPhone)) {
+      setError('Số điện thoại không hợp lệ. Vui lòng nhập từ 9-11 chữ số.');
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    // Simulate sending OTP (Mock Mode)
+    setTimeout(() => {
+      setLoading(false);
+      setForgotStage('otp');
+      Alert.alert('[MOCK MODE]', `Mã OTP thử nghiệm (123456) đã được gửi đến số ${cleanPhone}!`);
+    }, 1000);
+  };
+
+  const handleVerifyOtp = () => {
+    if (forgotOtp !== '123456') {
+      setError('Mã OTP không chính xác. Vui lòng nhập 123456.');
+      return;
+    }
+    setError(null);
+    setForgotStage('reset');
+  };
+
+  const handleResetPassword = async () => {
+    if (forgotNewPassword.length < 6) {
+      setError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setError('Xác nhận mật khẩu mới không trùng khớp.');
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const cleanPhone = forgotPhone.replace(/\s+/g, '');
+      const response = await fetch(`${API_BASE_URL}/auth/reset-password-phone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken: `mock-token-${cleanPhone}`,
+          newPassword: forgotNewPassword
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Đặt lại mật khẩu thất bại.');
+      }
+
+      Alert.alert('Thành Công 🎉', 'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.');
+      setShowForgotPassword(false);
+      setIsLogin(true);
+      setPassword(forgotNewPassword); // autofill password
+    } catch (err: any) {
+      setError(err.message || 'Đã xảy ra lỗi khi đặt lại mật khẩu.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (isLogin) {
       if (!email.trim() || !password.trim()) {
@@ -53,7 +127,7 @@ export const AuthScreen: React.FC = () => {
         return;
       }
     } else {
-      if (!name.trim() || !username.trim() || !password.trim() || !confirmPassword.trim()) {
+      if (!name.trim() || !username.trim() || !password.trim() || !confirmPassword.trim() || !email.trim()) {
         setError('Vui lòng điền đầy đủ các thông tin bắt buộc.');
         return;
       }
@@ -123,6 +197,14 @@ export const AuthScreen: React.FC = () => {
 
         if (!response.ok || !data.success) {
           throw new Error(data.message || 'Đăng ký tài khoản thất bại.');
+        }
+
+        if (data.needsVerification) {
+          Alert.alert('Xác Minh Email', data.message || 'Vui lòng kiểm tra email để kích hoạt tài khoản.');
+          setIsLogin(true);
+          setEmail(email.trim());
+          setPassword('');
+          return;
         }
 
         const u = data.user;
@@ -253,131 +335,282 @@ export const AuthScreen: React.FC = () => {
       style={styles.keyboardContainer}
     >
       <View style={styles.container}>
-        {/* Toggle Tab */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tabButton, isLogin && styles.tabButtonActive]}
-            onPress={() => {
-              setIsLogin(true);
-              setError(null);
-            }}
-          >
-            <Text style={[styles.tabText, isLogin && styles.tabTextActive]}>Đăng Nhập</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, !isLogin && styles.tabButtonActive]}
-            onPress={() => {
-              setIsLogin(false);
-              setError(null);
-            }}
-          >
-            <Text style={[styles.tabText, !isLogin && styles.tabTextActive]}>Đăng Ký</Text>
-          </TouchableOpacity>
-        </View>
+        {!showForgotPassword && (
+          /* Toggle Tab */
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tabButton, isLogin && styles.tabButtonActive]}
+              onPress={() => {
+                setIsLogin(true);
+                setError(null);
+              }}
+            >
+              <Text style={[styles.tabText, isLogin && styles.tabTextActive]}>Đăng Nhập</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, !isLogin && styles.tabButtonActive]}
+              onPress={() => {
+                setIsLogin(false);
+                setError(null);
+              }}
+            >
+              <Text style={[styles.tabText, !isLogin && styles.tabTextActive]}>Đăng Ký</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-        {/* Form Card */}
-        <View style={styles.formCard}>
-          <View style={styles.neonBar} />
-          
-          <Text style={styles.title}>
-            {isLogin ? 'Cổng Đăng Nhập' : 'Đăng Ký Thành Viên'}
-          </Text>
-          <Text style={styles.subtitle}>
-            {isLogin 
-              ? 'Đăng nhập vào hệ thống để tiếp tục' 
-              : 'Tạo tài khoản mới để trải nghiệm dịch vụ hoặc chia sẻ xe'}
-          </Text>
+        {showForgotPassword ? (
+          /* Forgot Password Card */
+          <View style={styles.formCard}>
+            <View style={styles.neonBar} />
+            
+            <Text style={styles.title}>
+              {forgotStage === 'phone' && 'Khôi phục mật khẩu'}
+              {forgotStage === 'otp' && 'Xác minh OTP'}
+              {forgotStage === 'reset' && 'Đặt lại mật khẩu'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {forgotStage === 'phone' && 'Nhập số điện thoại của bạn để nhận mã OTP'}
+              {forgotStage === 'otp' && 'Nhập mã OTP 6 số đã được gửi tới số điện thoại'}
+              {forgotStage === 'reset' && 'Thiết lập mật khẩu mới cho tài khoản của bạn'}
+            </Text>
 
-          {error && (
-            <View style={styles.errorCard}>
-              <Feather name="alert-triangle" size={14} color={COLORS.danger} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
-          <View style={styles.inputsContainer}>
-            {/* Full Name for Register */}
-            {!isLogin && (
-              <View style={styles.inputWrapper}>
-                <Text style={styles.label}>Họ và tên</Text>
-                <View style={styles.inputContainer}>
-                  <Feather name="user" size={16} color={COLORS.accent} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Nhập họ và tên"
-                    placeholderTextColor="#555"
-                    value={name}
-                    onChangeText={setName}
-                  />
-                </View>
+            {error && (
+              <View style={styles.errorCard}>
+                <Feather name="alert-triangle" size={14} color={COLORS.danger} />
+                <Text style={styles.errorText}>{error}</Text>
               </View>
             )}
 
-            {/* Tên đăng nhập (Sign Up only) */}
-            {!isLogin && (
+            <View style={styles.inputsContainer}>
+              {forgotStage === 'phone' && (
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.label}>Số điện thoại</Text>
+                  <View style={styles.inputContainer}>
+                    <Feather name="phone" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, styles.monoText]}
+                      placeholder="Ví dụ: 0912345678"
+                      placeholderTextColor="#555"
+                      keyboardType="phone-pad"
+                      value={forgotPhone}
+                      onChangeText={setForgotPhone}
+                    />
+                  </View>
+                  <Text style={{ fontSize: 10, color: COLORS.accent, opacity: 0.6, fontStyle: 'italic', marginTop: 4 }}>
+                    💡 Hệ thống sẽ chạy ở chế độ giả lập (Mock Mode).
+                  </Text>
+                </View>
+              )}
+
+              {forgotStage === 'otp' && (
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.label}>Mã OTP xác thực</Text>
+                  <View style={styles.inputContainer}>
+                    <Feather name="shield" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, styles.monoText, { letterSpacing: 5, textAlign: 'center', fontWeight: 'bold' }]}
+                      placeholder="******"
+                      placeholderTextColor="#555"
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      value={forgotOtp}
+                      onChangeText={(val) => setForgotOtp(val.replace(/\D/g, ''))}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {forgotStage === 'reset' && (
+                <>
+                  <View style={styles.inputWrapper}>
+                    <Text style={styles.label}>Mật khẩu mới</Text>
+                    <View style={styles.inputContainer}>
+                      <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                      <TextInput
+                        style={[styles.input, styles.monoText]}
+                        placeholder="Tối thiểu 6 ký tự"
+                        placeholderTextColor="#555"
+                        secureTextEntry
+                        value={forgotNewPassword}
+                        onChangeText={setForgotNewPassword}
+                        autoCapitalize="none"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputWrapper}>
+                    <Text style={styles.label}>Xác nhận mật khẩu mới</Text>
+                    <View style={styles.inputContainer}>
+                      <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                      <TextInput
+                        style={[styles.input, styles.monoText]}
+                        placeholder="Nhập lại mật khẩu mới"
+                        placeholderTextColor="#555"
+                        secureTextEntry
+                        value={forgotConfirmPassword}
+                        onChangeText={setForgotConfirmPassword}
+                        autoCapitalize="none"
+                      />
+                    </View>
+                  </View>
+                </>
+              )}
+
+              <TouchableOpacity
+                style={[styles.submitButton, loading && styles.disabledButton]}
+                onPress={() => {
+                  if (forgotStage === 'phone') handleSendOtp();
+                  else if (forgotStage === 'otp') handleVerifyOtp();
+                  else if (forgotStage === 'reset') handleResetPassword();
+                }}
+                disabled={loading}
+              >
+                {loading ? (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator size="small" color={COLORS.accentDark} />
+                    <Text style={styles.submitButtonText}> ĐANG XỬ LÝ...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.submitButtonText}>
+                    {forgotStage === 'phone' && 'GỬI MÃ OTP XÁC NHẬN'}
+                    {forgotStage === 'otp' && 'XÁC NHẬN OTP'}
+                    {forgotStage === 'reset' && 'THIẾT LẬP MẬT KHẨU MỚI'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {forgotStage === 'otp' && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setForgotStage('phone');
+                    setError(null);
+                  }}
+                  disabled={loading}
+                  style={{ marginTop: 10, alignItems: 'center' }}
+                >
+                  <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 'bold' }}>
+                    NHẬP LẠI SỐ ĐIỆN THOẠI
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <View style={styles.dividerContainer}>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <TouchableOpacity
+                style={styles.googleButton}
+                onPress={() => {
+                  setShowForgotPassword(false);
+                  setError(null);
+                }}
+                disabled={loading}
+              >
+                <Feather name="arrow-left" size={14} color={COLORS.textSecondary} />
+                <Text style={styles.googleButtonText}>Quay lại đăng nhập</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          /* Form Card */
+          <View style={styles.formCard}>
+            <View style={styles.neonBar} />
+            
+            <Text style={styles.title}>
+              {isLogin ? 'Cổng Đăng Nhập' : 'Đăng Ký Thành Viên'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {isLogin 
+                ? 'Đăng nhập vào hệ thống để tiếp tục' 
+                : 'Tạo tài khoản mới để trải nghiệm dịch vụ hoặc chia sẻ xe'}
+            </Text>
+
+            {error && (
+              <View style={styles.errorCard}>
+                <Feather name="alert-triangle" size={14} color={COLORS.danger} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            <View style={styles.inputsContainer}>
+              {/* Full Name for Register */}
+              {!isLogin && (
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.label}>Họ và tên</Text>
+                  <View style={styles.inputContainer}>
+                    <Feather name="user" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Nhập họ và tên"
+                      placeholderTextColor="#555"
+                      value={name}
+                      onChangeText={setName}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* Tên đăng nhập (Sign Up only) */}
+              {!isLogin && (
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.label}>Tên đăng nhập</Text>
+                  <View style={styles.inputContainer}>
+                    <Feather name="key" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, styles.monoText]}
+                      placeholder="Nhập tên đăng nhập"
+                      placeholderTextColor="#555"
+                      autoCapitalize="none"
+                      value={username}
+                      onChangeText={setUsername}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* Email / Username */}
               <View style={styles.inputWrapper}>
-                <Text style={styles.label}>Tên đăng nhập</Text>
+                <Text style={styles.label}>
+                  {isLogin ? 'Tên đăng nhập hoặc Email' : 'Địa chỉ Email'}
+                </Text>
                 <View style={styles.inputContainer}>
-                  <Feather name="key" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                  <Feather name="mail" size={16} color={COLORS.accent} style={styles.inputIcon} />
                   <TextInput
                     style={[styles.input, styles.monoText]}
-                    placeholder="Nhập tên đăng nhập"
+                    placeholder={isLogin ? "Nhập tên đăng nhập hoặc email" : "name@example.com"}
                     placeholderTextColor="#555"
                     autoCapitalize="none"
-                    value={username}
-                    onChangeText={setUsername}
+                    keyboardType={isLogin ? 'default' : 'email-address'}
+                    value={email}
+                    onChangeText={setEmail}
                   />
                 </View>
-              </View>
-            )}
-
-            {/* Email / Username */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.label}>
-                {isLogin ? 'Tên đăng nhập hoặc Email' : 'Địa chỉ Email (Không bắt buộc)'}
-              </Text>
-              <View style={styles.inputContainer}>
-                <Feather name="mail" size={16} color={COLORS.accent} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, styles.monoText]}
-                  placeholder={isLogin ? "Nhập tên đăng nhập hoặc email" : "name@example.com (Nếu có)"}
-                  placeholderTextColor="#555"
-                  autoCapitalize="none"
-                  keyboardType={isLogin ? 'default' : 'email-address'}
-                  value={email}
-                  onChangeText={setEmail}
-                />
-              </View>
-            </View>
-
-            {/* Password */}
-            <View style={styles.inputWrapper}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Mật khẩu</Text>
-                {isLogin && (
-                  <TouchableOpacity>
-                    <Text style={styles.forgotPassword}>Quên?</Text>
-                  </TouchableOpacity>
+                {!isLogin && (
+                  <Text style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4, fontStyle: 'italic', lineHeight: 14 }}>
+                    * Nếu dùng email Google thì vui lòng chọn phiên Đăng Nhập (Đăng nhập với Google). Còn nếu dùng email loại khác thì vui lòng điền ở đây.
+                  </Text>
                 )}
               </View>
-              <View style={styles.inputContainer}>
-                <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, styles.monoText]}
-                  placeholder="••••••••"
-                  placeholderTextColor="#555"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  value={password}
-                  onChangeText={setPassword}
-                />
-              </View>
-            </View>
 
-            {/* Confirm Password for Register */}
-            {!isLogin && (
+              {/* Password */}
               <View style={styles.inputWrapper}>
-                <Text style={styles.label}>Xác nhận mật khẩu</Text>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>Mật khẩu</Text>
+                  {isLogin && (
+                    <TouchableOpacity onPress={() => {
+                      setForgotStage('phone');
+                      setForgotPhone('');
+                      setForgotOtp('');
+                      setForgotNewPassword('');
+                      setForgotConfirmPassword('');
+                      setError(null);
+                      setShowForgotPassword(true);
+                    }}>
+                      <Text style={styles.forgotPassword}>Quên?</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 <View style={styles.inputContainer}>
                   <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
                   <TextInput
@@ -386,52 +619,74 @@ export const AuthScreen: React.FC = () => {
                     placeholderTextColor="#555"
                     secureTextEntry
                     autoCapitalize="none"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
+                    value={password}
+                    onChangeText={setPassword}
                   />
                 </View>
               </View>
-            )}
 
-            {/* Submit Button */}
-            <TouchableOpacity
-              style={[styles.submitButton, loading && styles.disabledButton]}
-              onPress={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? (
-                <View style={styles.loadingRow}>
-                  <ActivityIndicator size="small" color={COLORS.accentDark} />
-                  <Text style={styles.submitButtonText}> ĐANG XỬ LÝ...</Text>
+              {/* Confirm Password for Register */}
+              {!isLogin && (
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.label}>Xác nhận mật khẩu</Text>
+                  <View style={styles.inputContainer}>
+                    <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, styles.monoText]}
+                      placeholder="••••••••"
+                      placeholderTextColor="#555"
+                      secureTextEntry
+                      autoCapitalize="none"
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                    />
+                  </View>
                 </View>
-              ) : (
-                <Text style={styles.submitButtonText}>
-                  {isLogin ? 'XÁC NHẬN ĐĂNG NHẬP' : 'TẠO TÀI KHOẢN'}
-                </Text>
               )}
-            </TouchableOpacity>
 
-            {/* Divider */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Hoặc</Text>
-              <View style={styles.dividerLine} />
+              {/* Submit Button */}
+              <TouchableOpacity
+                style={[styles.submitButton, loading && styles.disabledButton]}
+                onPress={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator size="small" color={COLORS.accentDark} />
+                    <Text style={styles.submitButtonText}> ĐANG XỬ LÝ...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.submitButtonText}>
+                    {isLogin ? 'XÁC NHẬN ĐĂNG NHẬP' : 'TẠO TÀI KHOẢN'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Divider and Google Sign In */}
+              {isLogin && (
+                <>
+                  <View style={styles.dividerContainer}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>Hoặc</Text>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.googleButton}
+                    onPress={handleGoogleSignIn}
+                    disabled={loading}
+                  >
+                    <View style={styles.googleIconContainer}>
+                      <Feather name="chrome" size={16} color="#fff" />
+                    </View>
+                    <Text style={styles.googleButtonText}>Đăng nhập với Google</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
             </View>
-
-            {/* Google Sign In */}
-            <TouchableOpacity
-              style={styles.googleButton}
-              onPress={handleGoogleSignIn}
-              disabled={loading}
-            >
-              <View style={styles.googleIconContainer}>
-                <Feather name="chrome" size={16} color="#fff" />
-              </View>
-              <Text style={styles.googleButtonText}>Đăng nhập với Google</Text>
-            </TouchableOpacity>
-
           </View>
-        </View>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
