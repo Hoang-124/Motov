@@ -193,6 +193,7 @@ export const AdminBookings = () => {
     }
   };
 
+  // Lọc và Tìm kiếm đơn hàng
   const filteredBookings = bookings.filter(b => {
     const matchesStatus = filterStatus === 'All' || b.status === filterStatus;
     const matchesSearch = 
@@ -202,6 +203,7 @@ export const AdminBookings = () => {
     return matchesStatus && matchesSearch;
   });
 
+  // Tìm kiếm yêu cầu chủ xe
   const filteredOwnerRequests = ownerRequests.filter(r => 
     r.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -212,6 +214,7 @@ export const AdminBookings = () => {
     <div className="pt-28 pb-20 min-h-screen bg-black text-white">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
         
+        {/* Top Header Actions */}
         <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-display font-black text-neon uppercase tracking-tight text-glow flex items-center gap-3">
@@ -231,6 +234,7 @@ export const AdminBookings = () => {
           </button>
         </div>
 
+        {/* Navigation Tabs */}
         <div className="flex border-b border-gray-800 mb-6 gap-6">
           <button
             onClick={() => {
@@ -258,11 +262,6 @@ export const AdminBookings = () => {
           >
             🤝 Duyệt chủ xe mới ({ownerRequests.length})
           </button>
-                </tr>
-              ))}
-            </tbody>
-          </table>
->>>>>>> origin/dangphuongkhoinguyen
         </div>
 
         {error && (
@@ -401,14 +400,17 @@ export const AdminBookings = () => {
                             </>
                           )}
 
-                          {/* Nhận xe Ongoing */}
+                          {/* Nhận xe Ongoing (Thu hồi xe qua Modal) */}
                           {booking.status === 'Ongoing' && (
                             <button
-                              onClick={() => handleUpdateStatus(booking.id, 'Completed')}
+                              onClick={() => {
+                                setReturningBookingId(booking.id);
+                                setReturningPickupTime(booking.pickupDateTime);
+                              }}
                               className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                               title="Xác nhận khách trả xe"
                             >
-                              <CheckSquare size={12} /> Thu hồi xe
+                              <Key size={12} /> Thu hồi xe
                             </button>
                           )}
 
