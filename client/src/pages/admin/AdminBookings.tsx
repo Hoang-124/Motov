@@ -13,11 +13,13 @@ import {
   Phone, 
   User, 
   CreditCard, 
-  UserCheck 
+  UserCheck,
+  Key
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { bookingService, Booking } from '../../services/bookingService.js';
+import { bookingService, Booking } from '../../services/bookingService';
 import axios from 'axios';
+import { ReturnMotorbikeModal } from '../../components/ReturnMotorbikeModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -40,6 +42,8 @@ export const AdminBookings = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [returningBookingId, setReturningBookingId] = useState<string | null>(null);
+  const [returningPickupTime, setReturningPickupTime] = useState<string | undefined>(undefined);
 
   const getAuthHeaders = () => {
     let token = localStorage.getItem('token');
@@ -167,6 +171,11 @@ export const AdminBookings = () => {
     }
   };
 
+  const handleReturnSuccess = () => {
+    loadBookings();
+    setReturningBookingId(null);
+  };
+
   const formatDate = (isoString: string) => {
     const d = new Date(isoString);
     if (isNaN(d.getTime())) return 'N/A';
@@ -184,7 +193,6 @@ export const AdminBookings = () => {
     }
   };
 
-  // Lọc và Tìm kiếm đơn hàng
   const filteredBookings = bookings.filter(b => {
     const matchesStatus = filterStatus === 'All' || b.status === filterStatus;
     const matchesSearch = 
@@ -194,7 +202,6 @@ export const AdminBookings = () => {
     return matchesStatus && matchesSearch;
   });
 
-  // Tìm kiếm yêu cầu chủ xe
   const filteredOwnerRequests = ownerRequests.filter(r => 
     r.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -205,7 +212,6 @@ export const AdminBookings = () => {
     <div className="pt-28 pb-20 min-h-screen bg-black text-white">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
         
-        {/* Top Header Actions */}
         <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-display font-black text-neon uppercase tracking-tight text-glow flex items-center gap-3">
@@ -225,7 +231,6 @@ export const AdminBookings = () => {
           </button>
         </div>
 
-        {/* Navigation Tabs */}
         <div className="flex border-b border-gray-800 mb-6 gap-6">
           <button
             onClick={() => {
@@ -253,6 +258,11 @@ export const AdminBookings = () => {
           >
             🤝 Duyệt chủ xe mới ({ownerRequests.length})
           </button>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+>>>>>>> origin/dangphuongkhoinguyen
         </div>
 
         {error && (
@@ -506,6 +516,14 @@ export const AdminBookings = () => {
         )}
 
       </div>
+
+      <ReturnMotorbikeModal
+        isOpen={!!returningBookingId}
+        onClose={() => setReturningBookingId(null)}
+        bookingId={returningBookingId}
+        pickupDateTime={returningPickupTime}
+        onSuccess={handleReturnSuccess}
+      />
     </div>
   );
 };
