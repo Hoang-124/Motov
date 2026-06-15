@@ -13,43 +13,118 @@ import { COLORS } from '../../../theme/colors';
 interface BookingCardProps {
   booking: Booking;
   handleCancelBooking: (id: string) => void;
+  onOpenTracking: (booking: Booking) => void;
+  onOpenFeedback: (id: string) => void;
 }
 
-export const BookingCard: React.FC<BookingCardProps> = ({ booking, handleCancelBooking }) => {
+export const BookingCard: React.FC<BookingCardProps> = ({
+  booking,
+  handleCancelBooking,
+  onOpenTracking,
+  onOpenFeedback,
+}) => {
   const isPending = booking.status === 'Chờ duyệt';
+  const isOngoing = booking.status === 'Đang thuê';
+  const isCompleted = booking.status === 'Đã trả';
+  const isReviewed = booking.status === 'Đã đánh giá';
+  const isCancelled = booking.status === 'Đã hủy';
+
+  const basePriceNum = parseInt(booking.price.replace(/\./g, ''), 10) || 100000;
+  const rentalDays = booking.rentalDays || 2;
+  const calculatedTotal = booking.totalAmount || (basePriceNum * rentalDays);
+
   return (
     <View style={styles.bookingCard}>
       <Image source={{ uri: booking.image }} style={styles.bookingImage} />
       <View style={styles.bookingDetails}>
         <View style={styles.bookingHeader}>
-          <Text style={styles.bookingCode}>{booking.id}</Text>
+          <Text style={styles.bookingCode}>Mã: #{booking.id}</Text>
           <View style={[
             styles.statusBadge,
-            isPending ? styles.statusBadgePending : styles.statusBadgeApproved
+            isPending && styles.statusBadgePending,
+            isOngoing && styles.statusBadgeOngoing,
+            isCompleted && styles.statusBadgeCompleted,
+            isReviewed && styles.statusBadgeReviewed,
+            isCancelled && styles.statusBadgeCancelled,
           ]}>
             <Text style={[
               styles.statusText,
-              isPending ? styles.statusTextPending : styles.statusTextApproved
-            ]}>{booking.status}</Text>
+              isPending && { color: COLORS.warning },
+              isOngoing && { color: COLORS.approved },
+              isCompleted && { color: '#3b82f6' },
+              isReviewed && { color: COLORS.accent },
+              isCancelled && { color: COLORS.danger },
+            ]}>{booking.statusLabel || booking.status}</Text>
           </View>
         </View>
+
         <Text style={styles.bookingName}>{booking.bikeName}</Text>
-        <View style={styles.bookingRow}>
-          <Feather name="calendar" size={14} color="#888" style={styles.bookingRowIcon} />
-          <Text style={styles.bookingText}>Ngày: {booking.date}</Text>
-        </View>
-        <View style={styles.bookingRow}>
-          <Feather name="map-pin" size={14} color="#888" style={styles.bookingRowIcon} />
-          <Text style={styles.bookingText}>Nơi nhận: {booking.location}</Text>
-        </View>
-        <Text style={styles.bookingPrice}>Tổng cộng: {booking.price} VNĐ/ngày</Text>
         
-        <TouchableOpacity 
-          style={styles.cancelBtn}
-          onPress={() => handleCancelBooking(booking.id)}
-        >
-          <Text style={styles.cancelBtnText}>Hủy Đơn</Text>
-        </TouchableOpacity>
+        <View style={styles.bookingRow}>
+          <Feather name="calendar" size={13} color="#888" style={styles.bookingRowIcon} />
+          <Text style={styles.bookingText}>Ngày thuê: {booking.date}</Text>
+        </View>
+        
+        <View style={styles.bookingRow}>
+          <Feather name="map-pin" size={13} color="#888" style={styles.bookingRowIcon} />
+          <Text style={styles.bookingText}>Điểm nhận: {booking.location}</Text>
+        </View>
+
+        {booking.surcharges && booking.surcharges.length > 0 && (
+          <View style={styles.surchargeBox}>
+            <Text style={styles.surchargeTitle}>Phụ thu phạt trễ hạn:</Text>
+            {booking.surcharges.map((s, idx) => (
+              <Text key={idx} style={styles.surchargeItem}>
+                ⚠️ {s.surchargeType}: +{s.amount.toLocaleString('vi-VN')} VNĐ
+              </Text>
+            ))}
+          </View>
+        )}
+
+        <Text style={styles.bookingPrice}>
+          Tổng thanh toán: {calculatedTotal.toLocaleString('vi-VN')} VNĐ
+        </Text>
+        
+        {/* Actions Button Grid */}
+        <View style={styles.actionsContainer}>
+          {/* Tracking Button */}
+          <TouchableOpacity 
+            style={styles.trackingBtn}
+            onPress={() => onOpenTracking(booking)}
+          >
+            <Feather name="map" size={12} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={styles.trackingBtnText}>Xem lịch trình</Text>
+          </TouchableOpacity>
+
+          {/* Feedback/Cancel/Status Button */}
+          {isPending ? (
+            <TouchableOpacity 
+              style={styles.cancelBtn}
+              onPress={() => handleCancelBooking(booking.id)}
+            >
+              <Text style={styles.cancelBtnText}>Yêu cầu hủy</Text>
+            </TouchableOpacity>
+          ) : isCompleted ? (
+            <TouchableOpacity 
+              style={styles.feedbackBtn}
+              onPress={() => onOpenFeedback(booking.id)}
+            >
+              <Feather name="star" size={12} color={COLORS.accentDark} style={{ marginRight: 6 }} />
+              <Text style={styles.feedbackBtnText}>Đánh giá xe</Text>
+            </TouchableOpacity>
+          ) : isReviewed ? (
+            <View style={styles.reviewedLabel}>
+              <Feather name="check" size={12} color={COLORS.accent} style={{ marginRight: 4 }} />
+              <Text style={styles.reviewedLabelText}>Đã đánh giá</Text>
+            </View>
+          ) : (
+            <View style={styles.lockedLabel}>
+              <Text style={styles.lockedLabelText}>
+                {isCancelled ? 'Đơn đã đóng' : 'Khóa chỉnh sửa'}
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -66,7 +141,7 @@ const styles = StyleSheet.create({
   },
   bookingImage: {
     width: '100%',
-    height: 130,
+    height: 140,
     backgroundColor: COLORS.border,
   },
   bookingDetails: {
@@ -76,43 +151,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   bookingCode: {
     color: COLORS.textMuted,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
   },
   statusBadge: {
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 12,
+    borderWidth: 1,
   },
   statusBadgePending: {
-    backgroundColor: COLORS.pendingBg,
-    borderWidth: 1,
-    borderColor: COLORS.pendingBorder,
+    backgroundColor: COLORS.warningBg,
+    borderColor: COLORS.warningBorder,
   },
-  statusBadgeApproved: {
+  statusBadgeOngoing: {
     backgroundColor: COLORS.approvedBg,
-    borderWidth: 1,
     borderColor: COLORS.approvedBorder,
+  },
+  statusBadgeCompleted: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  statusBadgeReviewed: {
+    backgroundColor: 'rgba(190, 242, 100, 0.1)',
+    borderColor: 'rgba(190, 242, 100, 0.3)',
+  },
+  statusBadgeCancelled: {
+    backgroundColor: COLORS.dangerBg,
+    borderColor: COLORS.dangerBorder,
   },
   statusText: {
     fontSize: 10,
     fontWeight: 'bold',
   },
-  statusTextPending: {
-    color: COLORS.pending,
-  },
-  statusTextApproved: {
-    color: COLORS.approved,
-  },
   bookingName: {
     color: COLORS.text,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   bookingRow: {
     flexDirection: 'row',
@@ -124,25 +204,110 @@ const styles = StyleSheet.create({
   },
   bookingText: {
     color: COLORS.textSecondary,
-    fontSize: 13,
+    fontSize: 12,
+  },
+  surchargeBox: {
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+    borderWidth: 1,
+    borderColor: COLORS.dangerBorder,
+    borderRadius: 8,
+    padding: 8,
+    marginVertical: 6,
+  },
+  surchargeTitle: {
+    color: COLORS.danger,
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  surchargeItem: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
   },
   bookingPrice: {
     color: COLORS.accent,
     fontSize: 14,
     fontWeight: 'bold',
-    marginVertical: 8,
+    marginVertical: 10,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: 12,
+  },
+  trackingBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trackingBtnText: {
+    color: COLORS.text,
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   cancelBtn: {
+    flex: 1.2,
     borderWidth: 1,
     borderColor: COLORS.danger,
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
   },
   cancelBtnText: {
     color: COLORS.danger,
     fontWeight: 'bold',
+    fontSize: 12,
+  },
+  feedbackBtn: {
+    flex: 1.2,
+    backgroundColor: COLORS.accent,
+    borderRadius: 8,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feedbackBtnText: {
+    color: COLORS.accentDark,
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  reviewedLabel: {
+    flex: 1.2,
+    backgroundColor: 'rgba(190, 242, 100, 0.1)',
+    borderRadius: 8,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewedLabelText: {
+    color: COLORS.accent,
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  lockedLabel: {
+    flex: 1.2,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockedLabelText: {
+    color: COLORS.textMuted,
+    fontWeight: '500',
     fontSize: 12,
   },
 });

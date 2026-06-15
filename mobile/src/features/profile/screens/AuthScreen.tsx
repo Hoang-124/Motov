@@ -9,6 +9,9 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ImageBackground,
+  Linking,
+  ScrollView,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
@@ -42,9 +45,35 @@ export const AuthScreen: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
 
+  // Password visibility
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Verification states
+  const [needsVerificationScreen, setNeedsVerificationScreen] = useState(false);
+  const [verificationMailUrl, setVerificationMailUrl] = useState<string | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+
   // Loading & Error states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Field validation states (sync with Web Auth.tsx)
+  const [errors, setErrors] = useState<{
+    name?: string;
+    username?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
+
+  const [touched, setTouched] = useState<{
+    name?: boolean;
+    username?: boolean;
+    email?: boolean;
+    password?: boolean;
+    confirmPassword?: boolean;
+  }>({});
 
   // Forgot Password States
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -53,6 +82,284 @@ export const AuthScreen: React.FC = () => {
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+
+  // Password strength logic (sync with Web Auth.tsx)
+  const getPasswordStrength = (pass: string) => {
+    if (!pass) return 0;
+    let score = 0;
+    if (pass.length >= 8) score++;
+    if (/[a-z]/.test(pass) && /[A-Z]/.test(pass)) score++;
+    if (/[0-9]/.test(pass)) score++;
+    if (/[\W_]/.test(pass)) score++;
+    return score;
+  };
+
+  const passwordStrength = getPasswordStrength(password);
+
+  // Validate fields in real-time (sync with Web Auth.tsx)
+  const validateField = (fieldName: string, value: string, currentPassword?: string) => {
+    let errorMsg = '';
+    if (!isLogin) {
+      if (fieldName === 'name') {
+        if (!value.trim()) {
+          errorMsg = 'Họ và tên là bắt buộc.';
+        } else {
+          const nameRegex = /[0-9!@#$%^&*(),.?":{}|<>]/;
+          if (nameRegex.test(value)) {
+            errorMsg = 'Họ và tên không được chứa số hoặc ký tự đặc biệt.';
+          }
+        }
+      }
+
+      if (fieldName === 'username') {
+        if (!value.trim()) {
+          errorMsg = 'Tên đăng nhập là bắt buộc.';
+        } else if (value.length < 3 || value.length > 30) {
+          errorMsg = 'Tên đăng nhập phải dài từ 3 đến 30 ký tự.';
+        } else {
+          const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+          if (!usernameRegex.test(value)) {
+            errorMsg = 'Tên đăng nhập chỉ được chứa chữ cái không dấu, số, "_" hoặc "-".';
+          }
+        }
+      }
+
+      if (fieldName === 'email') {
+        if (!value.trim()) {
+          errorMsg = 'Địa chỉ email là bắt buộc.';
+        } else {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value.trim())) {
+            errorMsg = 'Địa chỉ email không đúng định dạng.';
+          }
+        }
+      }
+
+      if (fieldName === 'password') {
+        if (!value) {
+          errorMsg = 'Mật khẩu là bắt buộc.';
+        } else if (value.length < 8) {
+          errorMsg = 'Mật khẩu phải dài ít nhất 8 ký tự.';
+        } else {
+          const hasLowercase = /[a-z]/.test(value);
+          const hasUppercase = /[A-Z]/.test(value);
+          const hasDigit = /[0-9]/.test(value);
+          const hasSpecial = /[\W_]/.test(value);
+          if (!hasLowercase || !hasUppercase || !hasDigit || !hasSpecial) {
+            errorMsg = 'Mật khẩu phải gồm chữ thường, chữ hoa, số và ký tự đặc biệt.';
+          }
+        }
+      }
+
+      if (fieldName === 'confirmPassword') {
+        const passwordToCompare = currentPassword !== undefined ? currentPassword : password;
+        if (!value) {
+          errorMsg = 'Vui lòng xác nhận mật khẩu.';
+        } else if (value !== passwordToCompare) {
+          errorMsg = 'Mật khẩu xác nhận không trùng khớp.';
+        }
+      }
+    } else {
+      if (fieldName === 'email') {
+        if (!value.trim()) {
+          errorMsg = 'Vui lòng nhập tên đăng nhập hoặc email.';
+        } else if (value.includes('@')) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value.trim())) {
+            errorMsg = 'Email không đúng định dạng.';
+          }
+        } else {
+          const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+          if (value.length < 3 || value.length > 30) {
+            errorMsg = 'Tên đăng nhập phải dài từ 3 đến 30 ký tự.';
+          } else if (!usernameRegex.test(value)) {
+            errorMsg = 'Tên đăng nhập chỉ chứa chữ cái không dấu, số, "_" hoặc "-".';
+          }
+        }
+      }
+      if (fieldName === 'password') {
+        if (!value) {
+          errorMsg = 'Vui lòng nhập mật khẩu.';
+        }
+      }
+    }
+
+    setErrors(prev => ({ ...prev, [fieldName]: errorMsg || undefined }));
+  };
+
+  const handleBlur = (fieldName: string) => {
+    setTouched(prev => ({ ...prev, [fieldName]: true }));
+    let val = '';
+    if (fieldName === 'name') val = name;
+    if (fieldName === 'username') val = username;
+    if (fieldName === 'email') val = email;
+    if (fieldName === 'password') val = password;
+    if (fieldName === 'confirmPassword') val = confirmPassword;
+    validateField(fieldName, val);
+  };
+
+  const handleFieldChange = (fieldName: string, value: string) => {
+    if (fieldName === 'name') setName(value);
+    if (fieldName === 'username') setUsername(value);
+    if (fieldName === 'email') setEmail(value);
+    if (fieldName === 'password') {
+      setPassword(value);
+      if (touched.confirmPassword) {
+        validateField('confirmPassword', confirmPassword, value);
+      }
+    }
+    if (fieldName === 'confirmPassword') setConfirmPassword(value);
+
+    if (touched[fieldName as keyof typeof touched]) {
+      validateField(fieldName, value, fieldName === 'password' ? value : password);
+    }
+  };
+
+  const validateForm = () => {
+    const newTouched = {
+      name: true,
+      username: true,
+      email: true,
+      password: true,
+      confirmPassword: true
+    };
+    setTouched(newTouched);
+
+    let isValid = true;
+    const errorsList: any = {};
+
+    if (!isLogin) {
+      if (!name.trim()) {
+        errorsList.name = 'Họ và tên là bắt buộc.';
+        isValid = false;
+      } else if (/[0-9!@#$%^&*(),.?":{}|<>]/.test(name)) {
+        errorsList.name = 'Họ và tên không được chứa số hoặc ký tự đặc biệt.';
+        isValid = false;
+      }
+
+      if (!username.trim()) {
+        errorsList.username = 'Tên đăng nhập là bắt buộc.';
+        isValid = false;
+      } else if (username.length < 3 || username.length > 30) {
+        errorsList.username = 'Tên đăng nhập phải dài từ 3 đến 30 ký tự.';
+        isValid = false;
+      } else if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+        errorsList.username = 'Tên đăng nhập chỉ được chứa chữ cái không dấu, số, "_" hoặc "-".';
+        isValid = false;
+      }
+
+      if (!email.trim()) {
+        errorsList.email = 'Địa chỉ email là bắt buộc.';
+        isValid = false;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        errorsList.email = 'Địa chỉ email không đúng định dạng.';
+        isValid = false;
+      }
+
+      if (!password) {
+        errorsList.password = 'Mật khẩu là bắt buộc.';
+        isValid = false;
+      } else if (password.length < 8) {
+        errorsList.password = 'Mật khẩu phải dài ít nhất 8 ký tự.';
+        isValid = false;
+      } else {
+        const hasLowercase = /[a-z]/.test(password);
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasDigit = /[0-9]/.test(password);
+        const hasSpecial = /[\W_]/.test(password);
+        if (!hasLowercase || !hasUppercase || !hasDigit || !hasSpecial) {
+          errorsList.password = 'Mật khẩu phải gồm chữ thường, chữ hoa, số và ký tự đặc biệt.';
+          isValid = false;
+        }
+      }
+
+      if (!confirmPassword) {
+        errorsList.confirmPassword = 'Vui lòng xác nhận mật khẩu.';
+        isValid = false;
+      } else if (confirmPassword !== password) {
+        errorsList.confirmPassword = 'Mật khẩu xác nhận không trùng khớp.';
+        isValid = false;
+      }
+    } else {
+      if (!email.trim()) {
+        errorsList.email = 'Vui lòng nhập tên đăng nhập hoặc email.';
+        isValid = false;
+      } else if (email.includes('@')) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+          errorsList.email = 'Email không đúng định dạng.';
+          isValid = false;
+        }
+      } else {
+        const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+        if (email.length < 3 || email.length > 30) {
+          errorsList.email = 'Tên đăng nhập phải dài từ 3 đến 30 ký tự.';
+          isValid = false;
+        } else if (!usernameRegex.test(email)) {
+          errorsList.email = 'Tên đăng nhập chỉ chứa chữ cái không dấu, số, "_" hoặc "-".';
+          isValid = false;
+        }
+      }
+
+      if (!password) {
+        errorsList.password = 'Vui lòng nhập mật khẩu.';
+        isValid = false;
+      }
+    }
+
+    setErrors(errorsList);
+    return isValid;
+  };
+
+  // Check verification status via API
+  const checkVerification = async (isManual = false) => {
+    if (!email) return false;
+    if (isManual) setCheckingStatus(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/check-verification-status?email=${encodeURIComponent(email.trim())}`);
+      const data = await response.json();
+
+      if (response.ok && data.success && data.isVerified) {
+        Alert.alert('Xác Thực Thành Công 🎉', 'Kích hoạt tài khoản thành công! Bạn có thể đăng nhập ngay bây giờ.');
+        setNeedsVerificationScreen(false);
+        setIsLogin(true);
+        setPassword('');
+        setConfirmPassword('');
+        setError(null);
+        return true;
+      } else if (isManual && data.success && !data.isVerified) {
+        setError('Tài khoản chưa được kích hoạt. Vui lòng click link kích hoạt trong hòm thư của bạn.');
+        setTimeout(() => setError(null), 3000);
+      }
+    } catch (err) {
+      console.error('Error checking verification status:', err);
+    } finally {
+      if (isManual) setCheckingStatus(false);
+    }
+    return false;
+  };
+
+  // Background verification checker
+  useEffect(() => {
+    let intervalId: any;
+
+    if (needsVerificationScreen && email) {
+      checkVerification(false);
+
+      intervalId = setInterval(async () => {
+        const isVerified = await checkVerification(false);
+        if (isVerified && intervalId) {
+          clearInterval(intervalId);
+        }
+      }, 3000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [needsVerificationScreen, email]);
 
   const handleSendOtp = () => {
     const cleanPhone = forgotPhone.replace(/\s+/g, '');
@@ -121,20 +428,9 @@ export const AuthScreen: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (isLogin) {
-      if (!email.trim() || !password.trim()) {
-        setError('Vui lòng điền đầy đủ email/tên đăng nhập và mật khẩu.');
-        return;
-      }
-    } else {
-      if (!name.trim() || !username.trim() || !password.trim() || !confirmPassword.trim() || !email.trim()) {
-        setError('Vui lòng điền đầy đủ các thông tin bắt buộc.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setError('Mật khẩu xác nhận không khớp.');
-        return;
-      }
+    if (!validateForm()) {
+      setError('Vui lòng kiểm tra lại thông tin nhập vào.');
+      return;
     }
 
     setError(null);
@@ -200,10 +496,11 @@ export const AuthScreen: React.FC = () => {
         }
 
         if (data.needsVerification) {
-          Alert.alert('Xác Minh Email', data.message || 'Vui lòng kiểm tra email để kích hoạt tài khoản.');
-          setIsLogin(true);
-          setEmail(email.trim());
-          setPassword('');
+          setError(null);
+          setNeedsVerificationScreen(true);
+          if (data.previewUrl) {
+            setVerificationMailUrl(data.previewUrl);
+          }
           return;
         }
 
@@ -334,360 +631,533 @@ export const AuthScreen: React.FC = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.keyboardContainer}
     >
-      <View style={styles.container}>
-        {!showForgotPassword && (
-          /* Toggle Tab */
-          <View style={styles.tabContainer}>
-            <TouchableOpacity
-              style={[styles.tabButton, isLogin && styles.tabButtonActive]}
-              onPress={() => {
-                setIsLogin(true);
-                setError(null);
-              }}
-            >
-              <Text style={[styles.tabText, isLogin && styles.tabTextActive]}>Đăng Nhập</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tabButton, !isLogin && styles.tabButtonActive]}
-              onPress={() => {
-                setIsLogin(false);
-                setError(null);
-              }}
-            >
-              <Text style={[styles.tabText, !isLogin && styles.tabTextActive]}>Đăng Ký</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+      <ImageBackground
+        source={{ uri: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=2000' }}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <View style={styles.overlay} pointerEvents="none" />
 
-        {showForgotPassword ? (
-          /* Forgot Password Card */
-          <View style={styles.formCard}>
-            <View style={styles.neonBar} />
-            
-            <Text style={styles.title}>
-              {forgotStage === 'phone' && 'Khôi phục mật khẩu'}
-              {forgotStage === 'otp' && 'Xác minh OTP'}
-              {forgotStage === 'reset' && 'Đặt lại mật khẩu'}
-            </Text>
-            <Text style={styles.subtitle}>
-              {forgotStage === 'phone' && 'Nhập số điện thoại của bạn để nhận mã OTP'}
-              {forgotStage === 'otp' && 'Nhập mã OTP 6 số đã được gửi tới số điện thoại'}
-              {forgotStage === 'reset' && 'Thiết lập mật khẩu mới cho tài khoản của bạn'}
-            </Text>
+        {/* Big background watermark text */}
+        <View style={styles.watermarkContainer} pointerEvents="none">
+          <Text style={styles.watermarkText}>MOTOV</Text>
+        </View>
 
-            {error && (
-              <View style={styles.errorCard}>
-                <Feather name="alert-triangle" size={14} color={COLORS.danger} />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
-            <View style={styles.inputsContainer}>
-              {forgotStage === 'phone' && (
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.label}>Số điện thoại</Text>
-                  <View style={styles.inputContainer}>
-                    <Feather name="phone" size={16} color={COLORS.accent} style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.input, styles.monoText]}
-                      placeholder="Ví dụ: 0912345678"
-                      placeholderTextColor="#555"
-                      keyboardType="phone-pad"
-                      value={forgotPhone}
-                      onChangeText={setForgotPhone}
-                    />
-                  </View>
-                  <Text style={{ fontSize: 10, color: COLORS.accent, opacity: 0.6, fontStyle: 'italic', marginTop: 4 }}>
-                    💡 Hệ thống sẽ chạy ở chế độ giả lập (Mock Mode).
-                  </Text>
-                </View>
-              )}
-
-              {forgotStage === 'otp' && (
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.label}>Mã OTP xác thực</Text>
-                  <View style={styles.inputContainer}>
-                    <Feather name="shield" size={16} color={COLORS.accent} style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.input, styles.monoText, { letterSpacing: 5, textAlign: 'center', fontWeight: 'bold' }]}
-                      placeholder="******"
-                      placeholderTextColor="#555"
-                      keyboardType="number-pad"
-                      maxLength={6}
-                      value={forgotOtp}
-                      onChangeText={(val) => setForgotOtp(val.replace(/\D/g, ''))}
-                    />
-                  </View>
-                </View>
-              )}
-
-              {forgotStage === 'reset' && (
-                <>
-                  <View style={styles.inputWrapper}>
-                    <Text style={styles.label}>Mật khẩu mới</Text>
-                    <View style={styles.inputContainer}>
-                      <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
-                      <TextInput
-                        style={[styles.input, styles.monoText]}
-                        placeholder="Tối thiểu 6 ký tự"
-                        placeholderTextColor="#555"
-                        secureTextEntry
-                        value={forgotNewPassword}
-                        onChangeText={setForgotNewPassword}
-                        autoCapitalize="none"
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.inputWrapper}>
-                    <Text style={styles.label}>Xác nhận mật khẩu mới</Text>
-                    <View style={styles.inputContainer}>
-                      <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
-                      <TextInput
-                        style={[styles.input, styles.monoText]}
-                        placeholder="Nhập lại mật khẩu mới"
-                        placeholderTextColor="#555"
-                        secureTextEntry
-                        value={forgotConfirmPassword}
-                        onChangeText={setForgotConfirmPassword}
-                        autoCapitalize="none"
-                      />
-                    </View>
-                  </View>
-                </>
-              )}
-
-              <TouchableOpacity
-                style={[styles.submitButton, loading && styles.disabledButton]}
-                onPress={() => {
-                  if (forgotStage === 'phone') handleSendOtp();
-                  else if (forgotStage === 'otp') handleVerifyOtp();
-                  else if (forgotStage === 'reset') handleResetPassword();
-                }}
-                disabled={loading}
-              >
-                {loading ? (
-                  <View style={styles.loadingRow}>
-                    <ActivityIndicator size="small" color={COLORS.accentDark} />
-                    <Text style={styles.submitButtonText}> ĐANG XỬ LÝ...</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.submitButtonText}>
-                    {forgotStage === 'phone' && 'GỬI MÃ OTP XÁC NHẬN'}
-                    {forgotStage === 'otp' && 'XÁC NHẬN OTP'}
-                    {forgotStage === 'reset' && 'THIẾT LẬP MẬT KHẨU MỚI'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-
-              {forgotStage === 'otp' && (
+        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+          <View style={styles.container}>
+            {!showForgotPassword && !needsVerificationScreen && (
+              /* Toggle Tab */
+              <View style={styles.tabContainer}>
                 <TouchableOpacity
+                  style={[styles.tabButton, isLogin && styles.tabButtonActive]}
                   onPress={() => {
-                    setForgotStage('phone');
+                    setIsLogin(true);
                     setError(null);
+                    setErrors({});
+                    setTouched({});
                   }}
-                  disabled={loading}
-                  style={{ marginTop: 10, alignItems: 'center' }}
                 >
-                  <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 'bold' }}>
-                    NHẬP LẠI SỐ ĐIỆN THOẠI
-                  </Text>
+                  <Text style={[styles.tabText, isLogin && styles.tabTextActive]}>Đăng Nhập</Text>
                 </TouchableOpacity>
-              )}
-
-              <View style={styles.dividerContainer}>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <TouchableOpacity
-                style={styles.googleButton}
-                onPress={() => {
-                  setShowForgotPassword(false);
-                  setError(null);
-                }}
-                disabled={loading}
-              >
-                <Feather name="arrow-left" size={14} color={COLORS.textSecondary} />
-                <Text style={styles.googleButtonText}>Quay lại đăng nhập</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          /* Form Card */
-          <View style={styles.formCard}>
-            <View style={styles.neonBar} />
-            
-            <Text style={styles.title}>
-              {isLogin ? 'Cổng Đăng Nhập' : 'Đăng Ký Thành Viên'}
-            </Text>
-            <Text style={styles.subtitle}>
-              {isLogin 
-                ? 'Đăng nhập vào hệ thống để tiếp tục' 
-                : 'Tạo tài khoản mới để trải nghiệm dịch vụ hoặc chia sẻ xe'}
-            </Text>
-
-            {error && (
-              <View style={styles.errorCard}>
-                <Feather name="alert-triangle" size={14} color={COLORS.danger} />
-                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity
+                  style={[styles.tabButton, !isLogin && styles.tabButtonActive]}
+                  onPress={() => {
+                    setIsLogin(false);
+                    setError(null);
+                    setErrors({});
+                    setTouched({});
+                  }}
+                >
+                  <Text style={[styles.tabText, !isLogin && styles.tabTextActive]}>Đăng Ký</Text>
+                </TouchableOpacity>
               </View>
             )}
 
-            <View style={styles.inputsContainer}>
-              {/* Full Name for Register */}
-              {!isLogin && (
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.label}>Họ và tên</Text>
-                  <View style={styles.inputContainer}>
-                    <Feather name="user" size={16} color={COLORS.accent} style={styles.inputIcon} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Nhập họ và tên"
-                      placeholderTextColor="#555"
-                      value={name}
-                      onChangeText={setName}
-                    />
-                  </View>
+            {needsVerificationScreen ? (
+              /* Verification Card */
+              <View style={styles.formCard}>
+                <View style={styles.neonBar} />
+                
+                <View style={styles.verificationIconContainer}>
+                  <Feather name="mail" size={32} color={COLORS.accent} />
                 </View>
-              )}
-
-              {/* Tên đăng nhập (Sign Up only) */}
-              {!isLogin && (
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.label}>Tên đăng nhập</Text>
-                  <View style={styles.inputContainer}>
-                    <Feather name="key" size={16} color={COLORS.accent} style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.input, styles.monoText]}
-                      placeholder="Nhập tên đăng nhập"
-                      placeholderTextColor="#555"
-                      autoCapitalize="none"
-                      value={username}
-                      onChangeText={setUsername}
-                    />
-                  </View>
-                </View>
-              )}
-
-              {/* Email / Username */}
-              <View style={styles.inputWrapper}>
-                <Text style={styles.label}>
-                  {isLogin ? 'Tên đăng nhập hoặc Email' : 'Địa chỉ Email'}
+                
+                <Text style={styles.title}>Xác Minh Tài Khoản</Text>
+                <Text style={styles.subtitle}>
+                  Chúng tôi đã gửi liên kết kích hoạt đến địa chỉ email:
+                  {'\n'}
+                  <Text style={styles.boldEmail}>{email}</Text>
+                  {'\n'}
+                  Vui lòng kiểm tra hộp thư để kích hoạt tài khoản của bạn.
                 </Text>
-                <View style={styles.inputContainer}>
-                  <Feather name="mail" size={16} color={COLORS.accent} style={styles.inputIcon} />
-                  <TextInput
-                    style={[styles.input, styles.monoText]}
-                    placeholder={isLogin ? "Nhập tên đăng nhập hoặc email" : "name@example.com"}
-                    placeholderTextColor="#555"
-                    autoCapitalize="none"
-                    keyboardType={isLogin ? 'default' : 'email-address'}
-                    value={email}
-                    onChangeText={setEmail}
-                  />
-                </View>
-                {!isLogin && (
-                  <Text style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4, fontStyle: 'italic', lineHeight: 14 }}>
-                    * Nếu dùng email Google thì vui lòng chọn phiên Đăng Nhập (Đăng nhập với Google). Còn nếu dùng email loại khác thì vui lòng điền ở đây.
-                  </Text>
-                )}
-              </View>
 
-              {/* Password */}
-              <View style={styles.inputWrapper}>
-                <View style={styles.labelRow}>
-                  <Text style={styles.label}>Mật khẩu</Text>
-                  {isLogin && (
-                    <TouchableOpacity onPress={() => {
-                      setForgotStage('phone');
-                      setForgotPhone('');
-                      setForgotOtp('');
-                      setForgotNewPassword('');
-                      setForgotConfirmPassword('');
-                      setError(null);
-                      setShowForgotPassword(true);
-                    }}>
-                      <Text style={styles.forgotPassword}>Quên?</Text>
+                {error && (
+                  <View style={styles.errorCard}>
+                    <Feather name="alert-triangle" size={14} color={COLORS.danger} />
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                )}
+
+                {verificationMailUrl && (
+                  <View style={styles.testMailboxContainer}>
+                    <Text style={styles.testMailboxText}>
+                      Bạn đang ở môi trường thử nghiệm (Local). Hãy nhấp nút bên dưới để truy cập hòm thư ảo Ethereal và kích hoạt tài khoản:
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.testMailboxButton}
+                      onPress={() => Linking.openURL(verificationMailUrl)}
+                    >
+                      <Text style={styles.testMailboxButtonText}>Mở Hòm Thư Thử Nghiệm</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.submitButton, checkingStatus && styles.disabledButton]}
+                  onPress={() => checkVerification(true)}
+                  disabled={checkingStatus}
+                >
+                  {checkingStatus ? (
+                    <View style={styles.loadingRow}>
+                      <ActivityIndicator size="small" color={COLORS.accentDark} />
+                      <Text style={styles.submitButtonText}> ĐANG KIỂM TRA...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.submitButtonText}>TÔI ĐÃ KÍCH HOẠT - KIỂM TRA NGAY</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => {
+                    setIsLogin(true);
+                    setNeedsVerificationScreen(false);
+                    setVerificationMailUrl(null);
+                    setEmail('');
+                    setPassword('');
+                    setError(null);
+                    setErrors({});
+                    setTouched({});
+                  }}
+                >
+                  <Feather name="arrow-left" size={14} color={COLORS.accent} />
+                  <Text style={styles.backButtonText}> QUAY LẠI ĐĂNG NHẬP</Text>
+                </TouchableOpacity>
+              </View>
+            ) : showForgotPassword ? (
+              /* Forgot Password Card */
+              <View style={styles.formCard}>
+                <View style={styles.neonBar} />
+                
+                <Text style={styles.title}>
+                  {forgotStage === 'phone' && 'Khôi phục mật khẩu'}
+                  {forgotStage === 'otp' && 'Xác minh OTP'}
+                  {forgotStage === 'reset' && 'Đặt lại mật khẩu'}
+                </Text>
+                <Text style={styles.subtitle}>
+                  {forgotStage === 'phone' && 'Nhập số điện thoại của bạn để nhận mã OTP'}
+                  {forgotStage === 'otp' && 'Nhập mã OTP 6 số đã được gửi tới số điện thoại'}
+                  {forgotStage === 'reset' && 'Thiết lập mật khẩu mới cho tài khoản của bạn'}
+                </Text>
+
+                {error && (
+                  <View style={styles.errorCard}>
+                    <Feather name="alert-triangle" size={14} color={COLORS.danger} />
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                )}
+
+                <View style={styles.inputsContainer}>
+                  {forgotStage === 'phone' && (
+                    <View style={styles.inputWrapper}>
+                      <Text style={styles.label}>Số điện thoại</Text>
+                      <View style={styles.inputContainer}>
+                        <Feather name="phone" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                        <TextInput
+                          style={[styles.input, styles.monoText]}
+                          placeholder="Ví dụ: 0912345678"
+                          placeholderTextColor="#555"
+                          keyboardType="phone-pad"
+                          value={forgotPhone}
+                          onChangeText={setForgotPhone}
+                        />
+                      </View>
+                      <Text style={styles.helperText}>
+                        💡 Hệ thống sẽ chạy ở chế độ giả lập (Mock Mode).
+                      </Text>
+                    </View>
+                  )}
+
+                  {forgotStage === 'otp' && (
+                    <View style={styles.inputWrapper}>
+                      <Text style={styles.label}>Mã OTP xác thực</Text>
+                      <View style={styles.inputContainer}>
+                        <Feather name="shield" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                        <TextInput
+                          style={[styles.input, styles.monoText, styles.otpInput]}
+                          placeholder="******"
+                          placeholderTextColor="#555"
+                          keyboardType="number-pad"
+                          maxLength={6}
+                          value={forgotOtp}
+                          onChangeText={(val) => setForgotOtp(val.replace(/\D/g, ''))}
+                        />
+                      </View>
+                    </View>
+                  )}
+
+                  {forgotStage === 'reset' && (
+                    <>
+                      <View style={styles.inputWrapper}>
+                        <Text style={styles.label}>Mật khẩu mới</Text>
+                        <View style={styles.inputContainer}>
+                          <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                          <TextInput
+                            style={[styles.input, styles.monoText]}
+                            placeholder="Tối thiểu 6 ký tự"
+                            placeholderTextColor="#555"
+                            secureTextEntry
+                            value={forgotNewPassword}
+                            onChangeText={setForgotNewPassword}
+                            autoCapitalize="none"
+                          />
+                        </View>
+                      </View>
+
+                      <View style={styles.inputWrapper}>
+                        <Text style={styles.label}>Xác nhận mật khẩu mới</Text>
+                        <View style={styles.inputContainer}>
+                          <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                          <TextInput
+                            style={[styles.input, styles.monoText]}
+                            placeholder="Nhập lại mật khẩu mới"
+                            placeholderTextColor="#555"
+                            secureTextEntry
+                            value={forgotConfirmPassword}
+                            onChangeText={setForgotConfirmPassword}
+                            autoCapitalize="none"
+                          />
+                        </View>
+                      </View>
+                    </>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.submitButton, loading && styles.disabledButton]}
+                    onPress={() => {
+                      if (forgotStage === 'phone') handleSendOtp();
+                      else if (forgotStage === 'otp') handleVerifyOtp();
+                      else if (forgotStage === 'reset') handleResetPassword();
+                    }}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <View style={styles.loadingRow}>
+                        <ActivityIndicator size="small" color={COLORS.accentDark} />
+                        <Text style={styles.submitButtonText}> ĐANG XỬ LÝ...</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.submitButtonText}>
+                        {forgotStage === 'phone' && 'GỬI MÃ OTP XÁC NHẬN'}
+                        {forgotStage === 'otp' && 'XÁC NHẬN OTP'}
+                        {forgotStage === 'reset' && 'THIẾT LẬP MẬT KHẨU MỚI'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
+                  {forgotStage === 'otp' && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setForgotStage('phone');
+                        setError(null);
+                      }}
+                      disabled={loading}
+                      style={styles.retryPhoneLink}
+                    >
+                      <Text style={styles.retryPhoneLinkText}>
+                        NHẬP LẠI SỐ ĐIỆN THOẠI
+                      </Text>
                     </TouchableOpacity>
                   )}
-                </View>
-                <View style={styles.inputContainer}>
-                  <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
-                  <TextInput
-                    style={[styles.input, styles.monoText]}
-                    placeholder="••••••••"
-                    placeholderTextColor="#555"
-                    secureTextEntry
-                    autoCapitalize="none"
-                    value={password}
-                    onChangeText={setPassword}
-                  />
-                </View>
-              </View>
 
-              {/* Confirm Password for Register */}
-              {!isLogin && (
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.label}>Xác nhận mật khẩu</Text>
-                  <View style={styles.inputContainer}>
-                    <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.input, styles.monoText]}
-                      placeholder="••••••••"
-                      placeholderTextColor="#555"
-                      secureTextEntry
-                      autoCapitalize="none"
-                      value={confirmPassword}
-                      onChangeText={setConfirmPassword}
-                    />
-                  </View>
-                </View>
-              )}
-
-              {/* Submit Button */}
-              <TouchableOpacity
-                style={[styles.submitButton, loading && styles.disabledButton]}
-                onPress={handleSubmit}
-                disabled={loading}
-              >
-                {loading ? (
-                  <View style={styles.loadingRow}>
-                    <ActivityIndicator size="small" color={COLORS.accentDark} />
-                    <Text style={styles.submitButtonText}> ĐANG XỬ LÝ...</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.submitButtonText}>
-                    {isLogin ? 'XÁC NHẬN ĐĂNG NHẬP' : 'TẠO TÀI KHOẢN'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-
-              {/* Divider and Google Sign In */}
-              {isLogin && (
-                <>
                   <View style={styles.dividerContainer}>
-                    <View style={styles.dividerLine} />
-                    <Text style={styles.dividerText}>Hoặc</Text>
                     <View style={styles.dividerLine} />
                   </View>
 
                   <TouchableOpacity
                     style={styles.googleButton}
-                    onPress={handleGoogleSignIn}
+                    onPress={() => {
+                      setShowForgotPassword(false);
+                      setError(null);
+                    }}
                     disabled={loading}
                   >
-                    <View style={styles.googleIconContainer}>
-                      <Feather name="chrome" size={16} color="#fff" />
-                    </View>
-                    <Text style={styles.googleButtonText}>Đăng nhập với Google</Text>
+                    <Feather name="arrow-left" size={14} color={COLORS.textSecondary} />
+                    <Text style={styles.googleButtonText}>Quay lại đăng nhập</Text>
                   </TouchableOpacity>
-                </>
-              )}
+                </View>
+              </View>
+            ) : (
+              /* Form Card */
+              <View style={styles.formCard}>
+                <View style={styles.neonBar} />
+                
+                <Text style={styles.title}>
+                  {isLogin ? 'Cổng Đăng Nhập' : 'Đăng Ký Thành Viên'}
+                </Text>
+                <Text style={styles.subtitle}>
+                  {isLogin 
+                    ? 'Đăng nhập vào hệ thống để tiếp tục' 
+                    : 'Tạo tài khoản mới để trải nghiệm dịch vụ hoặc chia sẻ xe'}
+                </Text>
 
-            </View>
+                {error && (
+                  <View style={styles.errorCard}>
+                    <Feather name="alert-triangle" size={14} color={COLORS.danger} />
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                )}
+
+                <View style={styles.inputsContainer}>
+                  {/* Full Name for Register */}
+                  {!isLogin && (
+                    <View style={styles.inputWrapper}>
+                      <Text style={styles.label}>Họ và tên</Text>
+                      <View style={[
+                        styles.inputContainer,
+                        touched.name && errors.name ? styles.inputContainerError : null
+                      ]}>
+                        <Feather name="user" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Nhập họ và tên"
+                          placeholderTextColor="#555"
+                          value={name}
+                          onChangeText={(val) => handleFieldChange('name', val)}
+                          onBlur={() => handleBlur('name')}
+                        />
+                      </View>
+                      {touched.name && errors.name && (
+                        <Text style={styles.fieldErrorText}>⚠️ {errors.name}</Text>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Tên đăng nhập (Sign Up only) */}
+                  {!isLogin && (
+                    <View style={styles.inputWrapper}>
+                      <Text style={styles.label}>Tên đăng nhập</Text>
+                      <View style={[
+                        styles.inputContainer,
+                        touched.username && errors.username ? styles.inputContainerError : null
+                      ]}>
+                        <Feather name="key" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                        <TextInput
+                          style={[styles.input, styles.monoText]}
+                          placeholder="Nhập tên đăng nhập"
+                          placeholderTextColor="#555"
+                          autoCapitalize="none"
+                          value={username}
+                          onChangeText={(val) => handleFieldChange('username', val)}
+                          onBlur={() => handleBlur('username')}
+                        />
+                      </View>
+                      {touched.username && errors.username && (
+                        <Text style={styles.fieldErrorText}>⚠️ {errors.username}</Text>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Email / Username */}
+                  <View style={styles.inputWrapper}>
+                    <Text style={styles.label}>
+                      {isLogin ? 'Tên đăng nhập hoặc Email' : 'Địa chỉ Email'}
+                    </Text>
+                    <View style={[
+                      styles.inputContainer,
+                      touched.email && errors.email ? styles.inputContainerError : null
+                    ]}>
+                      <Feather name="mail" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                      <TextInput
+                        style={[styles.input, styles.monoText]}
+                        placeholder={isLogin ? "Nhập tên đăng nhập hoặc email" : "name@example.com"}
+                        placeholderTextColor="#555"
+                        autoCapitalize="none"
+                        keyboardType={isLogin ? 'default' : 'email-address'}
+                        value={email}
+                        onChangeText={(val) => handleFieldChange('email', val)}
+                        onBlur={() => handleBlur('email')}
+                      />
+                    </View>
+                    {touched.email && errors.email && (
+                      <Text style={styles.fieldErrorText}>⚠️ {errors.email}</Text>
+                    )}
+                    {!isLogin && (
+                      <Text style={styles.helperText}>
+                        * Nếu dùng email Google thì vui lòng chọn phiên Đăng Nhập (Đăng nhập với Google). Còn nếu dùng email loại khác thì vui lòng điền ở đây.
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* Password */}
+                  <View style={styles.inputWrapper}>
+                    <View style={styles.labelRow}>
+                      <Text style={styles.label}>Mật khẩu</Text>
+                      {isLogin && (
+                        <TouchableOpacity onPress={() => {
+                          setForgotStage('phone');
+                          setForgotPhone('');
+                          setForgotOtp('');
+                          setForgotNewPassword('');
+                          setForgotConfirmPassword('');
+                          setError(null);
+                          setShowForgotPassword(true);
+                        }}>
+                          <Text style={styles.forgotPassword}>Quên?</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <View style={[
+                      styles.inputContainer,
+                      touched.password && errors.password ? styles.inputContainerError : null
+                    ]}>
+                      <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                      <TextInput
+                        style={[styles.input, styles.monoText]}
+                        placeholder="••••••••"
+                        placeholderTextColor="#555"
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        value={password}
+                        onChangeText={(val) => handleFieldChange('password', val)}
+                        onBlur={() => handleBlur('password')}
+                      />
+                      <TouchableOpacity
+                        style={styles.eyeIcon}
+                        onPress={() => setShowPassword(!showPassword)}
+                      >
+                        <Feather name={showPassword ? 'eye-off' : 'eye'} size={16} color={COLORS.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                    {touched.password && errors.password && (
+                      <Text style={styles.fieldErrorText}>⚠️ {errors.password}</Text>
+                    )}
+
+                    {/* Password Strength Meter (Sign Up only) */}
+                    {!isLogin && password.length > 0 && (
+                      <View style={styles.strengthContainer}>
+                        <View style={styles.strengthLabelRow}>
+                          <Text style={styles.strengthLabel}>Độ mạnh mật khẩu:</Text>
+                          <Text style={[
+                            styles.strengthValue,
+                            passwordStrength === 1 && { color: COLORS.danger },
+                            passwordStrength === 2 && { color: '#fb923c' },
+                            passwordStrength === 3 && { color: '#facc15' },
+                            passwordStrength === 4 && { color: COLORS.approved },
+                          ]}>
+                            {passwordStrength === 1 && 'Rất yếu'}
+                            {passwordStrength === 2 && 'Yếu'}
+                            {passwordStrength === 3 && 'Trung bình'}
+                            {passwordStrength === 4 && 'Mạnh'}
+                          </Text>
+                        </View>
+                        <View style={styles.strengthBarsRow}>
+                          {[1, 2, 3, 4].map((index) => (
+                            <View
+                              key={index}
+                              style={[
+                                styles.strengthBar,
+                                index <= passwordStrength
+                                  ? (passwordStrength === 1 ? { backgroundColor: COLORS.danger } :
+                                     passwordStrength === 2 ? { backgroundColor: '#f97316' } :
+                                     passwordStrength === 3 ? { backgroundColor: '#eab308' } :
+                                     { backgroundColor: COLORS.approved })
+                                  : { backgroundColor: '#27272a' }
+                              ]}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Confirm Password for Register */}
+                  {!isLogin && (
+                    <View style={styles.inputWrapper}>
+                      <Text style={styles.label}>Xác nhận mật khẩu</Text>
+                      <View style={[
+                        styles.inputContainer,
+                        touched.confirmPassword && errors.confirmPassword ? styles.inputContainerError : null
+                      ]}>
+                        <Feather name="lock" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                        <TextInput
+                          style={[styles.input, styles.monoText]}
+                          placeholder="••••••••"
+                          placeholderTextColor="#555"
+                          secureTextEntry={!showConfirmPassword}
+                          autoCapitalize="none"
+                          value={confirmPassword}
+                          onChangeText={(val) => handleFieldChange('confirmPassword', val)}
+                          onBlur={() => handleBlur('confirmPassword')}
+                        />
+                        <TouchableOpacity
+                          style={styles.eyeIcon}
+                          onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          <Feather name={showConfirmPassword ? 'eye-off' : 'eye'} size={16} color={COLORS.textSecondary} />
+                        </TouchableOpacity>
+                      </View>
+                      {touched.confirmPassword && errors.confirmPassword && (
+                        <Text style={styles.fieldErrorText}>⚠️ {errors.confirmPassword}</Text>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Submit Button */}
+                  <TouchableOpacity
+                    style={[styles.submitButton, loading && styles.disabledButton]}
+                    onPress={handleSubmit}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <View style={styles.loadingRow}>
+                        <ActivityIndicator size="small" color={COLORS.accentDark} />
+                        <Text style={styles.submitButtonText}> ĐANG XỬ LÝ...</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.submitButtonText}>
+                        {isLogin ? 'XÁC NHẬN ĐĂNG NHẬP' : 'TẠO TÀI KHOẢN'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Divider and Google Sign In */}
+                  {isLogin && (
+                    <>
+                      <View style={styles.dividerContainer}>
+                        <View style={styles.dividerLine} />
+                        <Text style={styles.dividerText}>Hoặc</Text>
+                        <View style={styles.dividerLine} />
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.googleButton}
+                        onPress={handleGoogleSignIn}
+                        disabled={loading}
+                      >
+                        <View style={styles.googleIconContainer}>
+                          <Feather name="chrome" size={16} color="#fff" />
+                        </View>
+                        <Text style={styles.googleButtonText}>Đăng nhập với Google</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              </View>
+            )}
           </View>
-        )}
-      </View>
+        </ScrollView>
+      </ImageBackground>
     </KeyboardAvoidingView>
   );
 };
@@ -696,18 +1166,46 @@ const styles = StyleSheet.create({
   keyboardContainer: {
     flex: 1,
   },
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(9, 9, 11, 0.88)', // premium dark semi-transparent layer
+  },
+  watermarkContainer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  watermarkText: {
+    fontSize: 90,
+    fontWeight: '900',
+    color: COLORS.accent,
+    opacity: 0.04,
+    letterSpacing: -2,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
   container: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingHorizontal: 20,
+    zIndex: 2,
   },
   tabContainer: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#222',
     marginBottom: 24,
-    maxWidth: 200,
+    width: 200,
     alignSelf: 'center',
   },
   tabButton: {
@@ -731,16 +1229,16 @@ const styles = StyleSheet.create({
   },
   formCard: {
     width: '100%',
-    backgroundColor: COLORS.card,
+    backgroundColor: 'rgba(24, 24, 27, 0.85)', // translucent card background
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: 'rgba(39, 39, 42, 0.6)',
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
     shadowRadius: 15,
-    elevation: 10,
+    elevation: 8,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -759,13 +1257,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textTransform: 'uppercase',
     marginBottom: 6,
+    letterSpacing: 0.5,
   },
   subtitle: {
     color: COLORS.textMuted,
-    fontSize: 11,
+    fontSize: 12,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 18,
     marginBottom: 20,
+  },
+  boldEmail: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   errorCard: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -783,6 +1286,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     flex: 1,
+  },
+  fieldErrorText: {
+    color: COLORS.danger,
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
   },
   inputsContainer: {
     gap: 14,
@@ -816,6 +1325,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
   },
+  inputContainerError: {
+    borderColor: 'rgba(239, 68, 68, 0.5)',
+  },
   inputIcon: {
     marginRight: 10,
   },
@@ -828,6 +1340,9 @@ const styles = StyleSheet.create({
   monoText: {
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
+  eyeIcon: {
+    padding: 4,
+  },
   submitButton: {
     backgroundColor: COLORS.accent,
     borderRadius: 10,
@@ -837,9 +1352,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
     shadowColor: COLORS.accent,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 3,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   disabledButton: {
     opacity: 0.5,
@@ -895,5 +1410,109 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  helperText: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+    marginTop: 2,
+    fontStyle: 'italic',
+    lineHeight: 14,
+  },
+  // Password Strength Meter Styles
+  strengthContainer: {
+    marginTop: 8,
+    gap: 4,
+  },
+  strengthLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  strengthLabel: {
+    color: COLORS.textMuted,
+    fontSize: 10,
+    textTransform: 'uppercase',
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  strengthValue: {
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  strengthBarsRow: {
+    flexDirection: 'row',
+    gap: 4,
+    height: 3,
+  },
+  strengthBar: {
+    flex: 1,
+    borderRadius: 2,
+  },
+  // Verification Screen Custom Styles
+  verificationIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(190, 242, 100, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(190, 242, 100, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  testMailboxContainer: {
+    backgroundColor: 'rgba(9, 9, 11, 0.9)',
+    borderWidth: 1,
+    borderColor: '#222',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+    gap: 10,
+  },
+  testMailboxText: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  testMailboxButton: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 6,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  testMailboxButtonText: {
+    color: COLORS.accentDark,
+    fontSize: 11,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  backButtonText: {
+    color: COLORS.accent,
+    fontSize: 11,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  otpInput: {
+    letterSpacing: 6,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  retryPhoneLink: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  retryPhoneLinkText: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    fontWeight: 'bold',
   },
 });
