@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { CalendarDays, MapPin, ClipboardList, Trash2, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
 import { bookingService, Booking } from '../services/bookingService'; // Import Service
+import { BookingTrackingModal } from '../components/BookingTrackingModal';
 
 export const Bookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [trackingBookingId, setTrackingBookingId] = useState<string | null>(null);
 
   // Hàm tải danh sách đơn từ Server
   const loadMyBookings = async () => {
@@ -148,6 +150,15 @@ export const Bookings = () => {
                       Tổng tiền thanh toán: {booking.totalAmount?.toLocaleString('vi-VN')} VNĐ
                     </div>
                   </div>
+                  
+                  <div className="pt-2">
+                    <button
+                      onClick={() => setTrackingBookingId(booking.id)}
+                      className="text-xs text-blue-400 hover:text-blue-300 underline"
+                    >
+                      Xem lịch trình chi tiết
+                    </button>
+                  </div>
                 </div>
 
                 {/* Nút hủy đơn liên kết API */}
@@ -184,6 +195,13 @@ export const Bookings = () => {
         )}
 
       </div>
+
+      {/* Modal Lịch trình Tracking */}
+      <BookingTrackingModal
+        isOpen={!!trackingBookingId}
+        onClose={() => setTrackingBookingId(null)}
+        bookingId={trackingBookingId}
+      />
     </div>
   );
 };

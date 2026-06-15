@@ -11,12 +11,19 @@ import {
   validateCancellation,
   checkVehicleAvailability,
   generateBookingCode,
-  calculateTotalAmount
+  calculateTotalAmount,
+  calculateLateFees
 } from '../validators/bookingValidation.js';
 
 // ============================================
 // 1. CREATE BOOKING
 // ============================================
+/**
+ * Create a new booking
+ * @route POST /api/bookings
+ * @param {AuthRequest} req - Express request object containing user and body
+ * @param {Response} res - Express response object
+ */
 export const createBooking = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -210,6 +217,12 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
 // ============================================
 // 2. GET BOOKING BY ID
 // ============================================
+/**
+ * Get booking details by ID
+ * @route GET /api/bookings/:id
+ * @param {AuthRequest} req - Express request object containing params and user
+ * @param {Response} res - Express response object
+ */
 export const getBookingById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -599,6 +612,163 @@ export const getBookingsByVehicle = async (req: AuthRequest, res: Response) => {
 };
 
 // ============================================
+// 9. GET BOOKING TRACKING
+// ============================================
+/**
+ * Get tracking timeline for a booking
+ * @route GET /api/bookings/:id/tracking
+ * @param {AuthRequest} req - Express request object
+ * @param {Response} res - Express response object
+ */
+export const getBookingTracking = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'ID booking không hợp lệ' });
+    }
+
+    const booking = await Booking.findById(id).populate('vehicleId', 'ownerId');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy booking' });
+    }
+
+    const isOwner = booking.userId.toString() === userId;
+    const userRoles = req.user?.roles || [];
+    const isStaffOrAdmin = userRoles.includes('Staff') || userRoles.includes('Admin');
+    
+    // Type assert vehicle to access ownerId
+    const vehicle = booking.vehicleId as any;
+    const isVehicleOwner = vehicle?.ownerId?.toString() === userId;
+
+    if (!isOwner && !isStaffOrAdmin && !isVehicleOwner) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền xem thông tin booking này' });
+    }
+
+    const timeline = [
+      {
+        title: 'Booking Created',
+        time: booking.createdAt,
+        status: 'Pending',
+        completed: true
+      },
+      {
+        title: 'Scheduled Pickup',
+        time: booking.pickupDateTime,
+        status: booking.status === 'Cancelled' ? 'Cancelled' : 'Ongoing',
+        completed: booking.status === 'Ongoing' || booking.status === 'Completed'
+      },
+      {
+        title: 'Scheduled Return',
+        time: booking.returnDateTime,
+        status: 'Completed',
+        completed: booking.status === 'Completed'
+      }
+    ];
+
+    res.status(200).json({
+      success: true,
+      tracking: {
+        bookingId: booking._id,
+        currentStatus: booking.status,
+        updatedAt: booking.updatedAt,
+        surcharges: booking.surcharges,
+        cancelReason: booking.cancelReason,
+        timeline
+      }
+    });
+  } catch (error: any) {
+    console.error('Lỗi khi lấy tracking:', error);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ', error: error.message });
+  }
+};
+
+// ============================================
+// 10. RETURN MOTORBIKE
+// ============================================
+/**
+ * Return motorbike and calculate late fees if any
+ * @route PUT /api/bookings/:id/return
+ * @param {AuthRequest} req - Express request object
+ * @param {Response} res - Express response object
+ */
+export const returnMotorbike = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { actualReturnTime } = req.body;
+    
+    // Verify role is Staff or Admin (this is also done in the route middleware, but checking here too)
+    const userRoles = req.user?.roles || [];
+    if (!userRoles.includes('Staff') && !userRoles.includes('Admin')) {
+      return res.status(403).json({ success: false, message: 'Chỉ nhân viên hoặc quản trị viên mới có thể xác nhận trả xe' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'ID booking không hợp lệ' });
+    }
+
+    const booking = await Booking.findById(id).populate('vehicleId');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy booking' });
+    }
+
+    if (booking.status !== 'Ongoing' && booking.status !== 'Confirmed') {
+      return res.status(400).json({ success: false, message: `Không thể trả xe cho booking đang ở trạng thái ${booking.status}` });
+    }
+
+    const returnedTime = actualReturnTime ? new Date(actualReturnTime) : new Date();
+    
+    if (isNaN(returnedTime.getTime())) {
+      return res.status(400).json({ success: false, message: 'Định dạng thời gian trả xe (actualReturnTime) không hợp lệ.' });
+    }
+
+    if (returnedTime < new Date(booking.pickupDateTime)) {
+      return res.status(400).json({ success: false, message: 'Thời gian trả xe không thể trước thời gian lấy xe.' });
+    }
+
+    const scheduledReturnTime = new Date(booking.returnDateTime);
+    
+    // Vehicle rental price for fee calculation
+    const vehicle = booking.vehicleId as any;
+    const dailyRate = vehicle?.rentalPrice || 0;
+    const hourlyRate = dailyRate / 24;
+
+    // Calculate late fees
+    const lateFee = calculateLateFees(returnedTime, scheduledReturnTime, hourlyRate);
+    
+    if (lateFee > 0) {
+      booking.surcharges.push({
+        surchargeType: 'Late Return',
+        amount: lateFee,
+        description: `Phí trả trễ xe. Đã trả lúc ${returnedTime.toLocaleString('vi-VN')}`
+      });
+      booking.totalAmount += lateFee;
+    }
+
+    booking.status = 'Completed';
+    await booking.save();
+
+    // Set vehicle status to Available
+    if (vehicle) {
+      await Vehicle.findByIdAndUpdate(vehicle._id, { status: 'Available' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Đã xác nhận trả xe thành công',
+      lateFeeApplied: lateFee > 0,
+      lateFeeAmount: lateFee,
+      booking: formatBookingResponse(booking)
+    });
+
+  } catch (error: any) {
+    console.error('Lỗi khi trả xe:', error);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ', error: error.message });
+  }
+};
+
+// ============================================
 // HELPER FUNCTIONS
 // ============================================
 
@@ -666,5 +836,7 @@ export default {
   updateBooking,
   cancelBooking,
   deleteBooking,
-  getBookingsByVehicle
+  getBookingsByVehicle,
+  getBookingTracking,
+  returnMotorbike
 };

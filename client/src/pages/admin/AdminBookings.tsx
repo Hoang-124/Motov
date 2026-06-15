@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardList, Search, Trash2, CalendarDays, MapPin, AlertCircle, RefreshCw } from 'lucide-react';
+import { ClipboardList, Search, Trash2, CalendarDays, MapPin, AlertCircle, RefreshCw, Key } from 'lucide-react';
 import { motion } from 'motion/react';
+import { ReturnMotorbikeModal } from '../../components/ReturnMotorbikeModal';
 
 interface Booking {
   id: string; // Bản chất là _id từ MongoDB
@@ -28,23 +29,53 @@ interface Booking {
   statusLabel: string; // Nhãn tiếng Việt nhận từ backend (VD: "⏳ Chờ xác nhận")
 }
 
+import { bookingService, Booking as APIBooking } from '../../services/bookingService';
+
 export const AdminBookings = () => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<APIBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [returningBookingId, setReturningBookingId] = useState<string | null>(null);
+  const [returningPickupTime, setReturningPickupTime] = useState<string | undefined>(undefined);
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Giả sử API nhận query status để filter
+      const data = await bookingService.getAllBookings();
+      setBookings(data.bookings || data);
+    } catch (err: any) {
+      console.error('Error fetching bookings:', err);
+      setError(err.response?.data?.message || 'Có lỗi xảy ra khi tải danh sách đơn hàng.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Giả lập lấy dữ liệu từ localStorage hoặc API sau này
-    const list = JSON.parse(localStorage.getItem('bookings') || '[]');
-    setBookings(list);
+    fetchBookings();
   }, []);
 
-  const handleDeleteBooking = (id: string) => {
+  const handleDeleteBooking = async (id: string) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa đơn đặt xe này khỏi lịch sử hệ thống? Thao tác này không thể hoàn tác.')) {
-      const updated = bookings.filter(b => b.id !== id);
-      setBookings(updated);
-      localStorage.setItem('bookings', JSON.stringify(updated));
+      try {
+        await bookingService.deleteBooking(id);
+        const updated = bookings.filter(b => b.id !== id);
+        setBookings(updated);
+      } catch (err: any) {
+        console.error('Error deleting booking:', err);
+        alert(err.response?.data?.message || 'Có lỗi xảy ra khi xóa đơn đặt xe.');
+      }
     }
+  };
+
+  const handleReturnSuccess = () => {
+    // Reload bookings from API to ensure we have the latest data
+    fetchBookings();
+    setReturningBookingId(null);
   };
 
   const formatDate = (isoString: string) => {
@@ -164,7 +195,19 @@ export const AdminBookings = () => {
                       {booking.statusLabel}
                     </span>
                   </td>
-                  <td className="py-4 px-6 text-right">
+                  <td className="py-4 px-6 text-right space-x-2">
+                    {booking.status === 'Ongoing' && (
+                      <button
+                        onClick={() => {
+                          setReturningBookingId(booking.id);
+                          setReturningPickupTime(booking.pickupDateTime);
+                        }}
+                        className="p-2 rounded bg-black hover:bg-blue-950/40 text-blue-500 border border-gray-800 hover:border-blue-500/30 transition-all cursor-pointer"
+                        title="Thu hồi xe"
+                      >
+                        <Key size={14} />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDeleteBooking(booking.id)}
                       className="p-2 rounded bg-black hover:bg-red-950/40 text-red-500 border border-gray-800 hover:border-red-500/30 transition-all cursor-pointer"
@@ -186,6 +229,14 @@ export const AdminBookings = () => {
           </div>
         )}
       </div>
+
+      <ReturnMotorbikeModal
+        isOpen={!!returningBookingId}
+        onClose={() => setReturningBookingId(null)}
+        bookingId={returningBookingId}
+        pickupDateTime={returningPickupTime}
+        onSuccess={handleReturnSuccess}
+      />
     </div>
   );
 };

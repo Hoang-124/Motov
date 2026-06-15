@@ -42,7 +42,14 @@ export const MotorbikeDetail = () => {
 
     try {
       setDeleting(true);
-      const token = localStorage.getItem('token') || '';
+      let token = '';
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          token = user.token || '';
+        } catch (e) {}
+      }
       await deleteMotorbike(motorbike._id, token);
       setShowDeleteModal(false);
       navigate('/bikes');

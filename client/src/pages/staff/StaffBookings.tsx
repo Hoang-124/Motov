@@ -1,58 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { CalendarDays, MapPin, ClipboardList, Check, X, CheckSquare, Phone, User, CreditCard } from 'lucide-react';
 import { motion } from 'motion/react';
-
-interface Booking {
-  id: string;
-  bookingCode: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  userPhone: string;
-  vehicleId: string;
-  vehicleModel: string;
-  vehicleImage: string;
-  pickupDateTime: string;
-  returnDateTime: string;
-  pickupLocation: { address: string; coordinates?: number[] };
-  returnLocation: { address: string; coordinates?: number[] };
-  rentalDays: number;
-  totalAmount: number;
-  status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled';
-  statusLabel: string;
-}
+import { ReturnMotorbikeModal } from '../../components/ReturnMotorbikeModal';
+import { bookingService, Booking as APIBooking } from '../../services/bookingService';
 
 export const StaffBookings = () => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<APIBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('All');
+  const [returningBookingId, setReturningBookingId] = useState<string | null>(null);
+  const [returningPickupTime, setReturningPickupTime] = useState<string | undefined>(undefined);
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await bookingService.getAllBookings();
+      setBookings(data.bookings || data);
+    } catch (err: any) {
+      console.error('Error fetching bookings:', err);
+      setError(err.response?.data?.message || 'Có lỗi xảy ra khi tải danh sách đơn hàng.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const list = JSON.parse(localStorage.getItem('bookings') || '[]');
-    setBookings(list);
+    fetchBookings();
   }, []);
 
-  // Xử lý cập nhật trạng thái chuẩn Backend và đồng bộ nhãn statusLabel tương ứng
-  const handleUpdateStatus = (id: string, newStatus: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled') => {
-    const labelsMap: Record<string, string> = {
-      'Pending': '⏳ Chờ xác nhận',
-      'Confirmed': '✓ Đã xác nhận',
-      'Ongoing': '🚴 Đang cho thuê',
-      'Completed': '✓ Hoàn thành',
-      'Cancelled': '❌ Đã hủy'
-    };
-
-    const updated = bookings.map(b => {
-      if (b.id === id) {
-        return { 
-          ...b, 
-          status: newStatus,
-          statusLabel: labelsMap[newStatus]
-        };
+  const handleUpdateStatus = async (id: string, newStatus: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled') => {
+    try {
+      if (newStatus === 'Cancelled') {
+        await bookingService.cancelBooking(id);
+      } else if (newStatus === 'Confirmed' || newStatus === 'Ongoing' || newStatus === 'Completed') {
+        await bookingService.updateStatus(id, newStatus);
       }
-      return b;
-    });
-    setBookings(updated);
-    localStorage.setItem('bookings', JSON.stringify(updated));
+      fetchBookings();
+    } catch (err: any) {
+      console.error('Error updating status:', err);
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái.');
+    }
   };
 
   const formatDate = (isoString: string) => {
@@ -161,7 +150,10 @@ export const StaffBookings = () => {
 
                 {booking.status === 'Ongoing' && (
                   <button
-                    onClick={() => handleUpdateStatus(booking.id, 'Completed')}
+                    onClick={() => {
+                      setReturningBookingId(booking.id);
+                      setReturningPickupTime(booking.pickupDateTime);
+                    }}
                     className="w-full flex items-center justify-center gap-1 bg-green-600 text-white font-bold py-2.5 rounded-lg text-xs hover:bg-green-700 transition-colors cursor-pointer"
                   >
                     <CheckSquare size={14} /> Xác nhận hoàn tất trả xe
@@ -190,6 +182,17 @@ export const StaffBookings = () => {
           <p className="text-gray-500 text-sm max-w-sm mx-auto">Không tìm thấy đơn hàng nào khớp với bộ lọc điều phối hiện tại.</p>
         </div>
       )}
+
+      <ReturnMotorbikeModal
+        isOpen={!!returningBookingId}
+        onClose={() => setReturningBookingId(null)}
+        bookingId={returningBookingId}
+        pickupDateTime={returningPickupTime}
+        onSuccess={() => {
+          fetchBookings();
+          setReturningBookingId(null);
+        }}
+      />
     </div>
   );
 };
