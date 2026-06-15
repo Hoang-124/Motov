@@ -14,6 +14,7 @@ import bookingRoutes from './routes/bookingRoutes.js';
 import vehicleRoutes from './routes/vehicleRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import promotionRoutes from './routes/promotionRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import { authMiddleware } from './middlewares/authMiddleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -66,6 +67,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/promotions', promotionRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Routes quản lý xe (Vehicle/Bike Management APIs)
 app.use('/api/vehicles', vehicleRoutes);
