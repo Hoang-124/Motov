@@ -136,7 +136,14 @@ export const MotorbikeForm = () => {
     try {
       setSubmitting(true);
       setError(null);
-      const token = localStorage.getItem('token') || '';
+      let token = '';
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          token = user.token || '';
+        } catch (e) {}
+      }
 
       if (!token) {
         setError('You must be logged in to perform this action');
