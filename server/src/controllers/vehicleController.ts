@@ -381,6 +381,34 @@ export const updateVehicleStatus = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Check permissions
+    const isAdminOrStaff = req.user?.roles?.some(role => role === 'Admin' || role === 'Staff');
+    const isOwner = vehicle.ownerId.toString() === req.user?.id;
+
+    if (!isAdminOrStaff) {
+      if (!isOwner) {
+        return res.status(403).json({
+          success: false,
+          error: 'Bạn không có quyền thay đổi trạng thái của xe này'
+        });
+      }
+
+      // If owner, check restriction rules
+      if (vehicle.status === 'PendingApproval') {
+        return res.status(403).json({
+          success: false,
+          error: 'Xe đang chờ phê duyệt từ quản trị viên. Bạn không thể tự thay đổi trạng thái lúc này.'
+        });
+      }
+
+      if (status !== 'Available' && status !== 'Maintenance') {
+        return res.status(403).json({
+          success: false,
+          error: 'Chủ xe chỉ được phép thay đổi trạng thái xe giữa Sẵn sàng (Available) và Bảo trì (Maintenance)'
+        });
+      }
+    }
+
     const oldStatus = vehicle.status;
     vehicle.status = status;
     await vehicle.save();
