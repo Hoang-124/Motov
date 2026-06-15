@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+.mongodb_data/
+firebase-key.json
+*.key.json

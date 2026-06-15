@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Vehicle, IVehicle } from '../models/Vehicle.js';
 import mongoose from 'mongoose';
+import { Notification } from '../models/Notification.js';
 
 // Type for authenticated request
 interface AuthRequest extends Request {
@@ -380,9 +381,66 @@ export const updateVehicleStatus = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Check permissions
+    const isAdminOrStaff = req.user?.roles?.some(role => role === 'Admin' || role === 'Staff');
+    const isOwner = vehicle.ownerId.toString() === req.user?.id;
+
+    if (!isAdminOrStaff) {
+      if (!isOwner) {
+        return res.status(403).json({
+          success: false,
+          error: 'Bạn không có quyền thay đổi trạng thái của xe này'
+        });
+      }
+
+      // If owner, check restriction rules
+      if (vehicle.status === 'PendingApproval') {
+        return res.status(403).json({
+          success: false,
+          error: 'Xe đang chờ phê duyệt từ quản trị viên. Bạn không thể tự thay đổi trạng thái lúc này.'
+        });
+      }
+
+      if (status !== 'Available' && status !== 'Maintenance') {
+        return res.status(403).json({
+          success: false,
+          error: 'Chủ xe chỉ được phép thay đổi trạng thái xe giữa Sẵn sàng (Available) và Bảo trì (Maintenance)'
+        });
+      }
+    }
+
+    const oldStatus = vehicle.status;
     vehicle.status = status;
     await vehicle.save();
     await vehicle.populate('ownerId', 'firstName lastName email phoneNumber');
+
+    // Tạo thông báo cho Chủ xe nếu xe được phê duyệt hoặc thay đổi tình trạng hoạt động
+    try {
+      if (oldStatus === 'PendingApproval' && status === 'Available') {
+        await Notification.create({
+          userId: (vehicle.ownerId as any)._id,
+          title: 'Xe của bạn đã được phê duyệt hoạt động',
+          message: `Chúc mừng! Chiếc xe ${vehicle.vehicleModel} (Biển số: ${vehicle.licensePlate}) của bạn đã được nhân viên hệ thống duyệt hoạt động công khai.`,
+          type: 'System'
+        });
+      } else if (status === 'Maintenance') {
+        await Notification.create({
+          userId: (vehicle.ownerId as any)._id,
+          title: 'Xe đã chuyển sang chế độ Bảo trì',
+          message: `Chiếc xe ${vehicle.vehicleModel} (Biển số: ${vehicle.licensePlate}) của bạn đã được cập nhật tình trạng sang Bảo trì.`,
+          type: 'System'
+        });
+      } else if (status === 'Available' && oldStatus !== 'PendingApproval') {
+        await Notification.create({
+          userId: (vehicle.ownerId as any)._id,
+          title: 'Xe đã sẵn sàng hoạt động trở lại',
+          message: `Chiếc xe ${vehicle.vehicleModel} (Biển số: ${vehicle.licensePlate}) của bạn đã sẵn sàng cho thuê trở lại.`,
+          type: 'System'
+        });
+      }
+    } catch (notiErr) {
+      console.error('Lỗi tạo thông báo trạng thái xe:', notiErr);
+    }
 
     res.json({
       success: true,

@@ -619,7 +619,7 @@ npm run dev
 
 ### Default Seed Accounts
 Upon connecting to MongoDB, the backend automatically seeds the database with the following testing accounts:
-- **Admin**: `admin@motov.com` / Password: `123456`
-- **Staff**: `nhanvien@motov.com` / Password: `123456`
-- **Owner**: `owner@motov.com` / Password: `123456`
-- **Customer**: `khachhang@motov.com` / Password: `123456`
+- **Admin**: `admin@motov.com` / Password: `admin123`
+- **Staff**: `nhanvien@motov.com` / Password: `admin123`
+- **Owner**: `owner@motov.com` / Password: `admin123`
+- **Customer**: `khachhang@motov.com` / Password: `admin123`

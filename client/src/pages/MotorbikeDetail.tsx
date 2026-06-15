@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertCircle, Loader, Edit2, Trash2, MapPin, Users, Zap, Check, X } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Loader, Edit2, Trash2, MapPin, Users, Zap, Check, X, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getMotorbikeById, Motorbike, deleteMotorbike } from '../services/vehicleService';
+import { feedbackService, FeedbackItem } from '../services/feedbackService';
 
 export const MotorbikeDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [motorbike, setMotorbike] = useState<Motorbike | null>(null);
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -26,6 +28,10 @@ export const MotorbikeDetail = () => {
         setError(null);
         const data = await getMotorbikeById(id);
         setMotorbike(data);
+        
+        // Fetch feedbacks
+        const fbData = await feedbackService.getVehicleFeedbacks(id);
+        setFeedbacks(fbData);
       } catch (err) {
         setError('Failed to load motorbike details. Please try again later.');
         console.error(err);
@@ -37,12 +43,20 @@ export const MotorbikeDetail = () => {
     fetchMotorbike();
   }, [id]);
 
+
   const handleDelete = async () => {
     if (!motorbike?._id) return;
 
     try {
       setDeleting(true);
-      const token = localStorage.getItem('token') || '';
+      let token = '';
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          token = user.token || '';
+        } catch (e) {}
+      }
       await deleteMotorbike(motorbike._id, token);
       setShowDeleteModal(false);
       navigate('/bikes');
@@ -242,6 +256,87 @@ export const MotorbikeDetail = () => {
             </div>
           </div>
         )}
+
+        {/* Customer Feedbacks Section */}
+        <div className="mt-12 bg-surface border border-gray-800 rounded-2xl p-6 md:p-8">
+          <h2 className="font-display font-black text-2xl text-neon uppercase mb-6 tracking-tight flex items-center gap-2">
+            <Star size={24} className="fill-neon text-neon" />
+            Đánh giá từ khách hàng ({feedbacks.length})
+          </h2>
+
+          {feedbacks.length === 0 ? (
+            <div className="text-center py-10 bg-black/20 rounded-xl border border-white/5">
+              <p className="text-gray-500 text-sm">Chưa có đánh giá nào cho xe này.</p>
+              <p className="text-xs text-gray-600 mt-1">Hãy thuê xe và là người đầu tiên để lại phản hồi!</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Summary stat */}
+              <div className="flex items-center gap-4 p-4 bg-black/30 rounded-xl border border-white/5 w-fit">
+                <div className="text-3xl font-extrabold text-neon">
+                  {(feedbacks.reduce((sum, f) => sum + f.rating, 0) / feedbacks.length).toFixed(1)}
+                </div>
+                <div>
+                  <div className="flex gap-0.5 text-neon">
+                    {Array.from({ length: 5 }).map((_, i) => {
+                      const avg = feedbacks.reduce((sum, f) => sum + f.rating, 0) / feedbacks.length;
+                      return (
+                        <Star 
+                          key={i} 
+                          size={14} 
+                          className={i < Math.round(avg) ? 'fill-neon text-neon' : 'text-gray-700'} 
+                        />
+                      );
+                    })}
+                  </div>
+                  <span className="text-xs text-gray-500 block mt-0.5">Điểm đánh giá trung bình</span>
+                </div>
+              </div>
+
+              {/* Feedback items list */}
+              <div className="divide-y divide-gray-800 space-y-4">
+                {feedbacks.map((fb) => (
+                  <div key={fb._id} className="pt-4 first:pt-0 flex flex-col gap-2">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 bg-black flex items-center justify-center text-xs">
+                          {fb.userId?.avatarUrl ? (
+                            <img src={fb.userId.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-gray-500">{fb.userId?.username?.substring(0, 2).toUpperCase() || 'U'}</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-white block">
+                            {fb.userId ? `${fb.userId.lastName} ${fb.userId.firstName}` : 'Ẩn danh'}
+                          </span>
+                          <span className="text-[10px] text-gray-500 block font-mono">@{fb.userId?.username}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex gap-0.5 justify-end">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star 
+                              key={i} 
+                              size={10} 
+                              className={i < fb.rating ? 'fill-neon text-neon' : 'text-gray-800'} 
+                            />
+                          ))}
+                        </div>
+                        <span className="text-[9px] text-gray-500 mt-1 block">
+                          {new Date(fb.createdAt).toLocaleDateString('vi-VN')}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-300 bg-black/10 p-3 rounded-lg border border-white/5 leading-relaxed">
+                      "{fb.content}"
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* DELETE CONFIRMATION MODAL */}
