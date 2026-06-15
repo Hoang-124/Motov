@@ -31,6 +31,7 @@ import { AdminBikes } from './pages/admin/AdminBikes';
 import { AdminBookings } from './pages/admin/AdminBookings';
 import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminPromotions } from './pages/admin/AdminPromotions';
+import { AdminFeedbacks } from './pages/admin/AdminFeedbacks';
 
 // Route Guard component
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: ('customer' | 'staff' | 'admin' | 'owner')[] }) => {
@@ -159,6 +160,11 @@ export default function App() {
             <Route path="/admin/promotions" element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminPromotions />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/feedbacks" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminFeedbacks />
               </ProtectedRoute>
             } />
             <Route path="/promotions" element={<Promotions />} />
