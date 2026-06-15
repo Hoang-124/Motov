@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Text,
   Alert,
-  Platform,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Provider } from 'react-redux';
@@ -35,16 +34,6 @@ import { OwnerDashboardScreen } from './src/features/owner/screens/OwnerDashboar
 import { OwnerBikesScreen } from './src/features/owner/screens/OwnerBikesScreen';
 import { OwnerBookingsScreen } from './src/features/owner/screens/OwnerBookingsScreen';
 
-// Import Staff screens
-import { StaffBookingsScreen } from './src/features/staff/screens/StaffBookingsScreen';
-import { StaffBikesScreen } from './src/features/staff/screens/StaffBikesScreen';
-
-// Import Admin screens
-import { AdminDashboardScreen } from './src/features/admin/screens/AdminDashboardScreen';
-import { AdminBikesScreen } from './src/features/admin/screens/AdminBikesScreen';
-import { AdminBookingsScreen } from './src/features/admin/screens/AdminBookingsScreen';
-import { AdminUsersScreen } from './src/features/admin/screens/AdminUsersScreen';
-
 const renderTabIcon = (tabId: string, isActive: boolean) => {
   const color = isActive ? COLORS.accent : COLORS.textMuted;
   const size = 20;
@@ -53,19 +42,12 @@ const renderTabIcon = (tabId: string, isActive: boolean) => {
       return <Feather name="home" size={size} color={color} />;
     case 'bikes':
     case 'owner_bikes':
-    case 'admin_bikes':
-    case 'staff_bikes':
       return <MaterialCommunityIcons name="motorbike" size={24} color={color} style={{ marginTop: -2 }} />;
     case 'bookings':
     case 'owner_bookings':
-    case 'staff_bookings':
-    case 'admin_bookings':
       return <Feather name="calendar" size={size} color={color} />;
     case 'owner_dashboard':
-    case 'admin_dashboard':
       return <Feather name="trending-up" size={size} color={color} />;
-    case 'admin_users':
-      return <Feather name="users" size={size} color={color} />;
     case 'profile':
       return <Feather name="user" size={size} color={color} />;
     default:
@@ -80,12 +62,8 @@ function MainApp() {
 
   // Reset tab on role switch
   useEffect(() => {
-    if (role === 'admin') {
-      setActiveTab('admin_dashboard');
-    } else if (role === 'owner') {
+    if (role === 'owner') {
       setActiveTab('owner_dashboard');
-    } else if (role === 'staff') {
-      setActiveTab('staff_bookings');
     } else {
       setActiveTab('home');
     }
@@ -132,14 +110,6 @@ function MainApp() {
   // Determine bottom tab links dynamically
   const getTabs = () => {
     switch (role) {
-      case 'admin':
-        return [
-          { id: 'admin_dashboard', label: 'Thống kê' },
-          { id: 'admin_bikes', label: 'Quản lý xe' },
-          { id: 'admin_bookings', label: 'Toàn bộ đơn' },
-          { id: 'admin_users', label: 'Phân quyền' },
-          { id: 'profile', label: 'Cá nhân' }
-        ];
       case 'owner':
         return [
           { id: 'owner_dashboard', label: 'Doanh thu' },
@@ -147,12 +117,8 @@ function MainApp() {
           { id: 'owner_bookings', label: 'Yêu cầu' },
           { id: 'profile', label: 'Cá nhân' }
         ];
+      case 'admin':
       case 'staff':
-        return [
-          { id: 'staff_bookings', label: 'Duyệt đơn' },
-          { id: 'staff_bikes', label: 'Kiểm tra xe' },
-          { id: 'profile', label: 'Cá nhân' }
-        ];
       case 'customer':
         return [
           { id: 'home', label: 'Trang chủ' },
@@ -216,28 +182,6 @@ function MainApp() {
         )}
         {activeTab === 'owner_bookings' && (
           <OwnerBookingsScreen />
-        )}
-
-        {/* --- STAFF VIEWS --- */}
-        {activeTab === 'staff_bookings' && (
-          <StaffBookingsScreen />
-        )}
-        {activeTab === 'staff_bikes' && (
-          <StaffBikesScreen />
-        )}
-
-        {/* --- ADMIN VIEWS --- */}
-        {activeTab === 'admin_dashboard' && (
-          <AdminDashboardScreen />
-        )}
-        {activeTab === 'admin_bikes' && (
-          <AdminBikesScreen />
-        )}
-        {activeTab === 'admin_bookings' && (
-          <AdminBookingsScreen />
-        )}
-        {activeTab === 'admin_users' && (
-          <AdminUsersScreen />
         )}
       </ScrollView>
 

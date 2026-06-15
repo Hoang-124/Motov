@@ -9,136 +9,300 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
-import { useAppSelector } from '../../../app/store';
+import { useAppSelector, useAppDispatch } from '../../../app/store';
+import {
+  updateBookingStatus,
+  returnBookingWithFees,
+  approveOwnerRequest,
+  rejectOwnerRequest
+} from '../../bookings/bookingsSlice';
+import { Booking } from '../../../types';
+import { ReturnMotorbikeModal } from '../../../components/ReturnMotorbikeModal';
 
 export const StaffBookingsScreen: React.FC = () => {
+  const dispatch = useAppDispatch();
   const bookingsState = useAppSelector(state => state.bookings.bookings);
-  const [localBookings, setLocalBookings] = useState(bookingsState);
+  const ownerRequests = useAppSelector(state => state.bookings.ownerRequests);
 
-  const handleAction = (id: string, newStatus: string) => {
-    setLocalBookings(prev =>
-      prev.map(b => b.id === id ? { ...b, status: newStatus } : b)
-    );
+  const [activeTab, setActiveTab] = useState<'bookings' | 'ownerRequests'>('bookings');
+  
+  // Return Motorbike Modal States
+  const [returnModalVisible, setReturnModalVisible] = useState(false);
+  const [selectedReturnBooking, setSelectedReturnBooking] = useState<Booking | null>(null);
+
+  const handleAction = (id: string, newStatus: string, label: string) => {
+    dispatch(updateBookingStatus({ id, status: newStatus, statusLabel: label }));
     Alert.alert('Thành Công', `Đã cập nhật trạng thái đơn hàng sang: ${newStatus}!`);
   };
 
-  const pendingBookings = localBookings.filter(b => b.status === 'Chờ duyệt');
-  const otherBookings = localBookings.filter(b => b.status !== 'Chờ duyệt');
+  const handleReturnConfirm = (bookingId: string, lateFee: number, returnTime: string) => {
+    dispatch(returnBookingWithFees({ id: bookingId, lateFee, returnTime }));
+    setReturnModalVisible(false);
+  };
+
+  const handleApproveOwner = (id: string, name: string) => {
+    Alert.alert('Duyệt Chủ Xe', `Xác nhận phê duyệt đối tác ${name} thành chủ xe?`, [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Duyệt',
+        onPress: () => {
+          dispatch(approveOwnerRequest(id));
+          Alert.alert('Thành Công', `Đã phê duyệt chủ xe ${name} đối tác!`);
+        }
+      }
+    ]);
+  };
+
+  const handleRejectOwner = (id: string, name: string) => {
+    Alert.alert('Từ Chối', `Xác nhận từ chối yêu cầu của đối tác ${name}?`, [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Từ chối',
+        style: 'destructive',
+        onPress: () => {
+          dispatch(rejectOwnerRequest(id));
+          Alert.alert('Đã xử lý', `Đã từ chối yêu cầu đăng ký của ${name}.`);
+        }
+      }
+    ]);
+  };
+
+  const pendingBookings = bookingsState.filter(b => b.status === 'Chờ duyệt');
+  const ongoingBookings = bookingsState.filter(b => b.status === 'Đang thuê');
+  const otherBookings = bookingsState.filter(b => b.status !== 'Chờ duyệt' && b.status !== 'Đang thuê');
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
       {/* Title */}
       <View style={styles.header}>
-        <Text style={styles.pageTitle}>Phê Duyệt Đơn Thuê</Text>
-        <Text style={styles.pageSubtitle}>Xét duyệt hồ sơ và hồ sơ GPLX của khách thuê</Text>
+        <Text style={styles.pageTitle}>Điều Phối & Phê Duyệt</Text>
+        <Text style={styles.pageSubtitle}>Duyệt đối tác chủ xe mới và quản lý quy trình giao nhận xe máy</Text>
       </View>
 
-      {/* Pending Section */}
-      <Text style={styles.sectionTitle}>Đơn Chờ Xét Duyệt ({pendingBookings.length})</Text>
-      <View style={styles.listContainer}>
-        {pendingBookings.length > 0 ? (
-          pendingBookings.map(b => (
-            <View key={b.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.bikeName}>{b.bikeName}</Text>
-                <View style={[styles.statusBadge, styles.badgePending]}>
-                  <Text style={[styles.statusBadgeText, { color: COLORS.warning }]}>
-                    {b.status}
-                  </Text>
-                </View>
-              </View>
+      {/* Tabs Layout */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'bookings' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('bookings')}
+        >
+          <Text style={[styles.tabBtnText, activeTab === 'bookings' && styles.tabBtnTextActive]}>
+            📋 Đơn đặt xe ({bookingsState.length})
+          </Text>
+        </TouchableOpacity>
 
-              <View style={styles.cardBody}>
-                <View style={styles.infoRow}>
-                  <Feather name="user" size={14} color="#71717a" style={{ marginRight: 6 }} />
-                  <Text style={styles.infoText}>Khách thuê: <Text style={styles.whiteText}>{b.fullName}</Text></Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Feather name="phone" size={14} color="#71717a" style={{ marginRight: 6 }} />
-                  <Text style={styles.infoText}>SĐT: <Text style={styles.whiteText}>{b.phone}</Text></Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Feather name="calendar" size={14} color="#71717a" style={{ marginRight: 6 }} />
-                  <Text style={styles.infoText}>Hạn thuê: <Text style={styles.whiteText}>{b.date}</Text></Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Feather name="map-pin" size={14} color="#71717a" style={{ marginRight: 6 }} />
-                  <Text style={styles.infoText}>Nhận xe tại: <Text style={styles.whiteText}>{b.location === 'Da Nang Airport' ? 'Sân bay Đà Nẵng' : b.location === 'Da Nang Train Station' ? 'Ga Đà Nẵng' : 'Địa điểm khác'}</Text></Text>
-                </View>
-              </View>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'ownerRequests' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('ownerRequests')}
+        >
+          <Text style={[styles.tabBtnText, activeTab === 'ownerRequests' && styles.tabBtnTextActive]}>
+            🤝 Duyệt chủ xe ({ownerRequests.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-              <View style={styles.cardActions}>
-                <TouchableOpacity 
-                  style={styles.btnReject} 
-                  onPress={() => handleAction(b.id, 'Đã hủy')}
-                >
-                  <Text style={styles.btnRejectText}>Từ chối</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.btnApprove} 
-                  onPress={() => handleAction(b.id, 'Đang thuê')}
-                >
-                  <Text style={styles.btnApproveText}>Phê duyệt</Text>
-                </TouchableOpacity>
-              </View>
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        {/* --- TAB 1: BOOKINGS --- */}
+        {activeTab === 'bookings' && (
+          <View style={styles.contentSection}>
+            {/* Chờ xét duyệt */}
+            <Text style={styles.sectionTitle}>Chờ Xét Duyệt ({pendingBookings.length})</Text>
+            <View style={styles.listContainer}>
+              {pendingBookings.length > 0 ? (
+                pendingBookings.map(b => (
+                  <View key={b.id} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.bikeName}>{b.bikeName}</Text>
+                      <View style={[styles.statusBadge, styles.badgePending]}>
+                        <Text style={[styles.statusBadgeText, { color: COLORS.warning }]}>
+                          {b.statusLabel || b.status}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardBody}>
+                      <Text style={styles.infoText}>Khách thuê: <Text style={styles.whiteText}>{b.fullName}</Text></Text>
+                      <Text style={styles.infoText}>SĐT: <Text style={styles.whiteText}>{b.phone}</Text></Text>
+                      <Text style={styles.infoText}>Hạn thuê: <Text style={styles.whiteText}>{b.date}</Text></Text>
+                      <Text style={styles.infoText}>Điểm giao xe: <Text style={styles.whiteText}>{b.location}</Text></Text>
+                    </View>
+
+                    <View style={styles.cardActions}>
+                      <TouchableOpacity 
+                        style={styles.btnReject} 
+                        onPress={() => handleAction(b.id, 'Đã hủy', '❌ Đã hủy')}
+                      >
+                        <Text style={styles.btnRejectText}>Từ chối</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.btnApprove} 
+                        onPress={() => handleAction(b.id, 'Đang thuê', '🚴 Đang thuê')}
+                      >
+                        <Text style={styles.btnApproveText}>Phê duyệt</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyText}>Không có đơn nào đang chờ duyệt.</Text>
+                </View>
+              )}
             </View>
-          ))
-        ) : (
-          <View style={styles.emptyCard}>
-            <Feather name="check-circle" size={28} color={COLORS.approved} style={{ marginBottom: 8 }} />
-            <Text style={styles.emptyText}>Tuyệt vời! Không có đơn nào đang chờ duyệt.</Text>
+
+            {/* Đang thuê */}
+            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Đang thuê xe ({ongoingBookings.length})</Text>
+            <View style={styles.listContainer}>
+              {ongoingBookings.length > 0 ? (
+                ongoingBookings.map(b => (
+                  <View key={b.id} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.bikeName}>{b.bikeName}</Text>
+                      <View style={[styles.statusBadge, styles.badgeOngoing]}>
+                        <Text style={[styles.statusBadgeText, { color: COLORS.approved }]}>
+                          {b.statusLabel || b.status}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.cardBody}>
+                      <Text style={styles.infoText}>Khách: <Text style={styles.whiteText}>{b.fullName}</Text></Text>
+                      <Text style={styles.infoText}>Hạn trả: <Text style={styles.whiteText}>{b.date.split(' - ')[1] || b.date}</Text></Text>
+                    </View>
+
+                    <View style={styles.cardActions}>
+                      <TouchableOpacity 
+                        style={styles.btnReturn} 
+                        onPress={() => {
+                          setSelectedReturnBooking(b);
+                          setReturnModalVisible(true);
+                        }}
+                      >
+                        <Feather name="key" size={12} color={COLORS.accentDark} style={{ marginRight: 6 }} />
+                        <Text style={styles.btnReturnText}>Thu hồi xe</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyText}>Không có đơn nào đang trong quá trình thuê.</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Đơn hàng đã hoàn tất / hủy */}
+            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Lịch Sử Đơn Đã Xử Lý</Text>
+            <View style={styles.listContainer}>
+              {otherBookings.length > 0 ? (
+                otherBookings.slice(0, 5).map(b => (
+                  <View key={b.id} style={[styles.card, { opacity: 0.85 }]}>
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.bikeName}>{b.bikeName}</Text>
+                      <View style={[
+                        styles.statusBadge,
+                        (b.status === 'Đã trả' || b.status === 'Completed' || b.status === 'Đã đánh giá') && styles.badgeCompleted,
+                        (b.status === 'Đã hủy' || b.status === 'Cancelled') && styles.badgeCancelled,
+                      ]}>
+                        <Text style={[
+                          styles.statusBadgeText,
+                          (b.status === 'Đã trả' || b.status === 'Completed' || b.status === 'Đã đánh giá') && { color: '#3b82f6' },
+                          (b.status === 'Đã hủy' || b.status === 'Cancelled') && { color: COLORS.danger },
+                        ]}>
+                          {b.statusLabel || b.status}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.cardBody}>
+                      <Text style={styles.infoText}>Khách: <Text style={styles.whiteText}>{b.fullName}</Text></Text>
+                      <Text style={styles.infoText}>Hạn thuê: <Text style={styles.whiteText}>{b.date}</Text></Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyText}>Chưa có lịch sử đơn hàng nào.</Text>
+                </View>
+              )}
+            </View>
           </View>
         )}
-      </View>
 
-      {/* History Section */}
-      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Lịch Sử Đơn Đã Xử Lý</Text>
-      <View style={styles.listContainer}>
-        {otherBookings.length > 0 ? (
-          otherBookings.slice(0, 5).map(b => (
-            <View key={b.id} style={[styles.card, { opacity: 0.8 }]}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.bikeName}>{b.bikeName}</Text>
-                <View style={[
-                  styles.statusBadge,
-                  b.status === 'Đang thuê' && styles.badgeOngoing,
-                  b.status === 'Đã trả' && styles.badgeCompleted,
-                  b.status === 'Đã hủy' && styles.badgeCancelled,
-                ]}>
-                  <Text style={[
-                    styles.statusBadgeText,
-                    b.status === 'Đang thuê' && { color: COLORS.approved },
-                    b.status === 'Đã trả' && { color: '#3b82f6' },
-                    b.status === 'Đã hủy' && { color: COLORS.danger },
-                  ]}>
-                    {b.status}
-                  </Text>
+        {/* --- TAB 2: OWNER REQUESTS --- */}
+        {activeTab === 'ownerRequests' && (
+          <View style={styles.contentSection}>
+            <Text style={styles.sectionTitle}>Đăng ký chờ duyệt ({ownerRequests.length})</Text>
+            <View style={styles.listContainer}>
+              {ownerRequests.length > 0 ? (
+                ownerRequests.map(r => (
+                  <View key={r.id} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.bikeName}>{r.name}</Text>
+                      <View style={[styles.statusBadge, styles.badgePending]}>
+                        <Text style={[styles.statusBadgeText, { color: COLORS.warning }]}>
+                          Đang Chờ
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardBody}>
+                      <Text style={styles.infoText}>Tài khoản: <Text style={styles.whiteText}>{r.username}</Text></Text>
+                      <Text style={styles.infoText}>Email: <Text style={styles.whiteText}>{r.email}</Text></Text>
+                      <Text style={styles.infoText}>SĐT liên hệ: <Text style={styles.whiteText}>{r.phoneNumber || 'Chưa cung cấp'}</Text></Text>
+                    </View>
+
+                    <View style={styles.cardActions}>
+                      <TouchableOpacity 
+                        style={styles.btnReject} 
+                        onPress={() => handleRejectOwner(r.id, r.name)}
+                      >
+                        <Text style={styles.btnRejectText}>Từ chối</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.btnApprove} 
+                        onPress={() => handleApproveOwner(r.id, r.name)}
+                      >
+                        <Text style={styles.btnApproveText}>Duyệt đối tác</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyCard}>
+                  <Feather name="user-check" size={32} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
+                  <Text style={styles.emptyText}>Tuyệt vời! Không có đối tác chủ xe nào đang chờ duyệt.</Text>
                 </View>
-              </View>
-              <View style={styles.cardBody}>
-                <Text style={styles.infoText}>Khách: <Text style={styles.whiteText}>{b.fullName}</Text></Text>
-                <Text style={styles.infoText}>Hạn thuê: <Text style={styles.whiteText}>{b.date}</Text></Text>
-              </View>
+              )}
             </View>
-          ))
-        ) : (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>Chưa xử lý đơn hàng nào.</Text>
           </View>
         )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+
+      {/* Return Motorbike Modal */}
+      <ReturnMotorbikeModal
+        visible={returnModalVisible}
+        onClose={() => {
+          setReturnModalVisible(false);
+          setSelectedReturnBooking(null);
+        }}
+        booking={selectedReturnBooking}
+        onConfirmSuccess={handleReturnConfirm}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   scrollContainer: {
     padding: 20,
     paddingBottom: 40,
   },
   header: {
-    marginTop: 10,
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
   pageTitle: {
     color: COLORS.text,
@@ -150,9 +314,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
+  tabsContainer: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingHorizontal: 16,
+    marginBottom: 6,
+  },
+  tabBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabBtnActive: {
+    borderBottomColor: COLORS.accent,
+  },
+  tabBtnText: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  tabBtnTextActive: {
+    color: COLORS.accent,
+  },
+  contentSection: {
+    marginTop: 6,
+  },
   sectionTitle: {
     color: COLORS.text,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 12,
     textTransform: 'uppercase',
@@ -211,10 +403,6 @@ const styles = StyleSheet.create({
   cardBody: {
     gap: 6,
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   infoText: {
     color: COLORS.textSecondary,
     fontSize: 12,
@@ -252,6 +440,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   btnApproveText: {
+    color: COLORS.accentDark,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  btnReturn: {
+    flex: 1,
+    backgroundColor: COLORS.accent,
+    borderRadius: 8,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnReturnText: {
     color: COLORS.accentDark,
     fontSize: 12,
     fontWeight: 'bold',

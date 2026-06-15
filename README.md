@@ -156,10 +156,10 @@ Motov/
 
 | Username | Email | Password | Role |
 |----------|-------|----------|------|
-| admin123 | admin@motov.com | 123456 | Admin |
-| staff123 | nhanvien@motov.com | 123456 | Staff |
-| owner123 | owner@motov.com | 123456 | Owner |
-| customer123 | khachhang@motov.com | 123456 | Customer |
+| admin123 | admin@motov.com | admin123 | Admin |
+| staff123 | nhanvien@motov.com | admin123 | Staff |
+| owner123 | owner@motov.com | admin123 | Owner |
+| customer123 | khachhang@motov.com | admin123 | Customer |
 
 ---
 
