@@ -1,13 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, MapPin, ClipboardList, Trash2, RefreshCw } from 'lucide-react';
-import { motion } from 'motion/react';
+import { CalendarDays, MapPin, ClipboardList, Trash2, RefreshCw, Star, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { bookingService, Booking } from '../services/bookingService'; // Import Service
+import { feedbackService } from '../services/feedbackService';
 
 export const Bookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackContent, setFeedbackContent] = useState('');
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<string[]>([]);
+
+  const handleOpenFeedbackModal = (bookingId: string) => {
+    setSelectedBookingId(bookingId);
+    setFeedbackRating(5);
+    setFeedbackContent('');
+    setShowFeedbackModal(true);
+  };
+
+  const handleSubmitFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBookingId) return;
+
+    try {
+      setLoading(true);
+      await feedbackService.createFeedback({
+        bookingId: selectedBookingId,
+        rating: feedbackRating,
+        content: feedbackContent
+      });
+      window.alert('Gửi đánh giá thành công! Cảm ơn phản hồi của bạn.');
+      setReviewedBookingIds(prev => [...prev, selectedBookingId]);
+      setShowFeedbackModal(false);
+    } catch (err: any) {
+      window.alert(err.response?.data?.message || 'Không thể gửi đánh giá vào lúc này!');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Hàm tải danh sách đơn từ Server
   const loadMyBookings = async () => {
@@ -161,12 +196,28 @@ export const Bookings = () => {
                       <Trash2 size={16} />
                       Yêu cầu hủy
                     </button>
+                  ) : booking.status === 'Completed' ? (
+                    reviewedBookingIds.includes(booking.id) ? (
+                      <span className="text-xs text-neon font-medium bg-neon/10 px-3 py-1.5 rounded-md border border-neon/20">
+                        ✓ Đã đánh giá
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleOpenFeedbackModal(booking.id)}
+                        disabled={loading}
+                        className="flex items-center justify-center gap-2 bg-neon text-dark hover:bg-[#bbf000] px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-bold cursor-pointer disabled:opacity-50 shadow-[0_0_10px_rgba(204,255,0,0.2)]"
+                      >
+                        <Star size={16} className="fill-dark text-dark" />
+                        Đánh giá xe
+                      </button>
+                    )
                   ) : (
                     <span className="text-xs text-gray-500 font-medium bg-black/30 px-3 py-1.5 rounded-md border border-gray-900">
                       {booking.status === 'Cancelled' ? 'Đã đóng đơn' : 'Khóa chỉnh sửa'}
                     </span>
                   )}
                 </div>
+
               </motion.div>
             ))}
           </div>
@@ -184,6 +235,97 @@ export const Bookings = () => {
         )}
 
       </div>
+
+      {/* Feedback Modal */}
+      <AnimatePresence>
+        {showFeedbackModal && selectedBookingId && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowFeedbackModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              className="bg-surface border border-white/10 rounded-2xl p-6 shadow-2xl relative w-full max-w-md z-10 overflow-hidden"
+            >
+              <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+              
+              <button 
+                onClick={() => setShowFeedbackModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+
+              <h3 className="font-display font-black text-xl text-white uppercase mb-4 flex items-center gap-2">
+                ⭐ Đánh giá chuyến đi
+              </h3>
+
+              <form onSubmit={handleSubmitFeedback} className="space-y-4">
+                <div className="flex flex-col items-center justify-center py-4 bg-black/20 rounded-xl border border-white/5">
+                  <span className="text-xs text-gray-400 mb-2 uppercase tracking-wider">Mức độ hài lòng của bạn</span>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setFeedbackRating(num)}
+                        className="hover:scale-110 transition-transform cursor-pointer border-none bg-transparent"
+                      >
+                        <Star 
+                          size={32} 
+                          className={num <= feedbackRating ? 'fill-neon text-neon text-glow' : 'text-gray-700'} 
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-xs text-neon font-bold mt-2.5">
+                    {feedbackRating === 5 ? '🚀 Rất hài lòng' :
+                     feedbackRating === 4 ? '✨ Hài lòng' :
+                     feedbackRating === 3 ? '👌 Bình thường' :
+                     feedbackRating === 2 ? '⚠️ Chưa hài lòng' :
+                     '👎 Rất tệ'}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Ý kiến phản hồi của bạn</label>
+                  <textarea 
+                    required
+                    rows={4}
+                    placeholder="Chia sẻ trải nghiệm của bạn về xe máy, thái độ phục vụ của chủ xe..."
+                    value={feedbackContent}
+                    onChange={(e) => setFeedbackContent(e.target.value)}
+                    className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-2.5 outline-none transition-all resize-none"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowFeedbackModal(false)}
+                    className="px-4 py-2 bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 rounded-lg transition-all text-xs font-bold uppercase cursor-pointer"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-neon text-dark hover:bg-[#bbf000] font-bold rounded-lg transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(204,255,0,0.2)] cursor-pointer"
+                  >
+                    Gửi đánh giá
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

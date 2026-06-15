@@ -19,6 +19,7 @@ export interface IUser extends Document {
   dob?: Date;
   roles: ('Admin' | 'Staff' | 'Owner' | 'Customer')[];
   status: 'Active' | 'Suspended' | 'Unverified';
+  strikes: number;
   favoriteVehicles: mongoose.Types.ObjectId[];
   usedVouchers: IUserVoucher[];
   ownerRequestStatus?: 'None' | 'Pending' | 'Approved' | 'Rejected';
@@ -45,6 +46,7 @@ const UserSchema = new Schema<IUser>({
   dob: { type: Date },
   roles: [{ type: String, enum: ['Admin', 'Staff', 'Owner', 'Customer'], default: ['Customer'] }],
   status: { type: String, enum: ['Active', 'Suspended', 'Unverified'], default: 'Active' },
+  strikes: { type: Number, default: 0 },
   ownerRequestStatus: { type: String, enum: ['None', 'Pending', 'Approved', 'Rejected'], default: 'None' },
   favoriteVehicles: [{ type: Schema.Types.ObjectId, ref: 'Vehicle' }],
   usedVouchers: [UserVoucherSchema]
