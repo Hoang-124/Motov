@@ -92,7 +92,14 @@ export const Booking = () => {
     if (storedUser) {
       try {
         const u = JSON.parse(storedUser);
-        setFullName(u.name || u.firstName ? `${u.lastName || ''} ${u.firstName || ''}`.trim() : '');
+        let nameToSet = u.name || '';
+        if (!nameToSet) {
+          const parts = [];
+          if (u.lastName && u.lastName !== 'undefined') parts.push(u.lastName);
+          if (u.firstName && u.firstName !== 'undefined') parts.push(u.firstName);
+          nameToSet = parts.join(' ');
+        }
+        setFullName(nameToSet.trim());
       } catch (e) {}
     }
   }, [bikeId]);

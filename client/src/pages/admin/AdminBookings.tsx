@@ -13,11 +13,13 @@ import {
   Phone, 
   User, 
   CreditCard, 
-  UserCheck 
+  UserCheck,
+  Key
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { bookingService, Booking } from '../../services/bookingService.js';
+import { bookingService, Booking } from '../../services/bookingService';
 import axios from 'axios';
+import { ReturnMotorbikeModal } from '../../components/ReturnMotorbikeModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -40,6 +42,8 @@ export const AdminBookings = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [returningBookingId, setReturningBookingId] = useState<string | null>(null);
+  const [returningPickupTime, setReturningPickupTime] = useState<string | undefined>(undefined);
 
   const getAuthHeaders = () => {
     let token = localStorage.getItem('token');
@@ -165,6 +169,11 @@ export const AdminBookings = () => {
       window.alert(err.response?.data?.message || err.message || 'Lỗi khi từ chối yêu cầu!');
       setLoading(false);
     }
+  };
+
+  const handleReturnSuccess = () => {
+    loadBookings();
+    setReturningBookingId(null);
   };
 
   const formatDate = (isoString: string) => {
@@ -391,14 +400,17 @@ export const AdminBookings = () => {
                             </>
                           )}
 
-                          {/* Nhận xe Ongoing */}
+                          {/* Nhận xe Ongoing (Thu hồi xe qua Modal) */}
                           {booking.status === 'Ongoing' && (
                             <button
-                              onClick={() => handleUpdateStatus(booking.id, 'Completed')}
+                              onClick={() => {
+                                setReturningBookingId(booking.id);
+                                setReturningPickupTime(booking.pickupDateTime);
+                              }}
                               className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                               title="Xác nhận khách trả xe"
                             >
-                              <CheckSquare size={12} /> Thu hồi xe
+                              <Key size={12} /> Thu hồi xe
                             </button>
                           )}
 
@@ -506,6 +518,14 @@ export const AdminBookings = () => {
         )}
 
       </div>
+
+      <ReturnMotorbikeModal
+        isOpen={!!returningBookingId}
+        onClose={() => setReturningBookingId(null)}
+        bookingId={returningBookingId}
+        pickupDateTime={returningPickupTime}
+        onSuccess={handleReturnSuccess}
+      />
     </div>
   );
 };
