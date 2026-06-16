@@ -935,7 +935,9 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
       booking.surcharges.push({
         surchargeType: 'Late Return',
         amount: lateFee,
-        description: `Phí trả trễ xe. Đã trả lúc ${returnedTime.toLocaleString('vi-VN')}`
+        description: `Phí trả trễ xe. Đã trả lúc ${returnedTime.toLocaleString('vi-VN')}`,
+        isPaid: false,
+        createdAt: new Date()
       });
       booking.totalAmount += lateFee;
     }
