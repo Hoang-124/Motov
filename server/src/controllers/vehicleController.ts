@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Vehicle, IVehicle } from '../models/Vehicle.js';
+import { User } from '../models/User.js';
 import mongoose from 'mongoose';
 import { Notification } from '../models/Notification.js';
 
@@ -447,11 +448,66 @@ export const updateVehicleStatus = async (req: AuthRequest, res: Response) => {
       message: 'Vehicle status updated successfully',
       data: vehicle
     });
+
+    // Check low availability alert in background (non-blocking)
+    if (oldStatus === 'Available' && status !== 'Available') {
+      checkLowAvailabilityAlert(vehicle.vehicleModel, vehicle.ownerId).catch(err => 
+        console.error('Error running checkLowAvailabilityAlert:', err)
+      );
+    }
   } catch (error) {
     console.error('Error updating vehicle status:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to update vehicle status'
     });
+  }
+};
+
+/**
+ * Check if a vehicle model has low availability (<= 1 available)
+ * and send in-app notification alerts to Admins, Staff, and the Owner.
+ */
+export const checkLowAvailabilityAlert = async (vehicleModel: string, ownerId: any) => {
+  try {
+    const availableCount = await Vehicle.countDocuments({
+      vehicleModel,
+      status: 'Available'
+    });
+
+    if (availableCount <= 1) {
+      // Find all Admins and Staff
+      const adminsAndStaff = await User.find({
+        roles: { $in: ['Admin', 'Staff'] }
+      });
+
+      const message = `Cảnh báo: Dòng xe "${vehicleModel}" hiện chỉ còn lại ${availableCount} xe sẵn sàng (Available) trong hệ thống. Vui lòng kiểm tra và cập nhật thêm xe.`;
+
+      // Create notification for Admin/Staff
+      for (const u of adminsAndStaff) {
+        await Notification.create({
+          userId: u._id,
+          title: '⚠️ Cảnh báo: Lượng xe sẵn sàng thấp',
+          message,
+          type: 'System'
+        });
+      }
+
+      // Create notification for the Owner (if not Admin/Staff)
+      if (ownerId) {
+        const owner = await User.findById(ownerId);
+        if (owner && !owner.roles.includes('Admin') && !owner.roles.includes('Staff')) {
+          await Notification.create({
+            userId: owner._id,
+            title: '⚠️ Cảnh báo: Xe sẵn sàng còn lại rất ít',
+            message: `Dòng xe "${vehicleModel}" của bạn hiện chỉ còn ${availableCount} xe sẵn sàng hoạt động. Hãy kết thúc bảo trì hoặc đăng tải xe mới để tối ưu doanh thu.`,
+            type: 'System'
+          });
+        }
+      }
+      console.log(`[Low Availability Alert] Alerts triggered for model: "${vehicleModel}". Available: ${availableCount}`);
+    }
+  } catch (err) {
+    console.error('Error checking low availability alert:', err);
   }
 };

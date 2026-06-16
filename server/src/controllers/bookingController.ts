@@ -20,6 +20,7 @@ import {
   generateBookingCode,
   calculateTotalAmount
 } from '../validators/bookingValidation.js';
+import { checkLowAvailabilityAlert } from './vehicleController.js';
 
 // ============================================
 // 1. CREATE BOOKING
@@ -475,6 +476,10 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
     // Update vehicle status based on booking status
     if (status === 'Confirmed') {
       await Vehicle.findByIdAndUpdate(booking.vehicleId._id, { status: 'Rented' });
+      // Check low availability alert in background (non-blocking)
+      checkLowAvailabilityAlert(booking.vehicleSnapshot.name, (booking.vehicleId as any).ownerId).catch(err => 
+        console.error('Error running checkLowAvailabilityAlert in booking confirmed:', err)
+      );
     } else if (status === 'Completed' || status === 'Cancelled') {
       await Vehicle.findByIdAndUpdate(booking.vehicleId._id, { status: 'Available' });
     }
