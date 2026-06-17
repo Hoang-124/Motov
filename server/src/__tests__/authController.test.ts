@@ -405,17 +405,32 @@ describe('resetPassword()', () => {
 
 describe('becomeOwner()', () => {
   let becomeOwner: any;
+  let approveOwnerRequest: any;
   beforeAll(async () => {
-    ({ becomeOwner } = await import('../controllers/authController.js'));
+    ({ becomeOwner, approveOwnerRequest } = await import('../controllers/authController.js'));
   });
 
-  it('should upgrade a Customer to Owner', async () => {
+  it('should request upgrade from Customer to Owner and then approve it', async () => {
     const user = await User.create({ username: 'newowner', email: 'newowner@example.com', roles: ['Customer'], status: 'Active' });
     const req: any = { user: { id: user._id.toString() } };
     const res = createMockRes();
     await becomeOwner(req, res);
     expect(res._status).toBe(200);
-    expect(res._body.user.role).toBe('owner');
+    expect(res._body.user.role).toBe('customer');
+    expect(res._body.user.ownerRequestStatus).toBe('Pending');
+
+    // Approve the request
+    const approveReq: any = {
+      user: { roles: ['Admin'] },
+      params: { id: user._id.toString() }
+    };
+    const approveRes = createMockRes();
+    await approveOwnerRequest(approveReq, approveRes);
+    expect(approveRes._status).toBe(200);
+
+    const updatedUser = await User.findById(user._id);
+    expect(updatedUser!.roles).toContain('Owner');
+    expect(updatedUser!.ownerRequestStatus).toBe('Approved');
   });
 
   it('should reject if already an Owner (BUG-8)', async () => {
