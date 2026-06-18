@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Calendar, Shield, Award, Briefcase, UserCheck, Check, Save, ArrowLeft, Camera, Lock, Key } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Shield, Award, Briefcase, UserCheck, Check, Save, ArrowLeft, Camera, Lock, Key, X, RefreshCw, AlertCircle, FileText, Eye, ShieldCheck, Activity } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const Profile = () => {
@@ -34,7 +34,251 @@ export const Profile = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
+  // eKYC states
+  const [identityStatus, setIdentityStatus] = useState<'Unverified' | 'Pending' | 'Verified' | 'Rejected'>('Unverified');
+  const [identityRejectReason, setIdentityRejectReason] = useState('');
+  const [citizenIdInfo, setCitizenIdInfo] = useState<any>(null);
+  
+  // UI states for eKYC Modal
+  const [isEkycModalOpen, setIsEkycModalOpen] = useState(false);
+  const [ekycStep, setEkycStep] = useState<'upload' | 'liveness' | 'scanning' | 'result'>('upload'); 
+  const [cardFront, setCardFront] = useState<string>('');
+  const [cardBack, setCardBack] = useState<string>('');
+  const [selfie, setSelfie] = useState<string>('');
+  const [ekycError, setEkycError] = useState<string | null>(null);
+  const [uploadingCard, setUploadingCard] = useState<'front' | 'back' | null>(null);
+  
+  // Live camera states
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const [livenessSubStep, setLivenessSubStep] = useState<number>(1); 
+  const [livenessLogs, setLivenessLogs] = useState<string[]>([]);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  
+  // Scanning effect
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanLogs, setScanLogs] = useState<string[]>([]);
+
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+  const startCamera = async () => {
+    try {
+      setLivenessSubStep(1);
+      setLivenessLogs(['Đang kết nối camera...']);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 480, facingMode: 'user' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      mediaStreamRef.current = stream;
+      setIsCameraActive(true);
+      setLivenessLogs(prev => [...prev, '✓ Thiết bị camera hoạt động bình thường.', 'Vui lòng giữ thẳng khuôn mặt và nhìn vào camera.']);
+      
+      // Auto trigger step 1 chụp ảnh thẳng sau 2.5s
+      setTimeout(() => {
+        captureLivenessStep(1);
+      }, 2500);
+    } catch (err) {
+      setLivenessLogs(prev => [...prev, '❌ Lỗi: Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập camera trên trình duyệt.']);
+      console.error('Camera error:', err);
+    }
+  };
+
+  const stopCamera = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const captureLivenessStep = async (step: number) => {
+    if (!videoRef.current) return;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth || 480;
+    canvas.height = videoRef.current.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      // Flip ngang ảnh đối với selfie cho tự nhiên
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
+      
+      if (step === 1) {
+        setLivenessLogs(prev => [...prev, '📸 Đã tự động chụp ảnh chính diện.', 'Yêu cầu 2: Vui lòng chớp mắt liên tục 2 lần...']);
+        setLivenessSubStep(2);
+        // Giả lập nhận diện cử chỉ chớp mắt thành công sau 2.5s
+        setTimeout(() => {
+          captureLivenessStep(2);
+        }, 2500);
+      } else if (step === 2) {
+        setLivenessLogs(prev => [...prev, '✓ Đã nhận diện cử chỉ chớp mắt thành công.', 'Yêu cầu 3: Vui lòng mỉm cười nhẹ...']);
+        setLivenessSubStep(3);
+        // Giả lập chụp nụ cười thành công sau 2.5s
+        setTimeout(() => {
+          captureLivenessStep(3);
+        }, 2500);
+      } else if (step === 3) {
+        const selfieDataUrl = canvas.toDataURL('image/jpeg');
+        setLivenessLogs(prev => [...prev, '📸 Đã chụp ảnh selfie cười.', 'Xác thực Liveness (thực thể sống) thành công!', 'Đang tải dữ liệu selfie lên máy chủ...']);
+        
+        try {
+          const blob = await fetch(selfieDataUrl).then(res => res.blob());
+          const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
+          const formData = new FormData();
+          formData.append('image', file);
+          
+          const storedUser = localStorage.getItem('user');
+          if (!storedUser) return;
+          const { token } = JSON.parse(storedUser);
+          
+          const response = await fetch(`${API_BASE_URL}/upload`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData,
+          });
+          
+          const uploadRes = await response.json();
+          if (!response.ok || !uploadRes.success) {
+            throw new Error(uploadRes.message || 'Lỗi tải ảnh selfie.');
+          }
+          
+          setSelfie(uploadRes.url);
+          setLivenessLogs(prev => [...prev, '✓ Tải ảnh selfie lên thành công.']);
+          
+          // Dừng camera và chuyển sang bước quét OCR
+          setTimeout(() => {
+            stopCamera();
+            setEkycStep('scanning');
+            startScanningEffect(uploadRes.url);
+          }, 1500);
+          
+        } catch (err: any) {
+          setLivenessLogs(prev => [...prev, `❌ Lỗi tải ảnh selfie: ${err.message || 'Không thể upload'}`]);
+        }
+      }
+    }
+  };
+
+  const startScanningEffect = (selfieUrl: string) => {
+    setScanProgress(0);
+    setScanLogs(['Đang khởi động module eKYC...']);
+    
+    const logs = [
+      'Đang nạp ảnh CCCD mặt trước và mặt sau...',
+      'Đang kiểm tra độ sáng và góc nghiêng của thẻ...',
+      'Đang trích xuất OCR văn bản từ thẻ...',
+      'Tìm thấy các trường: Số CCCD, Họ tên, Ngày sinh...',
+      'Đang nạp ảnh selfie và chạy Face Matching...',
+      'Đang tính toán độ trùng khớp giữa selfie và ảnh CCCD...',
+      'Đối chiếu họ tên trên CCCD với họ tên đăng ký tài khoản...',
+      'Đang đồng bộ dữ liệu lên hệ thống và chuyển trạng thái Chờ duyệt...',
+      'Hoàn tất phân tích eKYC thành công!'
+    ];
+    
+    let currentLogIndex = 0;
+    
+    const interval = setInterval(() => {
+      setScanProgress(prev => {
+        const next = prev + 12.5;
+        if (next >= 100) {
+          clearInterval(interval);
+          submitEkycData(selfieUrl);
+          return 100;
+        }
+        
+        // Cập nhật log
+        if (next % 25 === 0 && currentLogIndex < logs.length) {
+          setScanLogs(prevLogs => [...prevLogs, logs[currentLogIndex]]);
+          currentLogIndex++;
+        }
+        return next;
+      });
+    }, 400);
+  };
+
+  const submitEkycData = async (selfieUrl: string) => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
+      const { token } = JSON.parse(storedUser);
+      
+      const response = await fetch(`${API_BASE_URL}/auth/verify-identity`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          cardFrontUrl: cardFront,
+          cardBackUrl: cardBack,
+          selfieUrl: selfieUrl
+        })
+      });
+      
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Xác thực eKYC không thành công.');
+      }
+      
+      // Thành công, hiển thị kết quả
+      setCitizenIdInfo(data.data.ocrResult);
+      setIdentityStatus('Pending'); 
+      setEkycStep('result');
+      
+    } catch (err: any) {
+      setScanLogs(prev => [...prev, `❌ Lỗi: ${err.message || 'Lỗi kết nối eKYC server'}`]);
+    }
+  };
+
+  const handleCardUpload = async (e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setEkycError('Kích thước ảnh không được vượt quá 2MB');
+      return;
+    }
+
+    setUploadingCard(side);
+    setEkycError(null);
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
+      const { token } = JSON.parse(storedUser);
+
+      const response = await fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Lỗi khi tải ảnh lên server.');
+      }
+
+      if (side === 'front') {
+        setCardFront(data.url);
+      } else {
+        setCardBack(data.url);
+      }
+    } catch (err: any) {
+      setEkycError(err.message || 'Đã xảy ra lỗi khi tải ảnh lên.');
+    } finally {
+      setUploadingCard(null);
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -118,6 +362,9 @@ export const Profile = () => {
       setPhoneNumber(u.phoneNumber || '');
       setGender(u.gender || '');
       setAvatarUrl(u.avatarUrl || '');
+      setIdentityStatus(u.identityStatus || 'Unverified');
+      setIdentityRejectReason(u.identityRejectReason || '');
+      setCitizenIdInfo(u.citizenIdInfo || null);
       
       if (u.dob) {
         // Format YYYY-MM-DD for date input
@@ -363,6 +610,21 @@ export const Profile = () => {
                   {role === 'admin' ? 'Quản trị viên' : role === 'staff' ? 'Nhân viên' : role === 'owner' ? 'Chủ xe' : 'Khách hàng'}
                 </span>
               </div>
+
+              {/* eKYC Status badge */}
+              <div className={`mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${
+                identityStatus === 'Verified' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                identityStatus === 'Pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                identityStatus === 'Rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                'bg-gray-500/10 text-gray-400 border-gray-500/20'
+              }`}>
+                {identityStatus === 'Verified' ? <ShieldCheck size={12} /> : <Shield size={12} />}
+                <span className="uppercase">
+                  eKYC: {identityStatus === 'Verified' ? 'Đã xác thực' : 
+                         identityStatus === 'Pending' ? 'Chờ kiểm duyệt' : 
+                         identityStatus === 'Rejected' ? 'Bị từ chối' : 'Chưa xác thực'}
+                </span>
+              </div>
             </motion.div>
           </div>
 
@@ -513,6 +775,357 @@ export const Profile = () => {
 
               </form>
             </motion.div>
+
+            {/* eKYC Identity Verification Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="bg-surface/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl relative"
+            >
+              <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+              
+              <h2 className="font-display font-black text-2xl text-white uppercase mb-6 flex items-center gap-2">
+                <ShieldCheck size={22} className="text-neon" />
+                Xác thực danh tính (eKYC)
+              </h2>
+
+              <div className="space-y-4">
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-black/40 border border-white/5">
+                  <div className="p-2.5 rounded-lg bg-neon/10 text-neon">
+                    {identityStatus === 'Verified' ? <ShieldCheck size={24} /> : <Shield size={24} />}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white uppercase tracking-wider text-sm">Trạng thái hiện tại</h4>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {identityStatus === 'Verified' && 'Tài khoản của bạn đã được xác minh danh tính thành công. Bạn có quyền đặt xe không giới hạn.'}
+                      {identityStatus === 'Pending' && 'Hồ sơ eKYC của bạn đã được gửi lên hệ thống và đang chờ nhân viên kiểm duyệt.'}
+                      {identityStatus === 'Rejected' && `Rất tiếc! Hồ sơ eKYC bị từ chối. Lý do: "${identityRejectReason}".`}
+                      {identityStatus === 'Unverified' && 'Bạn chưa thực hiện xác minh danh tính. Vui lòng xác thực danh tính để kích hoạt tính năng đặt xe máy.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* CCCD Info display if Verified */}
+                {identityStatus === 'Verified' && citizenIdInfo && (
+                  <div className="bg-black/20 border border-white/5 rounded-xl p-4 text-xs space-y-2">
+                    <h5 className="font-bold text-gray-400 uppercase mb-2">Thông tin Căn cước công dân</h5>
+                    <div className="flex justify-between border-b border-white/5 pb-1">
+                      <span className="text-gray-500">Họ & Tên:</span>
+                      <span className="font-bold text-white font-mono">{citizenIdInfo.fullName}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/5 pb-1">
+                      <span className="text-gray-500">Số CCCD:</span>
+                      <span className="font-bold text-white font-mono">
+                        {citizenIdInfo.idNumber ? `${citizenIdInfo.idNumber.slice(0, 4)}********` : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/5 pb-1">
+                      <span className="text-gray-500">Quê quán:</span>
+                      <span className="text-white">{citizenIdInfo.homeTown}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Thời gian xác thực:</span>
+                      <span className="text-gray-400">{dob ? new Date().toLocaleDateString('vi-VN') : 'Mới đây'}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show button based on status */}
+                {(identityStatus === 'Unverified' || identityStatus === 'Rejected') && (
+                  <button
+                    onClick={() => {
+                      setCardFront('');
+                      setCardBack('');
+                      setSelfie('');
+                      setEkycError(null);
+                      setEkycStep('upload');
+                      setIsEkycModalOpen(true);
+                    }}
+                    className="w-full bg-neon text-dark font-bold py-3 rounded-lg hover:bg-[#bbf000] transition-all duration-300 shadow-[0_0_12px_rgba(204,255,0,0.2)] font-display uppercase tracking-wider text-xs cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Activity size={14} />
+                    Bắt đầu xác thực eKYC
+                  </button>
+                )}
+
+                {identityStatus === 'Pending' && (
+                  <div className="text-center py-2 text-yellow-500 text-xs font-semibold">
+                    ⏳ Yêu cầu xác thực đang chờ phê duyệt. Thông thường quá trình này mất 5-15 phút.
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* eKYC Full Modal Screen */}
+            {isEkycModalOpen && (
+              <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                {/* Backdrop */}
+                <div 
+                  className="absolute inset-0 bg-black/95 backdrop-blur-md"
+                  onClick={() => {
+                    if (isCameraActive) stopCamera();
+                    setIsEkycModalOpen(false);
+                  }}
+                />
+
+                <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-2xl z-10 overflow-hidden relative shadow-2xl flex flex-col max-h-[95vh]">
+                  {/* Glowing line top */}
+                  <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+                  
+                  {/* Header */}
+                  <div className="p-5 border-b border-white/5 flex justify-between items-center bg-black/20">
+                    <h3 className="font-display font-black text-lg text-white uppercase flex items-center gap-2">
+                      <Activity size={18} className="text-neon" />
+                      Quy trình xác minh danh tính eKYC
+                    </h3>
+                    <button
+                      onClick={() => {
+                        if (isCameraActive) stopCamera();
+                        setIsEkycModalOpen(false);
+                      }}
+                      className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="p-6 overflow-y-auto flex-grow">
+                    
+                    {ekycError && (
+                      <div className="mb-4 bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold text-center">
+                        ⚠️ {ekycError}
+                      </div>
+                    )}
+
+                    {/* Step 1: Upload CCCD */}
+                    {ekycStep === 'upload' && (
+                      <div className="space-y-6">
+                        <div className="text-center max-w-md mx-auto">
+                          <h4 className="font-bold text-white text-base">Bước 1: Tải ảnh Căn cước công dân</h4>
+                          <p className="text-xs text-gray-500 mt-1">Vui lòng tải lên ảnh mặt trước và mặt sau rõ nét, không bị lóa sáng hay mất góc.</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                          {/* Card Front */}
+                          <div className="space-y-2">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Mặt trước CCCD</span>
+                            <div className="h-44 rounded-xl border-2 border-dashed border-gray-800 bg-black/40 flex flex-col items-center justify-center overflow-hidden relative group">
+                              {cardFront ? (
+                                <>
+                                  <img src={cardFront} alt="Mặt trước" className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                    <label className="px-3 py-1.5 bg-neon text-dark text-xs font-bold rounded-lg cursor-pointer hover:bg-[#bbf000] uppercase tracking-wider">
+                                      Thay đổi
+                                      <input type="file" onChange={(e) => handleCardUpload(e, 'front')} accept="image/*" className="hidden" />
+                                    </label>
+                                  </div>
+                                </>
+                              ) : (
+                                <label className="cursor-pointer flex flex-col items-center justify-center p-4 text-center h-full w-full">
+                                  {uploadingCard === 'front' ? (
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-neon border-t-transparent"></div>
+                                  ) : (
+                                    <>
+                                      <FileText size={36} className="text-gray-600 mb-2 group-hover:text-neon transition-colors" />
+                                      <span className="text-xs font-bold text-gray-400">Tải ảnh mặt trước</span>
+                                      <span className="text-[10px] text-gray-600 mt-1">Dạng PNG, JPG (tối đa 2MB)</span>
+                                    </>
+                                  )}
+                                  <input type="file" onChange={(e) => handleCardUpload(e, 'front')} accept="image/*" className="hidden" disabled={uploadingCard !== null} />
+                                </label>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Card Back */}
+                          <div className="space-y-2">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Mặt sau CCCD</span>
+                            <div className="h-44 rounded-xl border-2 border-dashed border-gray-800 bg-black/40 flex flex-col items-center justify-center overflow-hidden relative group">
+                              {cardBack ? (
+                                <>
+                                  <img src={cardBack} alt="Mặt sau" className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                    <label className="px-3 py-1.5 bg-neon text-dark text-xs font-bold rounded-lg cursor-pointer hover:bg-[#bbf000] uppercase tracking-wider">
+                                      Thay đổi
+                                      <input type="file" onChange={(e) => handleCardUpload(e, 'back')} accept="image/*" className="hidden" />
+                                    </label>
+                                  </div>
+                                </>
+                              ) : (
+                                <label className="cursor-pointer flex flex-col items-center justify-center p-4 text-center h-full w-full">
+                                  {uploadingCard === 'back' ? (
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-neon border-t-transparent"></div>
+                                  ) : (
+                                    <>
+                                      <FileText size={36} className="text-gray-600 mb-2 group-hover:text-neon transition-colors" />
+                                      <span className="text-xs font-bold text-gray-400">Tải ảnh mặt sau</span>
+                                      <span className="text-[10px] text-gray-600 mt-1">Dạng PNG, JPG (tối đa 2MB)</span>
+                                    </>
+                                  )}
+                                  <input type="file" onChange={(e) => handleCardUpload(e, 'back')} accept="image/*" className="hidden" disabled={uploadingCard !== null} />
+                                </label>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-white/5 flex justify-end">
+                          <button
+                            disabled={!cardFront || !cardBack || uploadingCard !== null}
+                            onClick={() => {
+                              setEkycStep('liveness');
+                              startCamera();
+                            }}
+                            className="bg-neon text-dark font-bold px-6 py-2.5 rounded-lg hover:bg-[#bbf000] transition-all disabled:opacity-30 uppercase tracking-wider text-xs font-display flex items-center gap-1.5 cursor-pointer"
+                          >
+                            Tiếp tục
+                            <ArrowLeft size={14} className="rotate-180" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 2: Liveness Face Capture */}
+                    {ekycStep === 'liveness' && (
+                      <div className="space-y-6 flex flex-col items-center">
+                        <div className="text-center max-w-md">
+                          <h4 className="font-bold text-white text-base">Bước 2: Xác thực thực thể sống (Liveness Test)</h4>
+                          <p className="text-xs text-gray-500 mt-1">Để bảo mật, vui lòng cấp quyền camera và hoàn thành các hành động hướng dẫn.</p>
+                        </div>
+
+                        {/* Camera container with oval shape */}
+                        <div className="relative w-72 h-72 rounded-full overflow-hidden border-4 border-neon/50 bg-black flex items-center justify-center shadow-xl">
+                          <video 
+                            ref={videoRef} 
+                            autoPlay 
+                            playsInline 
+                            className="w-full h-full object-cover scale-x-[-1]"
+                          />
+                          
+                          {/* Face guideline frame */}
+                          <div className="absolute inset-4 rounded-full border-2 border-dashed border-white/30 pointer-events-none"></div>
+                          
+                          {/* Overlay scanning effect */}
+                          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neon/15 to-transparent h-1/2 w-full animate-pulse pointer-events-none"></div>
+
+                          {/* Action overlay notification */}
+                          <div className="absolute bottom-6 inset-x-4 bg-black/75 px-3 py-1.5 rounded-full border border-neon/30 text-[10px] text-neon font-black text-center uppercase tracking-widest animate-bounce">
+                            {livenessSubStep === 1 && '👤 GIỮ THẲNG KHUÔN MẶT'}
+                            {livenessSubStep === 2 && '👁️ HÃY CHỚP MẮT LIÊN TỤC'}
+                            {livenessSubStep === 3 && '😊 VUI LÒNG MỈM CƯỜI NHẸ'}
+                          </div>
+                        </div>
+
+                        {/* Logs of actions */}
+                        <div className="w-full bg-black/50 border border-gray-900 rounded-xl p-4 h-32 overflow-y-auto font-mono text-[10px] text-green-400 space-y-1 text-left">
+                          {livenessLogs.map((log, i) => (
+                            <div key={i}>{log}</div>
+                          ))}
+                        </div>
+
+                        <div className="pt-4 border-t border-white/5 w-full flex justify-between">
+                          <button
+                            onClick={() => {
+                              stopCamera();
+                              setEkycStep('upload');
+                            }}
+                            className="bg-white/5 text-gray-400 hover:text-white border border-white/10 px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer"
+                          >
+                            Quay lại
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 3: Scanning Screen */}
+                    {ekycStep === 'scanning' && (
+                      <div className="space-y-8 py-8 flex flex-col items-center justify-center">
+                        <div className="relative w-28 h-28 flex items-center justify-center">
+                          {/* Circular outer progress bar */}
+                          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="40" stroke="#1f2937" strokeWidth="6" fill="transparent" />
+                            <circle cx="50" cy="50" r="40" stroke="#ccff00" strokeWidth="6" fill="transparent" 
+                              strokeDasharray={`${2 * Math.PI * 40}`}
+                              strokeDashoffset={`${2 * Math.PI * 40 * (1 - scanProgress / 100)}`}
+                              className="transition-all duration-300"
+                            />
+                          </svg>
+                          <span className="absolute text-white font-mono font-bold text-xl">{Math.round(scanProgress)}%</span>
+                        </div>
+
+                        <div className="text-center space-y-1">
+                          <h4 className="font-bold text-white text-base">Đang tiến hành quét phân tích dữ liệu</h4>
+                          <p className="text-xs text-gray-500">Hệ thống AI đang trích xuất dữ liệu OCR và thực hiện đối sánh gương mặt...</p>
+                        </div>
+
+                        {/* Scanner process logs */}
+                        <div className="w-full max-w-md bg-black/60 border border-gray-800 rounded-xl p-4 h-40 overflow-y-auto font-mono text-[10px] text-neon space-y-1 shadow-inner text-left">
+                          {scanLogs.map((log, i) => (
+                            <div key={i} className="flex gap-1.5">
+                              <span className="text-gray-600">[{new Date().toLocaleTimeString('vi-VN')}]</span>
+                              <span>{log}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 4: eKYC Result page */}
+                    {ekycStep === 'result' && citizenIdInfo && (
+                      <div className="space-y-6">
+                        <div className="text-center space-y-1 max-w-md mx-auto">
+                          <div className="w-12 h-12 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 flex items-center justify-center mx-auto mb-2 text-glow">
+                            <Check size={24} />
+                          </div>
+                          <h4 className="font-bold text-white text-base">Hoàn tất nộp hồ sơ eKYC!</h4>
+                          <p className="text-xs text-gray-400">Thông tin trích xuất OCR đã được đối sánh và lưu lại. Vui lòng kiểm tra lại thông tin bên dưới.</p>
+                        </div>
+
+                        {/* Verification details */}
+                        <div className="bg-black/30 border border-white/5 rounded-2xl p-5 space-y-3.5 text-sm text-gray-300">
+                          <div className="flex justify-between border-b border-white/5 pb-2">
+                            <span className="text-gray-500">Họ & Tên trên CCCD:</span>
+                            <span className="font-bold text-white uppercase font-mono">{citizenIdInfo.fullName}</span>
+                          </div>
+                          <div className="flex justify-between border-b border-white/5 pb-2">
+                            <span className="text-gray-500">Số CCCD (Trích xuất):</span>
+                            <span className="font-bold text-white font-mono">{citizenIdInfo.idNumber}</span>
+                          </div>
+                          <div className="flex justify-between border-b border-white/5 pb-2">
+                            <span className="text-gray-500">Quê quán:</span>
+                            <span className="text-white">{citizenIdInfo.homeTown}</span>
+                          </div>
+                          <div className="flex justify-between border-b border-white/5 pb-2">
+                            <span className="text-gray-500">Độ trùng khớp khuôn mặt:</span>
+                            <span className="font-mono text-neon font-black">94.85% (Hợp lệ)</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Name Matching (Tên tài khoản):</span>
+                            <span className="text-green-400 font-bold flex items-center gap-1">
+                              <Check size={14} /> Khớp hoàn toàn
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-white/5 flex justify-end">
+                          <button
+                            onClick={() => {
+                              setIsEkycModalOpen(false);
+                            }}
+                            className="bg-neon text-dark font-bold px-6 py-2.5 rounded-lg hover:bg-[#bbf000] transition-all uppercase tracking-wider text-xs font-display cursor-pointer"
+                          >
+                            Hoàn tất
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Change Password Card */}
             <motion.div

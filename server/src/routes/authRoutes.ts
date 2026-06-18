@@ -15,7 +15,11 @@ import {
   checkVerificationStatus,
   getOwnerRequests,
   approveOwnerRequest,
-  rejectOwnerRequest
+  rejectOwnerRequest,
+  submitIdentityVerification,
+  getIdentityRequests,
+  approveIdentityRequest,
+  rejectIdentityRequest
 } from '../controllers/authController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
@@ -41,4 +45,11 @@ router.get('/owner-requests', authMiddleware as any, getOwnerRequests as any);
 router.put('/owner-requests/:id/approve', authMiddleware as any, approveOwnerRequest as any);
 router.put('/owner-requests/:id/reject', authMiddleware as any, rejectOwnerRequest as any);
 
+// Xác minh danh tính khách hàng (eKYC)
+router.post('/verify-identity', authMiddleware as any, submitIdentityVerification as any);
+router.get('/identity-requests', authMiddleware as any, getIdentityRequests as any);
+router.put('/identity-requests/:id/approve', authMiddleware as any, approveIdentityRequest as any);
+router.put('/identity-requests/:id/reject', authMiddleware as any, rejectIdentityRequest as any);
+
 export default router;
+
