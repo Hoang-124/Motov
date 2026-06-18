@@ -70,6 +70,8 @@ export const Booking = () => {
     }
   };
 
+  const [identityStatus, setIdentityStatus] = useState<'Unverified' | 'Pending' | 'Verified' | 'Rejected'>('Verified');
+
   useEffect(() => {
     const fetchBike = async () => {
       if (!bikeId) return;
@@ -100,6 +102,24 @@ export const Booking = () => {
           nameToSet = parts.join(' ');
         }
         setFullName(nameToSet.trim());
+        
+        // Gọi API kiểm tra identityStatus của user
+        const checkIdentity = async () => {
+          try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/me`, {
+              headers: {
+                'Authorization': `Bearer ${u.token}`
+              }
+            });
+            const resData = await response.json();
+            if (response.ok && resData.success) {
+              setIdentityStatus(resData.user.identityStatus || 'Unverified');
+            }
+          } catch (err) {
+            console.error('Lỗi kiểm tra eKYC:', err);
+          }
+        };
+        checkIdentity();
       } catch (e) {}
     }
   }, [bikeId]);
@@ -214,6 +234,27 @@ export const Booking = () => {
             {apiError && (
               <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
                 ⚠️ {apiError}
+              </div>
+            )}
+
+            {identityStatus !== 'Verified' && (
+              <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex flex-col gap-2 text-left">
+                <p className="text-xs text-red-400 font-bold flex items-center gap-1.5">
+                  ⚠️ Yêu cầu xác minh danh tính (eKYC)
+                </p>
+                <p className="text-[11px] text-gray-400">
+                  {identityStatus === 'Unverified' && 'Tài khoản của bạn chưa xác thực danh tính. Vui lòng hoàn tất eKYC trước khi đặt xe máy.'}
+                  {identityStatus === 'Pending' && 'Hồ sơ eKYC của bạn đang chờ phê duyệt. Vui lòng đợi nhân viên kiểm duyệt.'}
+                  {identityStatus === 'Rejected' && 'Hồ sơ eKYC của bạn đã bị từ chối. Vui lòng chụp lại ảnh CCCD rõ nét hơn.'}
+                </p>
+                {(identityStatus === 'Unverified' || identityStatus === 'Rejected') && (
+                  <Link 
+                    to="/profile" 
+                    className="mt-1 px-4 py-2 bg-neon text-dark font-black text-center rounded-lg text-[10px] uppercase tracking-wider hover:bg-[#bbf000] w-fit transition-all duration-300"
+                  >
+                    Đi đến Trang cá nhân để xác thực
+                  </Link>
+                )}
               </div>
             )}
 
@@ -335,8 +376,8 @@ export const Booking = () => {
                 )}
                 <button 
                   type="submit"
-                  disabled={loading}
-                  className="flex-grow bg-neon text-dark font-bold py-3.5 rounded-lg hover:bg-[#bbf000] focus:ring-4 focus:ring-neon/30 transition-all shadow-[0_0_15px_rgba(204,255,0,0.3)] cursor-pointer text-center disabled:bg-gray-700"
+                  disabled={loading || identityStatus !== 'Verified'}
+                  className="flex-grow bg-neon text-dark font-bold py-3.5 rounded-lg hover:bg-[#bbf000] focus:ring-4 focus:ring-neon/30 transition-all shadow-[0_0_15px_rgba(204,255,0,0.3)] cursor-pointer text-center disabled:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'ĐANG XỬ LÝ...' : step === 1 ? 'Tiếp Theo' : 'XÁC NHẬN ĐẶT XE'}
                 </button>

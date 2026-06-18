@@ -57,7 +57,92 @@ export const AdminUsers = () => {
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // eKYC States
+  const [activeTab, setActiveTab] = useState<'users' | 'ekyc'>('users');
+  const [ekycRequests, setEkycRequests] = useState<any[]>([]);
+  const [loadingEkyc, setLoadingEkyc] = useState(false);
+  const [selectedEkyc, setSelectedEkyc] = useState<any>(null);
+  const [isEkycDetailOpen, setIsEkycDetailOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+
   const API_BASE_URL = 'http://localhost:5000/api';
+
+  const fetchEkycRequests = async () => {
+    setLoadingEkyc(true);
+    try {
+      if (!currentUser?.token) return;
+      const response = await fetch(`${API_BASE_URL}/auth/identity-requests`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${currentUser.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setEkycRequests(data.data || []);
+      }
+    } catch (err) {
+      console.error('Lỗi tải eKYC requests:', err);
+    } finally {
+      setLoadingEkyc(false);
+    }
+  };
+
+  const handleApproveEkyc = async (userId: string) => {
+    setFormSaving(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/identity-requests/${userId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${currentUser.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Lỗi khi phê duyệt.');
+      }
+      showToast('Đã phê duyệt hồ sơ xác minh danh tính thành công!');
+      setIsEkycDetailOpen(false);
+      fetchEkycRequests();
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi phê duyệt', true);
+    } finally {
+      setFormSaving(false);
+    }
+  };
+
+  const handleRejectEkyc = async () => {
+    if (!selectedEkyc || !rejectReason.trim()) {
+      showToast('Vui lòng nhập lý do từ chối', true);
+      return;
+    }
+    setFormSaving(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/identity-requests/${selectedEkyc.id}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${currentUser.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: rejectReason })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Lỗi khi từ chối.');
+      }
+      showToast('Đã từ chối hồ sơ xác minh danh tính.');
+      setIsRejectModalOpen(false);
+      setIsEkycDetailOpen(false);
+      fetchEkycRequests();
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi từ chối', true);
+    } finally {
+      setFormSaving(false);
+    }
+  };
 
   // Get current logged in user details
   const getLoggedInUser = () => {
@@ -107,10 +192,14 @@ export const AdminUsers = () => {
     }
   };
 
-  // Trigger load when search/filters change
+  // Trigger load when search/filters change or tab changes
   useEffect(() => {
-    fetchUsers();
-  }, [search, roleFilter, statusFilter]);
+    if (activeTab === 'users') {
+      fetchUsers();
+    } else {
+      fetchEkycRequests();
+    }
+  }, [search, roleFilter, statusFilter, activeTab]);
 
   // Display Toast messages
   const showToast = (message: string, isError = false) => {
@@ -439,56 +528,38 @@ export const AdminUsers = () => {
           </button>
         </div>
 
-        {/* Filter and Search Bar */}
-        <div className="bg-surface/60 backdrop-blur-xl border border-white/5 p-4 rounded-2xl mb-6 shadow-lg flex flex-col md:flex-row gap-4">
-          {/* Search field */}
-          <div className="relative flex-grow">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
-              <Search size={16} />
-            </span>
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo tên, email, tên đăng nhập hoặc SĐT..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-black/40 border border-white/5 text-gray-300 text-sm rounded-xl focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all"
-            />
-          </div>
-
-          {/* Role dropdown filter */}
-          <div className="relative min-w-[180px]">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
-              <Filter size={14} />
-            </span>
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full bg-black/40 border border-white/5 text-gray-300 text-sm rounded-xl focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all appearance-none cursor-pointer"
-            >
-              <option value="">Tất cả vai trò</option>
-              <option value="admin">Quản Trị Viên</option>
-              <option value="staff">Nhân Viên</option>
-              <option value="owner">Chủ Xe</option>
-              <option value="customer">Khách Hàng</option>
-            </select>
-          </div>
-
-          {/* Status dropdown filter */}
-          <div className="relative min-w-[180px]">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
-              <Filter size={14} />
-            </span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full bg-black/40 border border-white/5 text-gray-300 text-sm rounded-xl focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all appearance-none cursor-pointer"
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="Active">Hoạt động</option>
-              <option value="Suspended">Đã khóa</option>
-              <option value="Unverified">Chưa xác minh</option>
-            </select>
-          </div>
+        {/* Tab selection */}
+        <div className="flex gap-6 mb-6 border-b border-white/5 pb-px">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`pb-3 text-sm font-bold uppercase tracking-wider transition-colors relative cursor-pointer ${
+              activeTab === 'users' ? 'text-neon font-black' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Danh sách thành viên
+            {activeTab === 'users' && (
+              <motion.div layoutId="activeTabUnderline" className="absolute bottom-0 inset-x-0 h-0.5 bg-neon shadow-[0_0_8px_rgba(204,255,0,0.8)]" />
+            )}
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('ekyc');
+              fetchEkycRequests();
+            }}
+            className={`pb-3 text-sm font-bold uppercase tracking-wider transition-colors relative cursor-pointer flex items-center gap-2 ${
+              activeTab === 'ekyc' ? 'text-neon font-black' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Yêu cầu eKYC
+            {ekycRequests.length > 0 && (
+              <span className="px-2 py-0.5 text-[10px] bg-red-500 text-white font-mono font-bold rounded-full">
+                {ekycRequests.length}
+              </span>
+            )}
+            {activeTab === 'ekyc' && (
+              <motion.div layoutId="activeTabUnderline" className="absolute bottom-0 inset-x-0 h-0.5 bg-neon shadow-[0_0_8px_rgba(204,255,0,0.8)]" />
+            )}
+          </button>
         </div>
 
         {/* Success / Error toast banner in absolute container */}
@@ -517,8 +588,62 @@ export const AdminUsers = () => {
           )}
         </AnimatePresence>
 
-        {/* User list table container */}
-        <div className="bg-surface/40 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+        {activeTab === 'users' && (
+          <>
+            {/* Filter and Search Bar */}
+            <div className="bg-surface/60 backdrop-blur-xl border border-white/5 p-4 rounded-2xl mb-6 shadow-lg flex flex-col md:flex-row gap-4">
+              {/* Search field */}
+              <div className="relative flex-grow">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+                  <Search size={16} />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo tên, email, tên đăng nhập hoặc SĐT..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 text-gray-300 text-sm rounded-xl focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all"
+                />
+              </div>
+
+              {/* Role dropdown filter */}
+              <div className="relative min-w-[180px]">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+                  <Filter size={14} />
+                </span>
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 text-gray-300 text-sm rounded-xl focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">Tất cả vai trò</option>
+                  <option value="admin">Quản Trị Viên</option>
+                  <option value="staff">Nhân Viên</option>
+                  <option value="owner">Chủ Xe</option>
+                  <option value="customer">Khách Hàng</option>
+                </select>
+              </div>
+
+              {/* Status dropdown filter */}
+              <div className="relative min-w-[180px]">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+                  <Filter size={14} />
+                </span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 text-gray-300 text-sm rounded-xl focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="Active">Hoạt động</option>
+                  <option value="Suspended">Đã khóa</option>
+                  <option value="Unverified">Chưa xác minh</option>
+                </select>
+              </div>
+            </div>
+
+            {/* User list table container */}
+            <div className="bg-surface/40 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center">
               <svg className="animate-spin h-8 w-8 text-neon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -638,7 +763,82 @@ export const AdminUsers = () => {
               </table>
             </div>
           )}
-        </div>
+          </div>
+          </>
+        )}
+
+        {/* eKYC Requests tab view */}
+        {activeTab === 'ekyc' && (
+          <div className="bg-surface/40 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden shadow-2xl animate-fade-in">
+            {loadingEkyc ? (
+              <div className="py-20 flex flex-col items-center justify-center">
+                <svg className="animate-spin h-8 w-8 text-neon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="mt-4 text-gray-400 text-sm font-semibold uppercase tracking-wider font-display">Đang tải yêu cầu eKYC...</span>
+              </div>
+            ) : ekycRequests.length === 0 ? (
+              <div className="py-20 text-center text-gray-400">
+                <Shield size={40} className="mx-auto mb-3 text-gray-600" />
+                <p className="font-semibold text-sm">Không có yêu cầu eKYC nào đang chờ phê duyệt</p>
+                <p className="text-xs text-gray-500 mt-1 font-mono">Tất cả tài liệu của người dùng đã được xử lý xong</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/5 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-black/20">
+                      <th className="py-4 px-6">Thành viên</th>
+                      <th className="py-4 px-6">Số điện thoại / Email</th>
+                      <th className="py-4 px-6">Họ tên trên CCCD</th>
+                      <th className="py-4 px-6">Độ khớp mặt AI</th>
+                      <th className="py-4 px-6">Ngày gửi</th>
+                      <th className="py-4 px-6 text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-sm text-gray-300">
+                    {ekycRequests.map(req => (
+                      <tr key={req.id} className="hover:bg-white/[0.02] transition-colors duration-150">
+                        <td className="py-4 px-6">
+                          <div className="font-bold text-white">{req.name}</div>
+                          <div className="text-xs text-gray-500 font-mono">@{req.username}</div>
+                        </td>
+                        <td className="py-4 px-6 font-mono text-xs">
+                          <div>{req.phoneNumber || 'Chưa cung cấp SĐT'}</div>
+                          <div className="text-gray-500 text-[11px] mt-0.5">{req.email}</div>
+                        </td>
+                        <td className="py-4 px-6 font-bold text-white uppercase font-mono">
+                          {req.citizenIdInfo?.fullName || 'N/A'}
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="px-2.5 py-1 rounded-full text-xs font-black bg-neon/10 text-neon border border-neon/20 font-mono">
+                            {req.citizenIdInfo?.faceMatchConfidence}%
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-xs text-gray-500">
+                          {formatDate(req.identitySubmittedAt)}
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <button
+                            onClick={() => {
+                              setSelectedEkyc(req);
+                              setRejectReason('');
+                              setIsEkycDetailOpen(true);
+                            }}
+                            className="px-4 py-2 bg-neon text-dark font-bold hover:bg-[#bbf000] rounded-lg text-xs uppercase tracking-wider transition-all cursor-pointer shadow-[0_0_10px_rgba(204,255,0,0.15)] hover:scale-[1.02]"
+                          >
+                            Xem & Duyệt
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
 
@@ -1321,6 +1521,185 @@ export const AdminUsers = () => {
                 </button>
               </div>
             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* eKYC REQUEST DETAIL MODAL */}
+      <AnimatePresence>
+        {isEkycDetailOpen && selectedEkyc && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsEkycDetailOpen(false)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              className="bg-surface border border-white/10 rounded-2xl p-6 shadow-2xl relative w-full max-w-4xl z-10 overflow-y-auto max-h-[90vh]"
+            >
+              <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+              
+              <button 
+                onClick={() => setIsEkycDetailOpen(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+
+              <h3 className="font-display font-black text-xl text-white uppercase mb-6 flex items-center gap-2">
+                <Shield className="text-neon" size={18} /> Xét duyệt hồ sơ eKYC
+              </h3>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <div className="space-y-4">
+                  <h4 className="font-bold text-gray-400 uppercase text-xs tracking-wider">Ảnh tài liệu và đối sánh</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-gray-500 font-bold uppercase">Mặt trước CCCD</span>
+                      <div className="h-32 rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
+                        {selectedEkyc.citizenIdInfo?.cardFrontUrl ? (
+                          <a href={selectedEkyc.citizenIdInfo.cardFrontUrl} target="_blank" rel="noreferrer" className="w-full h-full block">
+                            <img src={selectedEkyc.citizenIdInfo.cardFrontUrl} alt="Mặt trước" className="w-full h-full object-cover" />
+                          </a>
+                        ) : 'Chưa có ảnh'}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-gray-500 font-bold uppercase">Mặt sau CCCD</span>
+                      <div className="h-32 rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
+                        {selectedEkyc.citizenIdInfo?.cardBackUrl ? (
+                          <a href={selectedEkyc.citizenIdInfo.cardBackUrl} target="_blank" rel="noreferrer" className="w-full h-full block">
+                            <img src={selectedEkyc.citizenIdInfo.cardBackUrl} alt="Mặt sau" className="w-full h-full object-cover" />
+                          </a>
+                        ) : 'Chưa có ảnh'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-gray-500 font-bold uppercase">Ảnh chân dung tự chụp (Selfie)</span>
+                    <div className="h-56 rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
+                      {selectedEkyc.citizenIdInfo?.selfieUrl ? (
+                        <a href={selectedEkyc.citizenIdInfo.selfieUrl} target="_blank" rel="noreferrer" className="w-full h-full block">
+                          <img src={selectedEkyc.citizenIdInfo.selfieUrl} alt="Selfie" className="w-full h-full object-cover scale-x-[-1]" />
+                        </a>
+                      ) : 'Chưa có ảnh'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <h4 className="font-bold text-gray-400 uppercase text-xs tracking-wider">Thông tin đối chiếu eKYC</h4>
+                    
+                    <div className="bg-black/30 border border-white/5 rounded-xl p-4 space-y-3.5 text-xs text-gray-300">
+                      <div className="flex justify-between border-b border-white/5 pb-2">
+                        <span className="text-gray-500">Tên đăng ký tài khoản:</span>
+                        <span className="font-bold text-white">{selectedEkyc.name}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-white/5 pb-2">
+                        <span className="text-gray-500">Họ tên trên CCCD:</span>
+                        <span className="font-bold text-neon uppercase font-mono">{selectedEkyc.citizenIdInfo?.fullName || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-white/5 pb-2">
+                        <span className="text-gray-500">Đối sánh họ tên:</span>
+                        <span className="font-bold text-green-400 flex items-center gap-1">
+                          <Check size={12} /> Trùng khớp hoàn toàn (Không dấu)
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-b border-white/5 pb-2">
+                        <span className="text-gray-500">Số CCCD trích xuất:</span>
+                        <span className="font-bold text-white font-mono">{selectedEkyc.citizenIdInfo?.idNumber || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-white/5 pb-2">
+                        <span className="text-gray-500">Ngày sinh trên thẻ:</span>
+                        <span>{formatDate(selectedEkyc.citizenIdInfo?.dob)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-white/5 pb-2">
+                        <span className="text-gray-500">Quê quán (Trích xuất):</span>
+                        <span>{selectedEkyc.citizenIdInfo?.homeTown || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Độ khớp khuôn mặt AI:</span>
+                        <span className="font-mono text-neon font-black text-sm">
+                          {selectedEkyc.citizenIdInfo?.faceMatchConfidence}% (HỢP LỆ)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 pt-6 border-t border-white/5">
+                    <button
+                      onClick={() => setIsRejectModalOpen(true)}
+                      disabled={formSaving}
+                      className="flex-1 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20 font-bold py-3 rounded-xl transition-all uppercase tracking-wider text-xs font-display flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <X size={14} /> Từ chối
+                    </button>
+                    <button
+                      onClick={() => handleApproveEkyc(selectedEkyc.id)}
+                      disabled={formSaving}
+                      className="flex-1 bg-green-500 text-dark hover:bg-green-600 font-bold py-3 rounded-xl transition-all uppercase tracking-wider text-xs font-display flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-[0_0_15px_rgba(34,197,94,0.3)]"
+                    >
+                      {formSaving ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-dark border-t-transparent"></div>
+                      ) : (
+                        <>
+                          <Check size={14} /> Phê duyệt
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                </div>
+
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* eKYC REJECT REASON MODAL */}
+      <AnimatePresence>
+        {isRejectModalOpen && selectedEkyc && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <div 
+              className="absolute inset-0 bg-black/90"
+              onClick={() => setIsRejectModalOpen(false)}
+            />
+            <div className="bg-surface border border-white/10 rounded-xl p-5 w-full max-w-md z-10 relative">
+              <h4 className="font-bold text-white mb-3 text-sm uppercase tracking-wider">Lý do từ chối xác thực eKYC</h4>
+              <textarea
+                rows={4}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Nhập lý do cụ thể (ví dụ: Ảnh chụp CCCD quá mờ, Khuôn mặt selfie không trùng khớp...)"
+                className="w-full bg-black/50 border border-gray-800 text-gray-300 text-xs rounded-lg p-3 outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent mb-4 resize-none"
+              />
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setIsRejectModalOpen(false)}
+                  className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 rounded-lg text-xs font-bold text-gray-400 hover:text-white uppercase cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleRejectEkyc}
+                  disabled={formSaving || !rejectReason.trim()}
+                  className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
+                >
+                  Từ chối hồ sơ
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </AnimatePresence>

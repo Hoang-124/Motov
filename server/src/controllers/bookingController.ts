@@ -53,6 +53,14 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, message: 'Người dùng không tồn tại' });
     }
 
+    // Kiểm tra xem người dùng đã xác minh danh tính chưa
+    if (user.identityStatus !== 'Verified') {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản của bạn chưa được xác minh danh tính (eKYC). Vui lòng xác thực danh tính tại trang cá nhân để đặt xe máy.'
+      });
+    }
+
     // Check vehicle exists
     const vehicle = await Vehicle.findById(vehicleId);
     if (!vehicle) {
