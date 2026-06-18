@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
@@ -313,7 +314,10 @@ export const getMe = async (req: AuthRequest, res: Response) => {
         lastName: user.lastName || '',
         gender: user.gender || '',
         dob: user.dob || '',
-        status: user.status
+        status: user.status,
+        identityStatus: user.identityStatus || 'Unverified',
+        identityRejectReason: user.identityRejectReason || '',
+        citizenIdInfo: user.citizenIdInfo
       }
     });
   } catch (error: any) {
@@ -977,5 +981,251 @@ export const checkVerificationStatus = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Lỗi kiểm tra trạng thái xác minh:', error);
     res.status(500).json({ success: false, message: 'Lỗi máy chủ khi kiểm tra trạng thái xác minh', error: error.message });
+  }
+};
+
+// Nộp yêu cầu xác minh danh tính (eKYC)
+export const submitIdentityVerification = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Người dùng chưa được xác thực' });
+    }
+
+    const { cardFrontUrl, cardBackUrl, selfieUrl } = req.body;
+
+    if (!cardFrontUrl || !cardBackUrl || !selfieUrl) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ ảnh mặt trước, mặt sau CCCD và ảnh selfie' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy thông tin tài khoản' });
+    }
+
+    // Giả lập OCR trích xuất thông tin từ CCCD
+    // Lấy họ tên từ profile của user, chuyển thành viết hoa không dấu
+    const rawName = user.lastName && user.firstName 
+      ? `${user.lastName} ${user.firstName}` 
+      : user.username;
+    
+    const cleanName = rawName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[đĐ]/g, 'D')
+      .toUpperCase();
+
+    // Sinh số CCCD ngẫu nhiên (12 chữ số)
+    const randomSuffix = Math.floor(1000000 + Math.random() * 9000000); // 7 số ngẫu nhiên
+    const idNumber = `048201${randomSuffix}`; // Định dạng CCCD Việt Nam
+
+    // Ngày sinh
+    const dobValue = user.dob || new Date(Date.now() - 25 * 365 * 24 * 60 * 60 * 1000); // Mặc định 25 tuổi nếu chưa điền
+
+    const provinces = ['Đà Nẵng', 'Quảng Nam', 'Hà Nội', 'TP. Hồ Chí Minh', 'Thừa Thiên Huế', 'Khánh Hòa'];
+    const selectedProvince = provinces[Math.floor(Math.random() * provinces.length)];
+    const homeTown = selectedProvince;
+    const address = `Số ${Math.floor(Math.random() * 200 + 1)} Đường Hùng Vương, Hải Châu, ${selectedProvince}`;
+
+    // Đối sánh khuôn mặt Face Matching Confidence
+    const faceMatchConfidence = parseFloat((80 + Math.random() * 19).toFixed(2)); // Ngẫu nhiên 80% - 99%
+
+    user.citizenIdInfo = {
+      idNumber,
+      fullName: cleanName,
+      dob: dobValue,
+      homeTown,
+      address,
+      cardFrontUrl,
+      cardBackUrl,
+      selfieUrl,
+      faceMatchConfidence
+    };
+
+    user.identityStatus = 'Pending';
+    user.identitySubmittedAt = new Date();
+    await user.save();
+
+    // Tạo thông báo in-app
+    try {
+      await Notification.create({
+        userId: user._id,
+        title: 'Hồ sơ xác minh danh tính đang được xét duyệt',
+        message: 'Yêu cầu xác minh danh tính (eKYC) của bạn đã được gửi thành công. Vui lòng chờ nhân viên kiểm duyệt thông tin.',
+        type: 'System'
+      });
+    } catch (notiErr) {
+      console.error('Lỗi khi tạo thông báo gửi eKYC:', notiErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Gửi yêu cầu xác minh danh tính thành công',
+      data: {
+        ocrResult: {
+          idNumber,
+          fullName: cleanName,
+          dob: dobValue,
+          homeTown,
+          address
+        },
+        faceMatchConfidence,
+        identityStatus: user.identityStatus
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Lỗi khi nộp eKYC:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server khi nộp xác minh danh tính', error: error.message });
+  }
+};
+
+// Lấy danh sách yêu cầu eKYC đang chờ duyệt (Staff/Admin)
+export const getIdentityRequests = async (req: AuthRequest, res: Response) => {
+  try {
+    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
+    if (!hasPermission) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập thông tin này' });
+    }
+
+    const requests = await User.find({ identityStatus: 'Pending' })
+      .select('username email firstName lastName phoneNumber status identityStatus citizenIdInfo identitySubmittedAt')
+      .sort('-identitySubmittedAt');
+
+    const formattedRequests = requests.map(u => {
+      const displayName = u.firstName && u.lastName
+        ? `${u.lastName} ${u.firstName}`
+        : (u.firstName || u.lastName || u.username);
+      
+      return {
+        id: u._id,
+        username: u.username,
+        email: u.email,
+        name: displayName,
+        phoneNumber: u.phoneNumber,
+        status: u.status,
+        identityStatus: u.identityStatus,
+        citizenIdInfo: u.citizenIdInfo,
+        identitySubmittedAt: u.identitySubmittedAt
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: formattedRequests
+    });
+  } catch (error: any) {
+    console.error('Lỗi lấy danh sách yêu cầu eKYC:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
+};
+
+// Phê duyệt yêu cầu eKYC (Staff/Admin)
+export const approveIdentityRequest = async (req: AuthRequest, res: Response) => {
+  try {
+    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
+    if (!hasPermission) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền phê duyệt yêu cầu này' });
+    }
+
+    const { id } = req.params;
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+    }
+
+    if (user.identityStatus === 'Verified') {
+      return res.status(400).json({ success: false, message: 'Tài khoản này đã được xác minh danh tính trước đó' });
+    }
+
+    user.identityStatus = 'Verified';
+    user.identityVerifiedAt = new Date();
+    user.identityVerifiedBy = new mongoose.Types.ObjectId(req.user?.id);
+    
+    // Đồng bộ thông tin từ CCCD sang profile chính thức của user nếu thiếu
+    if (user.citizenIdInfo) {
+      if (!user.dob) user.dob = user.citizenIdInfo.dob;
+      
+      // Cập nhật họ tên nếu chưa có
+      if (!user.firstName && !user.lastName) {
+        const parts = user.citizenIdInfo.fullName.split(' ');
+        if (parts.length > 1) {
+          user.lastName = parts[0];
+          user.firstName = parts.slice(1).join(' ');
+        } else {
+          user.firstName = user.citizenIdInfo.fullName;
+        }
+      }
+    }
+
+    await user.save();
+
+    // Tạo thông báo cho người dùng
+    try {
+      await Notification.create({
+        userId: user._id,
+        title: 'Xác minh danh tính thành công',
+        message: 'Chúc mừng! Hồ sơ eKYC của bạn đã được phê duyệt. Bây giờ bạn đã có thể bắt đầu đặt xe trên Motov.',
+        type: 'System'
+      });
+    } catch (notiErr) {
+      console.error('Lỗi tạo thông báo duyệt eKYC:', notiErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Đã phê duyệt xác minh danh tính của ${user.username} thành công.`
+    });
+
+  } catch (error: any) {
+    console.error('Lỗi phê duyệt eKYC:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
+};
+
+// Từ chối yêu cầu eKYC (Staff/Admin)
+export const rejectIdentityRequest = async (req: AuthRequest, res: Response) => {
+  try {
+    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
+    if (!hasPermission) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện thao tác này' });
+    }
+
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp lý do từ chối' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+    }
+
+    user.identityStatus = 'Rejected';
+    user.identityRejectReason = reason;
+    await user.save();
+
+    // Tạo thông báo cho người dùng
+    try {
+      await Notification.create({
+        userId: user._id,
+        title: 'Xác minh danh tính bị từ chối',
+        message: `Rất tiếc, hồ sơ eKYC của bạn đã bị từ chối. Lý do: ${reason}. Vui lòng thử lại với ảnh chụp rõ ràng hơn.`,
+        type: 'System'
+      });
+    } catch (notiErr) {
+      console.error('Lỗi tạo thông báo từ chối eKYC:', notiErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Đã từ chối xác minh danh tính của ${user.username} thành công.`
+    });
+
+  } catch (error: any) {
+    console.error('Lỗi từ chối eKYC:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
   }
 };
