@@ -79,7 +79,6 @@ export const bookingService = {
   },
 
   // 4. Cập nhật trạng thái đơn (Phê duyệt/Thu xe) -> PUT /api/bookings/:id
-  // ĐÃ SỬA: Thêm trạng thái 'Pending' vào danh sách phân định kiểu dữ liệu
   updateStatus: async (
     id: string, 
     status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled', 
@@ -95,7 +94,19 @@ export const bookingService = {
     return res.data;
   },
 
-  // 6. Xóa đơn đặt xe -> DELETE /api/bookings/:id
+  // 6. Lấy lịch trình tracking của đơn đặt xe -> GET /api/bookings/:id/tracking
+  getBookingTracking: async (id: string) => {
+    const res = await axios.get(`${API_URL}/${id}/tracking`);
+    return res.data.tracking || res.data.data || res.data;
+  },
+
+  // 7. Hoàn trả xe -> PUT /api/bookings/:id/return
+  returnMotorbike: async (id: string, actualReturnTime: string) => {
+    const res = await axios.put(`${API_URL}/${id}/return`, { actualReturnTime });
+    return res.data;
+  },
+
+  // 8. Xóa đơn đặt xe -> DELETE /api/bookings/:id
   deleteBooking: async (id: string) => {
     const res = await axios.delete(`${API_URL}/${id}`);
     return res.data;

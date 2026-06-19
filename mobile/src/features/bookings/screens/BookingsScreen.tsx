@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
+  ScrollView,
   TouchableOpacity,
   Alert,
 } from 'react-native';
@@ -10,7 +11,10 @@ import { Feather } from '@expo/vector-icons';
 import { BookingCard } from '../components/BookingCard';
 import { COLORS } from '../../../theme/colors';
 import { useAppDispatch, useAppSelector } from '../../../app/store';
-import { cancelBooking } from '../bookingsSlice';
+import { cancelBooking, submitFeedback } from '../bookingsSlice';
+import { Booking } from '../../../types';
+import { BookingTrackingModal } from '../../../components/BookingTrackingModal';
+import { FeedbackModal } from '../../../components/FeedbackModal';
 
 interface BookingsScreenProps {
   setActiveTab: (tab: 'home' | 'bikes' | 'bookings' | 'profile') => void;
@@ -19,6 +23,13 @@ interface BookingsScreenProps {
 export const BookingsScreen: React.FC<BookingsScreenProps> = ({ setActiveTab }) => {
   const dispatch = useAppDispatch();
   const bookings = useAppSelector(state => state.bookings.bookings);
+
+  // Modal states
+  const [trackingVisible, setTrackingVisible] = useState(false);
+  const [selectedTrackingBooking, setSelectedTrackingBooking] = useState<Booking | null>(null);
+
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [selectedFeedbackBookingId, setSelectedFeedbackBookingId] = useState<string | null>(null);
 
   const handleCancel = (id: string) => {
     Alert.alert(
@@ -37,8 +48,22 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ setActiveTab }) 
     );
   };
 
+  const handleOpenTracking = (booking: Booking) => {
+    setSelectedTrackingBooking(booking);
+    setTrackingVisible(true);
+  };
+
+  const handleOpenFeedback = (id: string) => {
+    setSelectedFeedbackBookingId(id);
+    setFeedbackVisible(true);
+  };
+
+  const handleFeedbackSubmit = (id: string, rating: number, content: string) => {
+    dispatch(submitFeedback({ id, rating, content }));
+  };
+
   return (
-    <View style={styles.tabContent}>
+    <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
       <Text style={styles.pageTitle}>Đơn Thuê Của Bạn</Text>
       
       {bookings.length > 0 ? (
@@ -48,6 +73,8 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ setActiveTab }) 
               key={booking.id} 
               booking={booking} 
               handleCancelBooking={handleCancel} 
+              onOpenTracking={handleOpenTracking}
+              onOpenFeedback={handleOpenFeedback}
             />
           ))}
         </View>
@@ -62,13 +89,35 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ setActiveTab }) 
           </TouchableOpacity>
         </View>
       )}
-    </View>
+
+      {/* Tracking Modal Component */}
+      <BookingTrackingModal
+        visible={trackingVisible}
+        onClose={() => {
+          setTrackingVisible(false);
+          setSelectedTrackingBooking(null);
+        }}
+        booking={selectedTrackingBooking}
+      />
+
+      {/* Feedback Modal Component */}
+      <FeedbackModal
+        visible={feedbackVisible}
+        onClose={() => {
+          setFeedbackVisible(false);
+          setSelectedFeedbackBookingId(null);
+        }}
+        bookingId={selectedFeedbackBookingId}
+        onSubmit={handleFeedbackSubmit}
+      />
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  tabContent: {
+  scrollContainer: {
     padding: 20,
+    paddingBottom: 40,
   },
   pageTitle: {
     color: COLORS.text,

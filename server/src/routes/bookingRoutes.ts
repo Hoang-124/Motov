@@ -9,7 +9,9 @@ import {
   deleteBooking,
   getBookingsByVehicle,
   confirmBookingByStaff,
-  confirmBikePickupByStaff
+  confirmBikePickupByStaff,
+  getBookingTracking,
+  returnMotorbike
 } from '../controllers/bookingController.js';
 import { authMiddleware, restrictTo } from '../middlewares/authMiddleware.js';
 
@@ -56,6 +58,20 @@ router.put('/:id', updateBooking as any);
  * Access: Booking owner, Admin
  */
 router.post('/:id/cancel', cancelBooking as any);
+
+/**
+ * GET /api/bookings/:id/tracking
+ * Get tracking timeline for a booking
+ * Access: Booking owner, Vehicle owner, Admin, Staff
+ */
+router.get('/:id/tracking', getBookingTracking as any);
+
+/**
+ * PUT /api/bookings/:id/return
+ * Return motorbike and calculate late fees
+ * Access: Admin, Staff
+ */
+router.put('/:id/return', restrictTo('Admin', 'Staff') as any, returnMotorbike as any);
 
 // ============================================
 // Owner Routes
