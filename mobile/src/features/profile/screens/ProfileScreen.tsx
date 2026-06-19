@@ -28,7 +28,8 @@ export const ProfileScreen: React.FC = () => {
   const user = useAppSelector(state => state.user);
   const dispatch = useAppDispatch();
 
-  // Redirect to login is handled later to obey React Rules of Hooks
+  // Navigation section state: 'menu' | 'profile' | 'password'
+  const [activeSection, setActiveSection] = useState<'menu' | 'profile' | 'password'>('menu');
 
   // Profile Form States
   const [firstName, setFirstName] = useState('');
@@ -73,108 +74,7 @@ export const ProfileScreen: React.FC = () => {
     }
   }, [user]);
 
-  // Dev portal real account switcher with offline mock fallback
-  const handleSwitchAccountReal = async (role: UserRole) => {
-    if (switching) return;
-    setSwitching(true);
 
-    let defaultEmail = 'khachhang@motov.com';
-    let defaultName = 'Nguyễn Văn Khách';
-    switch (role) {
-      case 'customer':
-        defaultEmail = 'khachhang@motov.com';
-        defaultName = 'Nguyễn Văn Khách';
-        break;
-      case 'owner':
-        defaultEmail = 'owner@motov.com';
-        defaultName = 'Nguyễn Chủ Xe';
-        break;
-      case 'staff':
-        defaultEmail = 'nhanvien@motov.com';
-        defaultName = 'Nhân Viên Phòng Vé';
-        break;
-      case 'admin':
-        defaultEmail = 'admin@motov.com';
-        defaultName = 'Quản Trị Viên';
-        break;
-      default:
-        defaultEmail = 'khach@motov.com';
-        defaultName = 'Khách vãng lai';
-        break;
-    }
-
-    try {
-      if (role === 'guest') {
-        dispatch(logout());
-        Alert.alert('Chuyển Tài Khoản', 'Đã chuyển sang vai trò khách vãng lai.');
-        setSwitching(false);
-        return;
-      }
-
-      // Call real login API
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: defaultEmail, password: '123456' }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Không thể đăng nhập tài khoản thực tế.');
-      }
-
-      const u = data.user;
-      dispatch(
-        updateUser({
-          token: data.token,
-          id: u.id,
-          username: u.username,
-          name: u.name,
-          email: u.email,
-          role: u.role,
-          phoneNumber: u.phoneNumber || '',
-          avatarUrl: u.avatarUrl || '',
-          firstName: u.firstName || '',
-          lastName: u.lastName || '',
-          gender: u.gender || '',
-          dob: u.dob || '',
-        })
-      );
-      Alert.alert(
-        'Chuyển Tài Khoản',
-        `Đăng nhập thành công tài khoản database:\n${u.name} (${u.role.toUpperCase()})`
-      );
-    } catch (err: any) {
-      console.log('Real Login Switcher failed, falling back to Offline Mock. Error:', err.message || err);
-      
-      // Offline fallback
-      let memberTag = getMemberTag(role);
-      dispatch(
-        updateUser({
-          id: `mock-${role}`,
-          name: defaultName,
-          email: defaultEmail,
-          memberTag,
-          role,
-          token: `mock-token-${role}`,
-          avatarUrl: '',
-          firstName: defaultName.split(' ').slice(1).join(' '),
-          lastName: defaultName.split(' ')[0],
-          phoneNumber: '0901234567',
-          gender: 'Male',
-          dob: '1995-05-15',
-        })
-      );
-
-      Alert.alert(
-        'Chuyển Tài Khoản (Offline Mock)',
-        `Đã chuyển sang vai trò: ${defaultName} (${role.toUpperCase()})\n(Lưu ý: Không kết nối được Database, đang dùng chế độ Offline Mock)`
-      );
-    } finally {
-      setSwitching(false);
-    }
-  };
 
   // Profile Save Action
   const handleSaveProfile = async () => {
@@ -213,6 +113,7 @@ export const ProfileScreen: React.FC = () => {
       }));
 
       Alert.alert('Thành Công', 'Thông tin cá nhân đã được lưu trữ thành công!');
+      setActiveSection('menu'); // Return to menu after success
     } catch (err: any) {
       Alert.alert('Lỗi', err.message || 'Không thể lưu thông tin cá nhân.');
     } finally {
@@ -259,6 +160,7 @@ export const ProfileScreen: React.FC = () => {
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setActiveSection('menu'); // Return to menu after success
     } catch (err: any) {
       Alert.alert('Lỗi', err.message || 'Không thể đổi mật khẩu.');
     } finally {
@@ -321,6 +223,7 @@ export const ProfileScreen: React.FC = () => {
           style: 'destructive',
           onPress: () => {
             dispatch(logout());
+            setActiveSection('menu'); // reset section on logout
             Alert.alert('Đã Đăng Xuất', 'Hẹn gặp lại bạn lần sau!');
           }
         },
@@ -345,41 +248,6 @@ export const ProfileScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <Text style={styles.pageTitle}>Cá Nhân</Text>
         <AuthScreen />
-        
-        {/* Mock Dev portals even on login screen for testing ease */}
-        <View style={[styles.portalCard, { marginTop: 40 }]}>
-          <Text style={styles.portalTitle}>CỔNG ĐĂNG NHẬP NHANH (DATABASE)</Text>
-          <Text style={styles.portalDesc}>
-            {switching ? 'Đang thực hiện đăng nhập...' : 'Tự động đăng nhập qua cơ sở dữ liệu thực tế'}
-          </Text>
-          <View style={styles.portalGrid}>
-            {[
-              { id: 'customer', label: 'Khách thuê xe', icon: 'award', color: COLORS.approved },
-              { id: 'owner', label: 'Đối tác Chủ xe', icon: 'user-check', color: '#22d3ee' },
-              { id: 'staff', label: 'Nhân viên hệ thống', icon: 'briefcase', color: COLORS.warning },
-              { id: 'admin', label: 'Quản trị viên', icon: 'shield', color: COLORS.danger },
-            ].map(portal => (
-              <TouchableOpacity
-                key={portal.id}
-                style={[styles.portalItem, switching && { opacity: 0.6 }]}
-                onPress={() => handleSwitchAccountReal(portal.id as UserRole)}
-                disabled={switching}
-              >
-                <View style={styles.portalItemLeft}>
-                  <View style={styles.portalIconWrapper}>
-                    {switching ? (
-                      <ActivityIndicator size="small" color={portal.color} />
-                    ) : (
-                      <Feather name={portal.icon as any} size={14} color={portal.color} />
-                    )}
-                  </View>
-                  <Text style={styles.portalLabel}>{portal.label}</Text>
-                </View>
-                <Feather name="chevron-right" size={12} color="#444" />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
       </ScrollView>
     );
   }
@@ -388,339 +256,356 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-      <Text style={styles.pageTitle}>Cá Nhân</Text>
+      {/* Title changes dynamically based on active sub-screen */}
+      <Text style={styles.pageTitle}>
+        {activeSection === 'profile' && 'Chỉnh sửa thông tin'}
+        {activeSection === 'password' && 'Đổi mật khẩu'}
+        {activeSection === 'menu' && 'Cá Nhân'}
+      </Text>
 
-      {/* Role Switcher Portal Selector (Dev tools at top) */}
-      <View style={[styles.portalCard, { marginBottom: 20 }]}>
-        <Text style={styles.portalTitle}>CỔNG ĐĂNG NHẬP NHANH (DATABASE)</Text>
-        <Text style={styles.portalDesc}>
-          {switching ? 'Đang thực hiện chuyển đổi...' : 'Tự động đăng nhập qua cơ sở dữ liệu thực tế'}
-        </Text>
+      {activeSection === 'menu' ? (
+        /* MENU MAIN SCREEN */
+        <>
+          {/* User Information Card */}
+          <View style={styles.profileCard}>
+            <TouchableOpacity 
+              style={styles.avatarContainer}
+              onPress={() => setShowPresets(!showPresets)}
+            >
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <Feather name="user" size={40} color={COLORS.accent} />
+              )}
+              <View style={styles.cameraIconBadge}>
+                <Feather name="camera" size={12} color={COLORS.accentDark} />
+              </View>
+            </TouchableOpacity>
 
-        <View style={styles.portalGrid}>
-          {[
-            { id: 'customer', label: 'Khách thuê xe', icon: 'award', color: COLORS.approved },
-            { id: 'owner', label: 'Đối tác Chủ xe', icon: 'user-check', color: '#22d3ee' },
-            { id: 'staff', label: 'Nhân viên hệ thống', icon: 'briefcase', color: COLORS.warning },
-            { id: 'admin', label: 'Quản trị viên', icon: 'shield', color: COLORS.danger },
-          ].map(portal => {
-            const isActive = user.role === portal.id;
-            return (
-              <TouchableOpacity
-                key={portal.id}
-                style={[
-                  styles.portalItem,
-                  isActive && { borderColor: portal.color, backgroundColor: 'rgba(255, 255, 255, 0.03)' },
-                  switching && { opacity: 0.6 }
-                ]}
-                onPress={() => handleSwitchAccountReal(portal.id as UserRole)}
-                disabled={switching}
-              >
-                <View style={styles.portalItemLeft}>
-                  <View style={[styles.portalIconWrapper, { backgroundColor: isActive ? 'rgba(255, 255, 255, 0.05)' : COLORS.bg }]}>
-                    {switching && isActive ? (
-                      <ActivityIndicator size="small" color={portal.color} />
-                    ) : (
-                      <Feather name={portal.icon as any} size={14} color={isActive ? portal.color : COLORS.textMuted} />
-                    )}
-                  </View>
-                  <Text style={[styles.portalLabel, isActive && { color: COLORS.text, fontWeight: 'bold' }]}>
-                    {portal.label}
-                  </Text>
+            {showPresets && (
+              <View style={styles.presetContainer}>
+                <Text style={styles.presetTitle}>Chọn ảnh đại diện mẫu:</Text>
+                <View style={styles.presetList}>
+                  {PRESET_AVATARS.map((avatar, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.presetItem}
+                      onPress={() => {
+                        setAvatarUrl(avatar.url);
+                        setShowPresets(false);
+                      }}
+                    >
+                      <Image source={{ uri: avatar.url }} style={styles.presetThumb} />
+                      <Text style={styles.presetText} numberOfLines={1}>{avatar.name}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                {isActive && !switching && <Feather name="check-circle" size={14} color={portal.color} />}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-      
-      {/* User Information Card */}
-      <View style={styles.profileCard}>
-        <TouchableOpacity 
-          style={styles.avatarContainer}
-          onPress={() => setShowPresets(!showPresets)}
-        >
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
-          ) : (
-            <Feather name="user" size={40} color={COLORS.accent} />
-          )}
-          <View style={styles.cameraIconBadge}>
-            <Feather name="camera" size={12} color={COLORS.accentDark} />
-          </View>
-        </TouchableOpacity>
+              </View>
+            )}
 
-        {showPresets && (
-          <View style={styles.presetContainer}>
-            <Text style={styles.presetTitle}>Chọn ảnh đại diện mẫu:</Text>
-            <View style={styles.presetList}>
-              {PRESET_AVATARS.map((avatar, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={styles.presetItem}
-                  onPress={() => {
-                    setAvatarUrl(avatar.url);
-                    setShowPresets(false);
-                  }}
-                >
-                  <Image source={{ uri: avatar.url }} style={styles.presetThumb} />
-                  <Text style={styles.presetText} numberOfLines={1}>{avatar.name}</Text>
-                </TouchableOpacity>
-              ))}
+            <Text style={styles.profileName}>{user.name}</Text>
+            <Text style={styles.profileEmail}>{user.email}</Text>
+            
+            <View style={[styles.tagMember, { backgroundColor: badgeStyles.bg, borderColor: badgeStyles.border }]}>
+              <Text style={[styles.tagMemberText, { color: badgeStyles.text }]}>
+                {user.memberTag}
+              </Text>
             </View>
           </View>
-        )}
 
-        <Text style={styles.profileName}>{user.name}</Text>
-        <Text style={styles.profileEmail}>{user.email}</Text>
-        
-        <View style={[styles.tagMember, { backgroundColor: badgeStyles.bg, borderColor: badgeStyles.border }]}>
-          <Text style={[styles.tagMemberText, { color: badgeStyles.text }]}>
-            {user.memberTag}
-          </Text>
-        </View>
-      </View>
+          {/* Become Owner Banner (Customer only) */}
+          {user.role === 'customer' && (
+            <View style={styles.ownerUpgradeCard}>
+              <View style={styles.upgradeHeader}>
+                <Feather name="trending-up" size={18} color={COLORS.accent} />
+                <Text style={styles.upgradeTitle}>ĐĂNG KÝ HỢP TÁC CHỦ XE</Text>
+              </View>
+              <Text style={styles.upgradeDesc}>
+                Chia sẻ xe máy nhàn rỗi của bạn để bắt đầu tạo ra doanh thu thụ động hấp dẫn cùng Motov ngay hôm nay!
+              </Text>
+              <TouchableOpacity 
+                style={[styles.upgradeBtn, upgrading && styles.disabledBtn]}
+                onPress={handleBecomeOwner}
+                disabled={upgrading}
+              >
+                {upgrading ? (
+                  <ActivityIndicator size="small" color={COLORS.accentDark} />
+                ) : (
+                  <Text style={styles.upgradeBtnText}>NÂNG CẤP TÀI KHOẢN NGAY</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
 
-      {/* Become Owner Banner (Customer only) */}
-      {user.role === 'customer' && (
-        <View style={styles.ownerUpgradeCard}>
-          <View style={styles.upgradeHeader}>
-            <Feather name="trending-up" size={18} color={COLORS.accent} />
-            <Text style={styles.upgradeTitle}>ĐĂNG KÝ HỢP TÁC CHỦ XE</Text>
+          {/* 5-Item Settings Menu (Like user requested) */}
+          <View style={styles.profileMenu}>
+            {/* 1. Profile Editing */}
+            <TouchableOpacity style={styles.menuItem} onPress={() => setActiveSection('profile')}>
+              <View style={styles.menuItemLeft}>
+                <Feather name="user" size={16} color={COLORS.accent} style={styles.menuItemIcon} />
+                <Text style={styles.menuItemText}>Thông tin cá nhân</Text>
+              </View>
+              <Feather name="chevron-right" size={14} color="#555" />
+            </TouchableOpacity>
+
+            {/* 2. Change Password */}
+            <TouchableOpacity style={styles.menuItem} onPress={() => setActiveSection('password')}>
+              <View style={styles.menuItemLeft}>
+                <Feather name="lock" size={16} color={COLORS.accent} style={styles.menuItemIcon} />
+                <Text style={styles.menuItemText}>Đổi mật khẩu</Text>
+              </View>
+              <Feather name="chevron-right" size={14} color="#555" />
+            </TouchableOpacity>
+
+            {/* 3. Booking Guide */}
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => Alert.alert('Hướng Dẫn', 'Hướng dẫn đặt xe chi tiết trên hệ thống Motov sẽ được cập nhật trong phiên bản tiếp theo.')}
+            >
+              <View style={styles.menuItemLeft}>
+                <Feather name="book-open" size={16} color={COLORS.accent} style={styles.menuItemIcon} />
+                <Text style={styles.menuItemText}>Hướng dẫn đặt xe</Text>
+              </View>
+              <Feather name="chevron-right" size={14} color="#555" />
+            </TouchableOpacity>
+
+            {/* 4. Insurance Policy */}
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => Alert.alert('Bảo Hiểm', 'Chính sách bảo hiểm xe máy Motov giúp bảo vệ chuyến đi của bạn an toàn tối đa.')}
+            >
+              <View style={styles.menuItemLeft}>
+                <Feather name="shield" size={16} color={COLORS.accent} style={styles.menuItemIcon} />
+                <Text style={styles.menuItemText}>Chính sách bảo hiểm</Text>
+              </View>
+              <Feather name="chevron-right" size={14} color="#555" />
+            </TouchableOpacity>
+
+            {/* 5. Customer Support */}
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => Alert.alert('Hỗ Trợ', 'Hotline hỗ trợ khách hàng: 1900 6868 (Hoạt động 24/7).')}
+            >
+              <View style={styles.menuItemLeft}>
+                <Feather name="phone" size={16} color={COLORS.accent} style={styles.menuItemIcon} />
+                <Text style={styles.menuItemText}>Liên hệ hỗ trợ khách hàng</Text>
+              </View>
+              <Feather name="chevron-right" size={14} color="#555" />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.upgradeDesc}>
-            Chia sẻ xe máy nhàn rỗi của bạn để bắt đầu tạo ra doanh thu thụ động hấp dẫn cùng Motov ngay hôm nay!
-          </Text>
-          <TouchableOpacity 
-            style={[styles.upgradeBtn, upgrading && styles.disabledBtn]}
-            onPress={handleBecomeOwner}
-            disabled={upgrading}
-          >
-            {upgrading ? (
-              <ActivityIndicator size="small" color={COLORS.accentDark} />
-            ) : (
-              <Text style={styles.upgradeBtnText}>NÂNG CẤP TÀI KHOẢN NGAY</Text>
-            )}
+
+          {/* Logout Button */}
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogoutPress}>
+            <Feather name="log-out" size={16} color={COLORS.danger} style={{ marginRight: 8 }} />
+            <Text style={styles.logoutBtnText}>ĐĂNG XUẤT</Text>
           </TouchableOpacity>
+        </>
+      ) : activeSection === 'profile' ? (
+        /* SUB-SCREEN: EDIT PROFILE FORM */
+        <View>
+          {/* Back button */}
+          <TouchableOpacity 
+            style={styles.backToMenuBtn} 
+            onPress={() => setActiveSection('menu')}
+          >
+            <Feather name="arrow-left" size={16} color={COLORS.accent} />
+            <Text style={styles.backToMenuBtnText}>QUAY LẠI MENU CHÍNH</Text>
+          </TouchableOpacity>
+
+          <View style={styles.formSection}>
+            <View style={styles.formHeader}>
+              <Feather name="user" size={14} color={COLORS.accent} />
+              <Text style={styles.formTitle}>THÔNG TIN CÁ NHÂN</Text>
+            </View>
+
+            <View style={styles.fieldsContainer}>
+              <View style={styles.rowFields}>
+                {/* Họ */}
+                <View style={[styles.fieldWrapper, { flex: 1, marginRight: 10 }]}>
+                  <Text style={styles.fieldLabel}>Họ & Tên đệm</Text>
+                  <TextInput
+                    style={styles.fieldInput}
+                    placeholder="Nguyễn"
+                    placeholderTextColor="#444"
+                    value={lastName}
+                    onChangeText={setLastName}
+                  />
+                </View>
+
+                {/* Tên */}
+                <View style={[styles.fieldWrapper, { flex: 1 }]}>
+                  <Text style={styles.fieldLabel}>Tên</Text>
+                  <TextInput
+                    style={styles.fieldInput}
+                    placeholder="Văn Khách"
+                    placeholderTextColor="#444"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                  />
+                </View>
+              </View>
+
+              {/* SĐT */}
+              <View style={styles.fieldWrapper}>
+                <Text style={styles.fieldLabel}>Số điện thoại</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="090XXXXXXXX"
+                  placeholderTextColor="#444"
+                  keyboardType="phone-pad"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                />
+              </View>
+
+              {/* Giới tính */}
+              <View style={styles.fieldWrapper}>
+                <Text style={styles.fieldLabel}>Giới tính</Text>
+                <View style={styles.genderRow}>
+                  {[
+                    { id: 'Male', label: 'Nam' },
+                    { id: 'Female', label: 'Nữ' },
+                    { id: 'Other', label: 'Khác' }
+                  ].map(item => {
+                    const isActive = gender === item.id;
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[styles.genderBtn, isActive && styles.genderBtnActive]}
+                        onPress={() => setGender(item.id)}
+                      >
+                        <Text style={[styles.genderBtnText, isActive && styles.genderBtnTextActive]}>
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Ngày sinh */}
+              <View style={styles.fieldWrapper}>
+                <Text style={styles.fieldLabel}>Ngày sinh (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="1995-05-25"
+                  placeholderTextColor="#444"
+                  value={dob}
+                  onChangeText={setDob}
+                />
+              </View>
+
+              {/* Avatar URL */}
+              <View style={styles.fieldWrapper}>
+                <Text style={styles.fieldLabel}>Đường dẫn ảnh đại diện (Avatar URL)</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="https://example.com/avatar.jpg"
+                  placeholderTextColor="#444"
+                  value={avatarUrl}
+                  onChangeText={setAvatarUrl}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              {/* Save Button */}
+              <TouchableOpacity
+                style={[styles.saveBtn, saving && styles.disabledBtn]}
+                onPress={handleSaveProfile}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color={COLORS.accentDark} />
+                ) : (
+                  <>
+                    <Feather name="save" size={14} color={COLORS.accentDark} style={{ marginRight: 6 }} />
+                    <Text style={styles.saveBtnText}>LƯU THAY ĐỔI</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      ) : (
+        /* SUB-SCREEN: CHANGE PASSWORD FORM */
+        <View>
+          {/* Back button */}
+          <TouchableOpacity 
+            style={styles.backToMenuBtn} 
+            onPress={() => setActiveSection('menu')}
+          >
+            <Feather name="arrow-left" size={16} color={COLORS.accent} />
+            <Text style={styles.backToMenuBtnText}>QUAY LẠI MENU CHÍNH</Text>
+          </TouchableOpacity>
+
+          <View style={styles.formSection}>
+            <View style={styles.formHeader}>
+              <Feather name="lock" size={14} color={COLORS.accent} />
+              <Text style={styles.formTitle}>ĐỔI MẬT KHẨU</Text>
+            </View>
+
+            <View style={styles.fieldsContainer}>
+              {/* Old Password */}
+              <View style={styles.fieldWrapper}>
+                <Text style={styles.fieldLabel}>Mật khẩu hiện tại</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="••••••••"
+                  placeholderTextColor="#444"
+                  secureTextEntry
+                  value={oldPassword}
+                  onChangeText={setOldPassword}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              {/* New Password */}
+              <View style={styles.fieldWrapper}>
+                <Text style={styles.fieldLabel}>Mật khẩu mới</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="••••••••"
+                  placeholderTextColor="#444"
+                  secureTextEntry
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              {/* Confirm Password */}
+              <View style={styles.fieldWrapper}>
+                <Text style={styles.fieldLabel}>Xác nhận mật khẩu mới</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="••••••••"
+                  placeholderTextColor="#444"
+                  secureTextEntry
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              {/* Change Password Button */}
+              <TouchableOpacity
+                style={[styles.saveBtn, passwordSaving && styles.disabledBtn]}
+                onPress={handleChangePassword}
+                disabled={passwordSaving}
+              >
+                {passwordSaving ? (
+                  <ActivityIndicator size="small" color={COLORS.accentDark} />
+                ) : (
+                  <>
+                    <Feather name="key" size={14} color={COLORS.accentDark} style={{ marginRight: 6 }} />
+                    <Text style={styles.saveBtnText}>ĐỔI MẬT KHẨU</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       )}
-
-      {/* Form edit profile fields */}
-      <View style={styles.formSection}>
-        <View style={styles.formHeader}>
-          <Feather name="edit-2" size={14} color={COLORS.accent} />
-          <Text style={styles.formTitle}>THÔNG TIN CÁ NHÂN</Text>
-        </View>
-
-        <View style={styles.fieldsContainer}>
-          <View style={styles.rowFields}>
-            {/* Họ */}
-            <View style={[styles.fieldWrapper, { flex: 1, marginRight: 10 }]}>
-              <Text style={styles.fieldLabel}>Họ & Tên đệm</Text>
-              <TextInput
-                style={styles.fieldInput}
-                placeholder="Nguyễn"
-                placeholderTextColor="#444"
-                value={lastName}
-                onChangeText={setLastName}
-              />
-            </View>
-
-            {/* Tên */}
-            <View style={[styles.fieldWrapper, { flex: 1 }]}>
-              <Text style={styles.fieldLabel}>Tên</Text>
-              <TextInput
-                style={styles.fieldInput}
-                placeholder="Văn Khách"
-                placeholderTextColor="#444"
-                value={firstName}
-                onChangeText={setFirstName}
-              />
-            </View>
-          </View>
-
-          {/* SĐT */}
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.fieldLabel}>Số điện thoại</Text>
-            <TextInput
-              style={styles.fieldInput}
-              placeholder="090XXXXXXXX"
-              placeholderTextColor="#444"
-              keyboardType="phone-pad"
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-            />
-          </View>
-
-          {/* Giới tính */}
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.fieldLabel}>Giới tính</Text>
-            <View style={styles.genderRow}>
-              {[
-                { id: 'Male', label: 'Nam' },
-                { id: 'Female', label: 'Nữ' },
-                { id: 'Other', label: 'Khác' }
-              ].map(item => {
-                const isActive = gender === item.id;
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.genderBtn, isActive && styles.genderBtnActive]}
-                    onPress={() => setGender(item.id)}
-                  >
-                    <Text style={[styles.genderBtnText, isActive && styles.genderBtnTextActive]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Ngày sinh */}
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.fieldLabel}>Ngày sinh (YYYY-MM-DD)</Text>
-            <TextInput
-              style={styles.fieldInput}
-              placeholder="1995-05-25"
-              placeholderTextColor="#444"
-              value={dob}
-              onChangeText={setDob}
-            />
-          </View>
-
-          {/* Avatar URL */}
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.fieldLabel}>Đường dẫn ảnh đại diện (Avatar URL)</Text>
-            <TextInput
-              style={styles.fieldInput}
-              placeholder="https://example.com/avatar.jpg"
-              placeholderTextColor="#444"
-              value={avatarUrl}
-              onChangeText={setAvatarUrl}
-              autoCapitalize="none"
-            />
-          </View>
-
-          {/* Save Button */}
-          <TouchableOpacity
-            style={[styles.saveBtn, saving && styles.disabledBtn]}
-            onPress={handleSaveProfile}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color={COLORS.accentDark} />
-            ) : (
-              <>
-                <Feather name="save" size={14} color={COLORS.accentDark} style={{ marginRight: 6 }} />
-                <Text style={styles.saveBtnText}>LƯU THAY ĐỔI</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Form Change Password */}
-      <View style={styles.formSection}>
-        <View style={styles.formHeader}>
-          <Feather name="lock" size={14} color={COLORS.accent} />
-          <Text style={styles.formTitle}>ĐỔI MẬT KHẨU</Text>
-        </View>
-
-        <View style={styles.fieldsContainer}>
-          {/* Old Password */}
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.fieldLabel}>Mật khẩu hiện tại</Text>
-            <TextInput
-              style={styles.fieldInput}
-              placeholder="••••••••"
-              placeholderTextColor="#444"
-              secureTextEntry
-              value={oldPassword}
-              onChangeText={setOldPassword}
-              autoCapitalize="none"
-            />
-          </View>
-
-          {/* New Password */}
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.fieldLabel}>Mật khẩu mới</Text>
-            <TextInput
-              style={styles.fieldInput}
-              placeholder="••••••••"
-              placeholderTextColor="#444"
-              secureTextEntry
-              value={newPassword}
-              onChangeText={setNewPassword}
-              autoCapitalize="none"
-            />
-          </View>
-
-          {/* Confirm Password */}
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.fieldLabel}>Xác nhận mật khẩu mới</Text>
-            <TextInput
-              style={styles.fieldInput}
-              placeholder="••••••••"
-              placeholderTextColor="#444"
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              autoCapitalize="none"
-            />
-          </View>
-
-          {/* Change Password Button */}
-          <TouchableOpacity
-            style={[styles.saveBtn, passwordSaving && styles.disabledBtn]}
-            onPress={handleChangePassword}
-            disabled={passwordSaving}
-          >
-            {passwordSaving ? (
-              <ActivityIndicator size="small" color={COLORS.accentDark} />
-            ) : (
-              <>
-                <Feather name="key" size={14} color={COLORS.accentDark} style={{ marginRight: 6 }} />
-                <Text style={styles.saveBtnText}>ĐỔI MẬT KHẨU</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Auxiliary settings menu */}
-      <View style={styles.profileMenu}>
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <Feather name="book-open" size={16} color={COLORS.accent} style={styles.menuItemIcon} />
-            <Text style={styles.menuItemText}>Hướng dẫn đặt xe</Text>
-          </View>
-          <Feather name="chevron-right" size={14} color="#555" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <Feather name="shield" size={16} color={COLORS.accent} style={styles.menuItemIcon} />
-            <Text style={styles.menuItemText}>Chính sách bảo hiểm</Text>
-          </View>
-          <Feather name="chevron-right" size={14} color="#555" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <Feather name="phone" size={16} color={COLORS.accent} style={styles.menuItemIcon} />
-            <Text style={styles.menuItemText}>Liên hệ hỗ trợ khách hàng</Text>
-          </View>
-          <Feather name="chevron-right" size={14} color="#555" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Logout Button */}
-      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogoutPress}>
-        <Feather name="log-out" size={16} color={COLORS.danger} style={{ marginRight: 8 }} />
-        <Text style={styles.logoutBtnText}>ĐĂNG XUẤT</Text>
-      </TouchableOpacity>
-
-
 
       <View style={styles.versionContainer}>
         <Text style={styles.versionText}>Motov App v1.2.0 (Sync Active DB • Expo • Redux)</Text>
@@ -1080,5 +965,24 @@ const styles = StyleSheet.create({
   versionText: {
     color: '#3f3f46',
     fontSize: 11,
+  },
+  /* Sub-screen Navigation Style */
+  backToMenuBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+    backgroundColor: COLORS.card,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  backToMenuBtnText: {
+    color: COLORS.accent,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
 });

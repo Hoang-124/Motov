@@ -17,6 +17,7 @@ import promotionRoutes from './routes/promotionRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
 import { authMiddleware } from './middlewares/authMiddleware.js';
+import { initBookingReminderScheduler } from './utils/bookingReminderScheduler.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -253,6 +254,7 @@ mongoose.connect(MONGODB_URI)
     console.log('✅ Connected to MongoDB successfully!');
     await seedUsers();
     await seedVehicles();
+    initBookingReminderScheduler();
   })
   .catch((err: any) => console.error('❌ Failed to connect to MongoDB:', err));
 

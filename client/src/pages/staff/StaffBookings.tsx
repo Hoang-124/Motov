@@ -1,30 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarDays, MapPin, ClipboardList, Check, X, CheckSquare, Phone, User, CreditCard, RefreshCw, UserCheck } from 'lucide-react';
+import { 
+  CalendarDays, 
+  MapPin, 
+  ClipboardList, 
+  Check, 
+  X, 
+  CheckSquare, 
+  Phone, 
+  User, 
+  CreditCard, 
+  RefreshCw, 
+  UserCheck,
+  Key
+} from 'lucide-react';
 import { motion } from 'motion/react';
-import { bookingService } from '../../services/bookingService.js';
+import { bookingService, Booking } from '../../services/bookingService';
 import axios from 'axios';
+import { ReturnMotorbikeModal } from '../../components/ReturnMotorbikeModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-interface Booking {
-  id: string;
-  bookingCode: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  userPhone: string;
-  vehicleId: string;
-  vehicleModel: string;
-  vehicleImage: string;
-  pickupDateTime: string;
-  returnDateTime: string;
-  pickupLocation: { address: string; coordinates?: number[] };
-  returnLocation: { address: string; coordinates?: number[] };
-  rentalDays: number;
-  totalAmount: number;
-  status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled';
-  statusLabel: string;
-}
 
 interface OwnerRequest {
   id: string;
@@ -45,6 +39,8 @@ export const StaffBookings = () => {
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [returningBookingId, setReturningBookingId] = useState<string | null>(null);
+  const [returningPickupTime, setReturningPickupTime] = useState<string | undefined>(undefined);
 
   const getAuthHeaders = () => {
     let token = localStorage.getItem('token');
@@ -163,6 +159,11 @@ export const StaffBookings = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReturnSuccess = () => {
+    loadStaffBookings();
+    setReturningBookingId(null);
   };
 
   const formatDate = (isoString: string) => {
@@ -349,11 +350,14 @@ export const StaffBookings = () => {
 
                       {booking.status === 'Ongoing' && (
                         <button
-                          onClick={() => handleUpdateStatus(booking.id || (booking as any)._id, 'Completed')}
+                          onClick={() => {
+                            setReturningBookingId(booking.id || (booking as any)._id);
+                            setReturningPickupTime(booking.pickupDateTime);
+                          }}
                           disabled={loading}
                           className="w-full flex items-center justify-center gap-1 bg-green-600 text-white font-bold py-2.5 rounded-lg text-xs hover:bg-green-700 transition-colors cursor-pointer disabled:opacity-50"
                         >
-                          <CheckSquare size={14} /> Xác nhận khách trả xe (Hoàn thành)
+                          <Key size={14} /> Xác nhận khách trả xe (Thu hồi xe)
                         </button>
                       )}
 
@@ -445,6 +449,14 @@ export const StaffBookings = () => {
         )}
 
       </div>
+      
+      <ReturnMotorbikeModal
+        isOpen={!!returningBookingId}
+        onClose={() => setReturningBookingId(null)}
+        bookingId={returningBookingId}
+        pickupDateTime={returningPickupTime}
+        onSuccess={handleReturnSuccess}
+      />
     </div>
   );
 };
