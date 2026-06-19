@@ -79,7 +79,11 @@ export const bookingService = {
   },
 
   // 4. Cập nhật trạng thái đơn (Phê duyệt/Thu xe) -> PUT /api/bookings/:id
-  updateStatus: async (id: string, status: 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled', notes?: string) => {
+  updateStatus: async (
+    id: string, 
+    status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled', 
+    notes?: string
+  ) => {
     const res = await axios.put(`${API_URL}/${id}`, { status, notes });
     return res.data;
   },
