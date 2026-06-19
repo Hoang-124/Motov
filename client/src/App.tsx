@@ -17,6 +17,7 @@ import { VerifyEmail } from './pages/VerifyEmail';
 // Staff pages
 import { StaffBookings } from './pages/staff/StaffBookings';
 import { StaffBikes } from './pages/staff/StaffBikes';
+import { StaffSchedule } from './pages/staff/StaffSchedule';
 
 // Owner pages
 import { OwnerDashboard } from './pages/owner/OwnerDashboard';
@@ -57,7 +58,7 @@ export default function App() {
       <div className="min-h-screen bg-dark text-white flex flex-col font-sans selection:bg-neon selection:text-dark">
         {/* Header Navigation */}
         <Header />
-        
+
         {/* Main Content Pages */}
         <main className="flex-grow">
           <Routes>
@@ -118,6 +119,11 @@ export default function App() {
                 <StaffBikes />
               </ProtectedRoute>
             } />
+            <Route path="/staff/schedule" element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffSchedule />
+              </ProtectedRoute>
+            } />
 
             {/* Owner Protected Routes */}
             <Route path="/owner/dashboard" element={
@@ -173,7 +179,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-        
+
         {/* Footer */}
         <Footer />
       </div>
