@@ -42,6 +42,10 @@ export const AdminBikes = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [bikeToDelete, setBikeToDelete] = useState<string | null>(null);
 
+  const getAvailableCountForModel = (modelName: string) => {
+    return bikes.filter(b => b.vehicleModel === modelName && b.status === 'Available').length;
+  };
+
   const loadBikes = async () => {
     try {
       setIsLoading(true);
@@ -368,12 +372,19 @@ export const AdminBikes = () => {
                         </button>
                       </td>
                       <td className="py-4 px-6 font-semibold text-white">
-                        <button
-                          onClick={() => openEditModal(bike)}
-                          className="hover:text-neon transition-colors cursor-pointer text-left block font-bold"
-                        >
-                          {bike.vehicleModel}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openEditModal(bike)}
+                            className="hover:text-neon transition-colors cursor-pointer text-left block font-bold"
+                          >
+                            {bike.vehicleModel}
+                          </button>
+                          {bike.status === 'Available' && getAvailableCountForModel(bike.vehicleModel) <= 1 && (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-red-500/10 text-red-500 border border-red-500/25 font-bold shrink-0 animate-pulse">
+                              ⚠️ Sắp hết xe
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] text-gray-500 font-mono block mt-1">Biển số: {bike.licensePlate}</span>
                       </td>
                       <td className="py-4 px-6">
@@ -391,16 +402,23 @@ export const AdminBikes = () => {
                       </td>
                       <td className="py-4 px-6 font-medium text-neon">{bike.rentalPrice.toLocaleString('vi-VN')} VNĐ</td>
                       <td className="py-4 px-6">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-                          bike.status === 'Available' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                          bike.status === 'PendingApproval' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                          bike.status === 'Rented' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                          'bg-red-500/10 text-red-500 border-red-500/20'
-                        }`}>
-                          {bike.status === 'Available' ? 'Đang hoạt động' :
-                           bike.status === 'PendingApproval' ? 'Chờ phê duyệt' :
-                           bike.status === 'Rented' ? 'Đang cho thuê' : 'Bảo trì'}
-                        </span>
+                        <div>
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                            bike.status === 'Available' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                            bike.status === 'PendingApproval' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                            bike.status === 'Rented' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                            'bg-red-500/10 text-red-500 border-red-500/20'
+                          }`}>
+                            {bike.status === 'Available' ? '✓ Đang hoạt động' :
+                             bike.status === 'PendingApproval' ? '⏳ Chờ phê duyệt' :
+                             bike.status === 'Rented' ? '🚴 Đang cho thuê' : '🔧 Bảo trì'}
+                          </span>
+                          {bike.status === 'Available' && getAvailableCountForModel(bike.vehicleModel) <= 1 && (
+                            <div className="text-[10px] text-red-500 font-semibold mt-1.5 flex items-center gap-1">
+                              <span>Chỉ còn {getAvailableCountForModel(bike.vehicleModel)} xe trống</span>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex justify-end gap-2">
