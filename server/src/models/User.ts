@@ -6,6 +6,18 @@ export interface IUserVoucher extends Document {
   bookingId?: mongoose.Types.ObjectId;
 }
 
+export interface ICitizenIdInfo {
+  idNumber: string;
+  fullName: string;
+  dob: Date;
+  homeTown: string;
+  address: string;
+  cardFrontUrl: string;
+  cardBackUrl: string;
+  selfieUrl: string;
+  faceMatchConfidence: number;
+}
+
 export interface IUser extends Document {
   username: string;
   email?: string;
@@ -23,6 +35,12 @@ export interface IUser extends Document {
   favoriteVehicles: mongoose.Types.ObjectId[];
   usedVouchers: IUserVoucher[];
   ownerRequestStatus?: 'None' | 'Pending' | 'Approved' | 'Rejected';
+  citizenIdInfo?: ICitizenIdInfo;
+  identityStatus: 'Unverified' | 'Pending' | 'Verified' | 'Rejected';
+  identityRejectReason?: string;
+  identitySubmittedAt?: Date;
+  identityVerifiedAt?: Date;
+  identityVerifiedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,9 +67,26 @@ const UserSchema = new Schema<IUser>({
   strikes: { type: Number, default: 0 },
   ownerRequestStatus: { type: String, enum: ['None', 'Pending', 'Approved', 'Rejected'], default: 'None' },
   favoriteVehicles: [{ type: Schema.Types.ObjectId, ref: 'Vehicle' }],
-  usedVouchers: [UserVoucherSchema]
+  usedVouchers: [UserVoucherSchema],
+  citizenIdInfo: {
+    idNumber: { type: String },
+    fullName: { type: String },
+    dob: { type: Date },
+    homeTown: { type: String },
+    address: { type: String },
+    cardFrontUrl: { type: String },
+    cardBackUrl: { type: String },
+    selfieUrl: { type: String },
+    faceMatchConfidence: { type: Number }
+  },
+  identityStatus: { type: String, enum: ['Unverified', 'Pending', 'Verified', 'Rejected'], default: 'Unverified' },
+  identityRejectReason: { type: String },
+  identitySubmittedAt: { type: Date },
+  identityVerifiedAt: { type: Date },
+  identityVerifiedBy: { type: Schema.Types.ObjectId, ref: 'User' }
 }, {
   timestamps: true
 });
 
 export const User = mongoose.model<IUser>('User', UserSchema);
+
