@@ -32,25 +32,12 @@ git clone <repository-url>
 cd Motov
 ```
 
-### 2. Setup Backend (Server)
+### 2. Setup 
 ```bash
-cd server
 npm install
 ```
 
-### 3. Setup Frontend (Client)
-```bash
-cd client
-npm install
-```
-
-### 4. Setup Mobile (App)
-```bash
-cd mobile
-npm install
-```
-
-### 5. Environment Configuration
+### 3. Environment Configuration
 
 Tạo file `.env` tại **root directory**:
 ```env
@@ -67,25 +54,19 @@ GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 VITE_API_URL=http://localhost:5000/api
 ```
 
-### 6. Run Server
-```bash
-cd server
+### 4. Run Client and Server
+```bash 
 npm run dev
 ```
 Server chạy tại: http://localhost:5000
-
-### 7. Run Client
-```bash
-cd client
-npm run dev
-```
 Client chạy tại: http://localhost:3000
 
-### 8. Run Mobile (Expo)
+### 5. Run Mobile (Expo)
 ```bash
-cd mobile
-npm start
+npm run mobile
 ```
+Server chạy tại: http://localhost:5000
+Expo Web chạy tại: http://localhost:8081
 
 ---
 
