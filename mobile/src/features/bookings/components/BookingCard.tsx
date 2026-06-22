@@ -15,6 +15,8 @@ interface BookingCardProps {
   handleCancelBooking: (id: string) => void;
   onOpenTracking: (booking: Booking) => void;
   onOpenFeedback: (id: string) => void;
+  isStaff?: boolean;
+  onStaffAction?: (booking: Booking, action: 'Confirmed' | 'Cancelled' | 'Ongoing' | 'Return') => void;
 }
 
 export const BookingCard: React.FC<BookingCardProps> = ({
@@ -22,14 +24,16 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   handleCancelBooking,
   onOpenTracking,
   onOpenFeedback,
+  isStaff,
+  onStaffAction,
 }) => {
-  const isPending = booking.status === 'Chờ duyệt';
-  const isOngoing = booking.status === 'Đang thuê';
-  const isCompleted = booking.status === 'Đã trả';
+  const isPending = booking.status === 'Pending';
+  const isOngoing = booking.status === 'Rented' || booking.status === 'Confirmed' || booking.status === 'Ongoing';
+  const isCompleted = booking.status === 'Completed';
   const isReviewed = booking.status === 'Đã đánh giá';
-  const isCancelled = booking.status === 'Đã hủy';
+  const isCancelled = booking.status === 'Cancelled';
 
-  const basePriceNum = parseInt(booking.price.replace(/\./g, ''), 10) || 100000;
+  const basePriceNum = parseInt(String(booking.price).replace(/\./g, ''), 10) || 100000;
   const rentalDays = booking.rentalDays || 2;
   const calculatedTotal = booking.totalAmount || (basePriceNum * rentalDays);
 
@@ -62,8 +66,15 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         
         <View style={styles.bookingRow}>
           <Feather name="calendar" size={13} color="#888" style={styles.bookingRowIcon} />
-          <Text style={styles.bookingText}>Ngày thuê: {booking.date}</Text>
+          <Text style={styles.bookingText}>Nhận: {booking.date}</Text>
         </View>
+
+        {booking.returnDateTime && (
+          <View style={styles.bookingRow}>
+            <Feather name="clock" size={13} color="#888" style={styles.bookingRowIcon} />
+            <Text style={styles.bookingText}>Trả: {new Date(booking.returnDateTime).toLocaleDateString('vi-VN')}</Text>
+          </View>
+        )}
         
         <View style={styles.bookingRow}>
           <Feather name="map-pin" size={13} color="#888" style={styles.bookingRowIcon} />
@@ -97,32 +108,92 @@ export const BookingCard: React.FC<BookingCardProps> = ({
           </TouchableOpacity>
 
           {/* Feedback/Cancel/Status Button */}
-          {isPending ? (
-            <TouchableOpacity 
-              style={styles.cancelBtn}
-              onPress={() => handleCancelBooking(booking.id)}
-            >
-              <Text style={styles.cancelBtnText}>Yêu cầu hủy</Text>
-            </TouchableOpacity>
-          ) : isCompleted ? (
-            <TouchableOpacity 
-              style={styles.feedbackBtn}
-              onPress={() => onOpenFeedback(booking.id)}
-            >
-              <Feather name="star" size={12} color={COLORS.accentDark} style={{ marginRight: 6 }} />
-              <Text style={styles.feedbackBtnText}>Đánh giá xe</Text>
-            </TouchableOpacity>
-          ) : isReviewed ? (
-            <View style={styles.reviewedLabel}>
-              <Feather name="check" size={12} color={COLORS.accent} style={{ marginRight: 4 }} />
-              <Text style={styles.reviewedLabelText}>Đã đánh giá</Text>
-            </View>
+          {isStaff ? (
+             isPending ? (
+               <View style={{ flex: 1.2, flexDirection: 'row', gap: 5 }}>
+                 <TouchableOpacity 
+                   style={[styles.feedbackBtn, { flex: 1, backgroundColor: COLORS.approved }]}
+                   onPress={() => onStaffAction?.(booking, 'Confirmed')}
+                 >
+                   <Text style={[styles.feedbackBtnText, { color: '#fff' }]}>Duyệt</Text>
+                 </TouchableOpacity>
+                 <TouchableOpacity 
+                   style={[styles.cancelBtn, { flex: 1 }]}
+                   onPress={() => onStaffAction?.(booking, 'Cancelled')}
+                 >
+                   <Text style={styles.cancelBtnText}>Từ chối</Text>
+                 </TouchableOpacity>
+               </View>
+             ) : booking.status === 'Confirmed' ? (
+               <View style={{ flex: 1.2, flexDirection: 'row', gap: 5 }}>
+                 <TouchableOpacity 
+                   style={[styles.feedbackBtn, { flex: 1, backgroundColor: COLORS.approved }]}
+                   onPress={() => onStaffAction?.(booking, 'Ongoing')}
+                 >
+                   <Text style={[styles.feedbackBtnText, { color: '#fff' }]}>Giao xe</Text>
+                 </TouchableOpacity>
+                 <TouchableOpacity 
+                   style={[styles.cancelBtn, { flex: 1 }]}
+                   onPress={() => onStaffAction?.(booking, 'Cancelled')}
+                 >
+                   <Text style={styles.cancelBtnText}>Hủy</Text>
+                 </TouchableOpacity>
+               </View>
+             ) : booking.status === 'Ongoing' || booking.status === 'Rented' ? (
+               <TouchableOpacity 
+                 style={[styles.feedbackBtn, { flex: 1.2, backgroundColor: COLORS.warning }]}
+                 onPress={() => onStaffAction?.(booking, 'Return')}
+               >
+                 <Feather name="key" size={12} color={COLORS.dark} style={{ marginRight: 6 }} />
+                 <Text style={[styles.feedbackBtnText, { color: COLORS.dark }]}>Thu hồi xe</Text>
+               </TouchableOpacity>
+             ) : isCompleted || isReviewed ? (
+               <View style={styles.reviewedLabel}>
+                 <Feather name="check" size={12} color={COLORS.accent} style={{ marginRight: 4 }} />
+                 <Text style={styles.reviewedLabelText}>Đã hoàn thành</Text>
+               </View>
+             ) : isCancelled ? (
+               <View style={styles.lockedLabel}>
+                 <Text style={styles.lockedLabelText}>Đơn đã hủy</Text>
+               </View>
+             ) : (
+               <View style={styles.lockedLabel}>
+                 <Text style={styles.lockedLabelText}>Khóa</Text>
+               </View>
+             )
           ) : (
-            <View style={styles.lockedLabel}>
-              <Text style={styles.lockedLabelText}>
-                {isCancelled ? 'Đơn đã đóng' : 'Khóa chỉnh sửa'}
-              </Text>
-            </View>
+            isPending ? (
+              <TouchableOpacity 
+                style={styles.cancelBtn}
+                onPress={() => handleCancelBooking(booking.id)}
+              >
+                <Text style={styles.cancelBtnText}>Yêu cầu hủy</Text>
+              </TouchableOpacity>
+            ) : isOngoing ? (
+              <View style={styles.lockedLabel}>
+                <Feather name="activity" size={12} color={COLORS.approved} style={{ marginRight: 4 }} />
+                <Text style={[styles.lockedLabelText, { color: COLORS.approved }]}>Đang thuê</Text>
+              </View>
+            ) : isCompleted ? (
+              <TouchableOpacity 
+                style={styles.feedbackBtn}
+                onPress={() => onOpenFeedback(booking.id)}
+              >
+                <Feather name="star" size={12} color={COLORS.accentDark} style={{ marginRight: 6 }} />
+                <Text style={styles.feedbackBtnText}>Đánh giá xe</Text>
+              </TouchableOpacity>
+            ) : isReviewed ? (
+              <View style={styles.reviewedLabel}>
+                <Feather name="check" size={12} color={COLORS.accent} style={{ marginRight: 4 }} />
+                <Text style={styles.reviewedLabelText}>Đã đánh giá</Text>
+              </View>
+            ) : (
+              <View style={styles.lockedLabel}>
+                <Text style={styles.lockedLabelText}>
+                  {isCancelled ? 'Đơn đã đóng' : 'Khóa chỉnh sửa'}
+                </Text>
+              </View>
+            )
           )}
         </View>
       </View>

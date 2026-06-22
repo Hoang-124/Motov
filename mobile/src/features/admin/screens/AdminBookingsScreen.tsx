@@ -19,7 +19,7 @@ import {
   rejectOwnerRequest
 } from '../../bookings/bookingsSlice';
 import { Booking } from '../../../types';
-import { ReturnMotorbikeModal } from '../../../components/ReturnMotorbikeModal';
+import { ReturnMotorbikeModal } from '../components/ReturnMotorbikeModal';
 
 export const AdminBookingsScreen: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -50,11 +50,6 @@ export const AdminBookingsScreen: React.FC = () => {
         }
       ]
     );
-  };
-
-  const handleReturnConfirm = (bookingId: string, lateFee: number, returnTime: string) => {
-    dispatch(returnBookingWithFees({ id: bookingId, lateFee, returnTime }));
-    setReturnModalVisible(false);
   };
 
   const handleApproveOwner = (id: string, name: string) => {
@@ -304,8 +299,11 @@ export const AdminBookingsScreen: React.FC = () => {
           setReturnModalVisible(false);
           setSelectedReturnBooking(null);
         }}
-        booking={selectedReturnBooking}
-        onConfirmSuccess={handleReturnConfirm}
+        bookingId={selectedReturnBooking?.id || null}
+        onSuccess={() => {
+          setReturnModalVisible(false);
+          setSelectedReturnBooking(null);
+        }}
       />
     </View>
   );

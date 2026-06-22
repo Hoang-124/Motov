@@ -33,6 +33,9 @@ import { fetchBikes } from './src/features/bikes/bikesSlice';
 import { OwnerDashboardScreen } from './src/features/owner/screens/OwnerDashboardScreen';
 import { OwnerBikesScreen } from './src/features/owner/screens/OwnerBikesScreen';
 import { OwnerBookingsScreen } from './src/features/owner/screens/OwnerBookingsScreen';
+import { StaffBookingsScreen } from './src/features/staff/screens/StaffBookingsScreen';
+import { StaffDashboardScreen } from './src/features/staff/screens/StaffDashboardScreen';
+import { StaffBikesScreen } from './src/features/staff/screens/StaffBikesScreen';
 
 const renderTabIcon = (tabId: string, isActive: boolean) => {
   const color = isActive ? COLORS.accent : COLORS.textMuted;
@@ -42,11 +45,14 @@ const renderTabIcon = (tabId: string, isActive: boolean) => {
       return <Feather name="home" size={size} color={color} />;
     case 'bikes':
     case 'owner_bikes':
+    case 'staff_bikes':
       return <MaterialCommunityIcons name="motorbike" size={24} color={color} style={{ marginTop: -2 }} />;
     case 'bookings':
     case 'owner_bookings':
+    case 'staff_bookings':
       return <Feather name="calendar" size={size} color={color} />;
     case 'owner_dashboard':
+    case 'staff_dashboard':
       return <Feather name="trending-up" size={size} color={color} />;
     case 'profile':
       return <Feather name="user" size={size} color={color} />;
@@ -119,6 +125,12 @@ function MainApp() {
         ];
       case 'admin':
       case 'staff':
+        return [
+          { id: 'home', label: 'Trang chủ' },
+          { id: 'staff_bikes', label: 'Dòng xe' },
+          { id: 'staff_bookings', label: 'Yêu cầu' },
+          { id: 'profile', label: 'Cá nhân' }
+        ];
       case 'customer':
         return [
           { id: 'home', label: 'Trang chủ' },
@@ -140,7 +152,7 @@ function MainApp() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      
+
       {/* --- RENDER CURRENT TAB VIEW --- */}
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         {activeTab === 'home' && (
@@ -171,6 +183,14 @@ function MainApp() {
 
         {activeTab === 'profile' && (
           <ProfileScreen />
+        )}
+
+        {/* --- STAFF VIEWS --- */}
+        {activeTab === 'staff_bikes' && (
+          <StaffBikesScreen setActiveTab={setActiveTab} />
+        )}
+        {activeTab === 'staff_bookings' && (
+          <StaffBookingsScreen setActiveTab={setActiveTab} />
         )}
 
         {/* --- OWNER VIEWS --- */}

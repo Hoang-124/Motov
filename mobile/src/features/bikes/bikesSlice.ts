@@ -1,37 +1,53 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { Bike } from '../../types';
-import { LOCAL_BIKES } from '../../constants/mockData';
 import { API_BASE_URL } from '../../constants/api';
 
-const mapBikesWithCloudinary = (list: Bike[]): Bike[] => {
+// Maps a raw vehicle document from /api/vehicles (MongoDB) to the Bike interface.
+// Critically, _id (ObjectId string) is mapped to Bike.id so booking API receives a valid ObjectId.
+const mapVehicleToBike = (vehicle: any, idx: number): Bike => {
   const CLOUD_NAME = 'dsxbuk4pe';
   const BASE_URL = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_auto,q_auto/bikes`;
+  const num = (idx % 24) + 1;
 
-  return list.map((bike, idx) => {
-    const num = (idx % 24) + 1;
-    return {
-      ...bike,
-      image: `${BASE_URL}/${num}_3.jpg.png`,
-      images: [
+  // Prefer imageUrls stored in the DB; fall back to Cloudinary index-based URLs
+  const dbImages: string[] = Array.isArray(vehicle.imageUrls) && vehicle.imageUrls.length > 0
+    ? vehicle.imageUrls
+    : [
         `${BASE_URL}/${num}_1.jpg.png`,
         `${BASE_URL}/${num}_3.jpg.png`,
         `${BASE_URL}/${num}_4.jpg.png`
-      ]
-    };
-  });
+      ];
+
+  const rentalPrice: number = typeof vehicle.rentalPrice === 'number' ? vehicle.rentalPrice : 0;
+  const priceFormatted = rentalPrice.toLocaleString('vi-VN');
+
+  return {
+    id: vehicle._id?.toString() ?? vehicle.id,  // ObjectId string — required by booking API
+    name: vehicle.vehicleModel ?? vehicle.name ?? '',
+    price: `${priceFormatted}`,
+    type: vehicle.category ?? vehicle.type ?? '',
+    specs: Array.isArray(vehicle.features) ? vehicle.features : (vehicle.specs ?? []),
+    image: dbImages[0],
+    images: dbImages,
+    featured: vehicle.featured ?? false,
+    ownerEmail: vehicle.ownerId?.email,
+  };
 };
 
-export const fetchBikes = createAsyncThunk('bikes/fetchBikes', async () => {
+export const fetchBikes = createAsyncThunk('bikes/fetchBikes', async (_, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/bikes`);
+    // Use /api/vehicles which returns real MongoDB documents with ObjectId _id fields.
+    // The legacy /api/bikes endpoint returns hardcoded slugs which break the booking API.
+    const response = await fetch(`${API_BASE_URL}/vehicles`);
     const data = await response.json();
-    if (data && data.length > 0) {
-      return mapBikesWithCloudinary(data as Bike[]);
+    if (data && data.success === true && Array.isArray(data.data)) {
+      return data.data.map(mapVehicleToBike);
     }
-  } catch (error) {
-    console.log("Using offline mock data. Server is offline.", error);
+    return rejectWithValue(data?.error || 'Failed to fetch bikes');
+  } catch (error: any) {
+    console.log('Error fetching bikes:', error);
+    return rejectWithValue(error.message);
   }
-  return mapBikesWithCloudinary(LOCAL_BIKES);
 });
 
 interface BikesState {
@@ -43,7 +59,7 @@ interface BikesState {
 }
 
 const initialState: BikesState = {
-  bikes: mapBikesWithCloudinary(LOCAL_BIKES),
+  bikes: [],
   searchQuery: '',
   selectedType: 'All',
   loading: false,
@@ -80,10 +96,9 @@ const bikesSlice = createSlice({
         state.loading = false;
         state.bikes = action.payload;
       })
-      .addCase(fetchBikes.rejected, (state) => {
+      .addCase(fetchBikes.rejected, (state, action) => {
         state.loading = false;
-        // Fallback to local bikes on failure
-        state.bikes = LOCAL_BIKES;
+        state.error = action.payload as string || 'Failed to fetch bikes';
       });
   },
 });

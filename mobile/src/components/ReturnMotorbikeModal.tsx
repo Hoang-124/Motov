@@ -11,6 +11,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { Booking } from '../types';
 import { COLORS } from '../theme/colors';
+import { useReturnMotorbike } from '../hooks/useReturnMotorbike';
 
 interface ReturnMotorbikeModalProps {
   visible: boolean;
@@ -25,10 +26,11 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
   booking,
   onConfirmSuccess,
 }) => {
-  const [lateOption, setLateOption] = useState<'ontime' | 'late1d' | 'late3d'>('ontime');
   const [actualReturnTime, setActualReturnTime] = useState<Date>(new Date());
   const [lateFee, setLateFee] = useState<number>(0);
   const [totalAmount, setTotalAmount] = useState<number>(0);
+  
+  const { executeReturn, isSubmitting } = useReturnMotorbike();
 
   useEffect(() => {
     if (!booking) return;
@@ -37,33 +39,44 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
     const rentalDays = booking.rentalDays || 1;
     const originalTotal = booking.totalAmount || (basePriceNum * rentalDays);
 
-    let calculatedFee = 0;
-    const now = new Date();
+    let now = new Date();
+    const pickupTime = new Date(booking.pickupDateTime || booking.date.split(' - ')[0]);
     
-    if (lateOption === 'ontime') {
-      setActualReturnTime(now);
-      calculatedFee = 0;
-    } else if (lateOption === 'late1d') {
-      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      setActualReturnTime(tomorrow);
-      // Phí trễ hạn = 150% đơn giá ngày thuê
-      calculatedFee = Math.round(basePriceNum * 1.5);
-    } else if (lateOption === 'late3d') {
-      const threeDaysLater = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-      setActualReturnTime(threeDaysLater);
-      calculatedFee = Math.round(basePriceNum * 1.5 * 3);
+    // Ensure return time is not before pickup time to avoid backend error
+    if (now < pickupTime) {
+      now = new Date(pickupTime.getTime() + 60000); // Add 1 minute to pickup time
+    }
+    setActualReturnTime(now);
+
+    let calculatedFee = 0;
+    const expectedReturnTime = new Date(booking.returnDateTime || booking.date.split(' - ')[1]);
+    
+    // Calculate late fee if actual return time is after expected return time
+    if (now > expectedReturnTime) {
+      // Calculate how many days late (rounded up)
+      const diffTime = Math.abs(now.getTime() - expectedReturnTime.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      // Phí trễ hạn = 150% đơn giá ngày thuê * số ngày trễ
+      calculatedFee = Math.round(basePriceNum * 1.5 * diffDays);
     }
 
     setLateFee(calculatedFee);
     setTotalAmount(originalTotal + calculatedFee);
-  }, [lateOption, booking]);
+  }, [booking]);
 
   if (!booking) return null;
 
-  const handleConfirm = () => {
-    onConfirmSuccess(booking.id, lateFee, actualReturnTime.toISOString());
-    Alert.alert('Thành Công', 'Đã xác nhận trả xe và kết thúc thủ tục thuê thành công!');
-    onClose();
+  const handleConfirm = async () => {
+    const result = await executeReturn(booking.id, actualReturnTime.toISOString());
+    
+    if (result.success) {
+      Alert.alert('Thành Công', 'Đã xác nhận trả xe và kết thúc thủ tục thuê thành công!');
+      // Gọi callback để update UI component cha nếu cần (mặc dù useReturnMotorbike đã dispatch Redux)
+      onConfirmSuccess(booking.id, result.lateFee || 0, actualReturnTime.toISOString());
+      onClose();
+    } else {
+      Alert.alert('Lỗi', result.error || 'Có lỗi xảy ra khi trả xe.');
+    }
   };
 
   return (
@@ -96,36 +109,7 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
               <Text style={styles.infoRow}>Hạn trả: {booking.returnDateTime ? new Date(booking.returnDateTime).toLocaleString('vi-VN') : booking.date.split(' - ')[1]}</Text>
             </View>
 
-            {/* Late Return Simulation Selector */}
-            <Text style={styles.sectionLabel}>Giả lập thời gian trả xe thực tế</Text>
-            <View style={styles.selectorContainer}>
-              <TouchableOpacity
-                style={[styles.selectorBtn, lateOption === 'ontime' && styles.selectorBtnActive]}
-                onPress={() => setLateOption('ontime')}
-              >
-                <Text style={[styles.selectorBtnText, lateOption === 'ontime' && styles.selectorBtnTextActive]}>
-                  Đúng hạn
-                </Text>
-              </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.selectorBtn, lateOption === 'late1d' && styles.selectorBtnActive]}
-                onPress={() => setLateOption('late1d')}
-              >
-                <Text style={[styles.selectorBtnText, lateOption === 'late1d' && styles.selectorBtnTextActive]}>
-                  Trễ 1 ngày
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.selectorBtn, lateOption === 'late3d' && styles.selectorBtnActive]}
-                onPress={() => setLateOption('late3d')}
-              >
-                <Text style={[styles.selectorBtnText, lateOption === 'late3d' && styles.selectorBtnTextActive]}>
-                  Trễ 3 ngày
-                </Text>
-              </TouchableOpacity>
-            </View>
 
             {/* Bill Summary */}
             <View style={styles.billContainer}>
@@ -158,7 +142,7 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
             </View>
 
             <Text style={styles.noteText}>
-              * Thời điểm trả thực tế giả lập: {actualReturnTime.toLocaleString('vi-VN')}
+              * Thời điểm trả thực tế: {actualReturnTime.toLocaleString('vi-VN')}
             </Text>
           </ScrollView>
 

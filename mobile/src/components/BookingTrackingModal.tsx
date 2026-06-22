@@ -10,6 +10,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { Booking } from '../types';
 import { COLORS } from '../theme/colors';
+import { useBookingTracking } from '../hooks/useBookingTracking';
 
 interface BookingTrackingModalProps {
   visible: boolean;
@@ -22,42 +23,9 @@ export const BookingTrackingModal: React.FC<BookingTrackingModalProps> = ({
   onClose,
   booking,
 }) => {
+  const { timeline } = useBookingTracking(booking);
+
   if (!booking) return null;
-
-  const getTimelineData = () => {
-    const isCancelled = booking.status === 'Cancelled' || booking.status === 'Đã hủy';
-    const isOngoing = booking.status === 'Ongoing' || booking.status === 'Đang thuê';
-    const isCompleted = booking.status === 'Completed' || booking.status === 'Đã trả';
-
-    const events = [
-      {
-        title: 'Đơn hàng đã được tạo',
-        time: booking.createdAt ? new Date(booking.createdAt).toLocaleString('vi-VN') : booking.date.split(' - ')[0],
-        description: `Mã đơn ${booking.id} đang chờ phê duyệt.`,
-        completed: true,
-        icon: 'file-text' as const,
-      },
-      {
-        title: 'Bàn giao xe (Bắt đầu thuê)',
-        time: booking.pickupDateTime ? new Date(booking.pickupDateTime).toLocaleString('vi-VN') : booking.date.split(' - ')[0],
-        description: isCancelled ? 'Đơn hàng đã bị hủy bỏ' : 'Nhân viên bàn giao xe máy thực tế cho khách.',
-        completed: isOngoing || isCompleted,
-        isCancelled: isCancelled,
-        icon: isCancelled ? ('x-circle' as const) : ('key' as const),
-      },
-      {
-        title: 'Hoàn trả xe (Kết thúc thuê)',
-        time: booking.returnDateTime ? new Date(booking.returnDateTime).toLocaleString('vi-VN') : booking.date.split(' - ')[1],
-        description: 'Khách hoàn trả xe, thanh toán các phụ phí trễ hạn (nếu có).',
-        completed: isCompleted,
-        icon: 'check-circle' as const,
-      },
-    ];
-
-    return events;
-  };
-
-  const timeline = getTimelineData();
 
   return (
     <Modal
