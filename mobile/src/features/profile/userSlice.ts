@@ -16,6 +16,7 @@ export interface UserState {
   lastName: string;
   gender: string;
   dob: string;
+  identityStatus: 'NotSubmitted' | 'Pending' | 'Verified' | 'Rejected' | null;
 }
 
 export const getMemberTag = (role: UserRole): string => {
@@ -42,6 +43,7 @@ const initialState: UserState = {
   lastName: '',
   gender: '',
   dob: '',
+  identityStatus: null,
 };
 
 const userSlice = createSlice({

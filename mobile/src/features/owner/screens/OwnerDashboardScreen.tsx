@@ -18,11 +18,12 @@ interface OwnerDashboardScreenProps {
 }
 
 export const OwnerDashboardScreen: React.FC<OwnerDashboardScreenProps> = ({ setActiveTab }) => {
+  const user = useAppSelector(state => state.user.user);
   const bikes = useAppSelector(state => state.bikes.bikes);
   const bookings = useAppSelector(state => state.bookings.bookings);
   
-  // Filter for current mock owner (owner@motov.com)
-  const myBikes = bikes.filter(b => b.id === 'cb300r' || b.id === 'xsr155' || b.id === 'ninja400');
+  // Filter for current owner
+  const myBikes = bikes.filter(b => b.ownerId === user?.id);
   const myBikeIds = myBikes.map(b => b.id);
   const myBookings = bookings.filter(b => myBikeIds.includes(b.bikeId));
 

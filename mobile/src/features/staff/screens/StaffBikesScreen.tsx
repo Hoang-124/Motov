@@ -12,9 +12,13 @@ import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
 import { useAppSelector } from '../../../app/store';
 
-export const StaffBikesScreen: React.FC = () => {
+interface StaffBikesScreenProps {
+  setActiveTab: (tab: string) => void;
+}
+
+export const StaffBikesScreen: React.FC<StaffBikesScreenProps> = ({ setActiveTab }) => {
   const bikes = useAppSelector(state => state.bikes.bikes);
-  
+
   // Local state mock for inspection logs
   const [inspectionState, setInspectionState] = useState<Record<string, { status: string; lastChecked: string; odo: number }>>(
     bikes.reduce((acc, bike, index) => {
@@ -116,7 +120,7 @@ export const StaffBikesScreen: React.FC = () => {
                 </View>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.btnAction}
                 onPress={() => handleUpdateCheck(bike.id, bike.name)}
               >

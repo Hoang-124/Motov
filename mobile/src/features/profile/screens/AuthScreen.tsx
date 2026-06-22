@@ -466,6 +466,7 @@ export const AuthScreen: React.FC = () => {
             lastName: u.lastName || '',
             gender: u.gender || '',
             dob: u.dob || '',
+            identityStatus: u.identityStatus || null,
           })
         );
 

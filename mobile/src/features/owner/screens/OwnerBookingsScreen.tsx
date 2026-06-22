@@ -10,6 +10,8 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
 import { useAppSelector } from '../../../app/store';
+import { BookingCard } from '../../bookings/components/BookingCard';
+import { Booking } from '../../../types';
 
 export const OwnerBookingsScreen: React.FC = () => {
   const bikes = useAppSelector(state => state.bikes.bikes);
@@ -21,9 +23,14 @@ export const OwnerBookingsScreen: React.FC = () => {
   const myBikeIds = myBikes.map(b => b.id);
   const myBookings = localBookings.filter(b => myBikeIds.includes(b.bikeId));
 
-  const handleAction = (id: string, newStatus: string) => {
+  const handleOwnerAction = (booking: Booking, action: 'Confirmed' | 'Cancelled' | 'Ongoing' | 'Return') => {
+    let newStatus = '';
+    if (action === 'Confirmed' || action === 'Ongoing') newStatus = 'Đang thuê';
+    if (action === 'Cancelled') newStatus = 'Đã hủy';
+    if (action === 'Return') newStatus = 'Đã trả';
+
     setLocalBookings(prev => 
-      prev.map(b => b.id === id ? { ...b, status: newStatus } : b)
+      prev.map(b => b.id === booking.id ? { ...b, status: newStatus } : b)
     );
     Alert.alert('Thành Công', `Đã cập nhật trạng thái đơn hàng sang: ${newStatus}!`);
   };
@@ -39,67 +46,28 @@ export const OwnerBookingsScreen: React.FC = () => {
       {/* Bookings List */}
       <View style={styles.listContainer}>
         {myBookings.length > 0 ? (
-          myBookings.map(b => (
-            <View key={b.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.bikeName}>{b.bikeName}</Text>
-                <View style={[
-                  styles.statusBadge,
-                  b.status === 'Chờ duyệt' && styles.badgePending,
-                  b.status === 'Đang thuê' && styles.badgeOngoing,
-                  b.status === 'Đã trả' && styles.badgeCompleted,
-                  b.status === 'Đã hủy' && styles.badgeCancelled,
-                ]}>
-                  <Text style={[
-                    styles.statusBadgeText,
-                    b.status === 'Chờ duyệt' && { color: COLORS.warning },
-                    b.status === 'Đang thuê' && { color: COLORS.approved },
-                    b.status === 'Đã trả' && { color: '#3b82f6' },
-                    b.status === 'Đã hủy' && { color: COLORS.danger },
-                  ]}>
-                    {b.status}
-                  </Text>
-                </View>
-              </View>
+          myBookings.map(b => {
+            // Map the legacy status to the ones expected by BookingCard
+            let mappedStatus = b.status;
+            if (b.status === 'Chờ duyệt') mappedStatus = 'Pending';
+            else if (b.status === 'Đang thuê') mappedStatus = 'Ongoing';
+            else if (b.status === 'Đã trả') mappedStatus = 'Completed';
+            else if (b.status === 'Đã hủy') mappedStatus = 'Cancelled';
 
-              <View style={styles.cardBody}>
-                <View style={styles.infoRow}>
-                  <Feather name="user" size={14} color="#71717a" />
-                  <Text style={styles.infoText}>Khách thuê: <Text style={styles.whiteText}>{b.fullName}</Text></Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Feather name="calendar" size={14} color="#71717a" />
-                  <Text style={styles.infoText}>Hạn thuê: <Text style={styles.whiteText}>{b.date}</Text></Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Feather name="map-pin" size={14} color="#71717a" />
-                  <Text style={styles.infoText}>Giao nhận: <Text style={styles.whiteText}>{b.location === 'Da Nang Airport' ? 'Sân bay Đà Nẵng' : 'Địa điểm khác'}</Text></Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Feather name="dollar-sign" size={14} color="#71717a" />
-                  <Text style={styles.infoText}>Giá tiền: <Text style={styles.accentText}>{b.price} VNĐ/ngày</Text></Text>
-                </View>
-              </View>
+            const mappedBooking = { ...b, status: mappedStatus, statusLabel: b.status };
 
-              {/* Action buttons if Pending */}
-              {b.status === 'Chờ duyệt' && (
-                <View style={styles.cardActions}>
-                  <TouchableOpacity 
-                    style={styles.btnReject} 
-                    onPress={() => handleAction(b.id, 'Đã hủy')}
-                  >
-                    <Text style={styles.btnRejectText}>Từ chối</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.btnApprove} 
-                    onPress={() => handleAction(b.id, 'Đang thuê')}
-                  >
-                    <Text style={styles.btnApproveText}>Duyệt</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          ))
+            return (
+              <BookingCard
+                key={b.id}
+                booking={mappedBooking}
+                isStaff={true} // Use staff layout to show action buttons
+                onStaffAction={handleOwnerAction}
+                handleCancelBooking={() => {}}
+                onOpenTracking={() => {}}
+                onOpenFeedback={() => {}}
+              />
+            );
+          })
         ) : (
           <View style={styles.emptyCard}>
             <Feather name="calendar" size={32} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
@@ -132,106 +100,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     gap: 16,
-  },
-  card: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 16,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    paddingBottom: 12,
-    marginBottom: 12,
-  },
-  bikeName: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  badgePending: {
-    backgroundColor: COLORS.warningBg,
-    borderColor: COLORS.warningBorder,
-  },
-  badgeOngoing: {
-    backgroundColor: COLORS.approvedBg,
-    borderColor: COLORS.approvedBorder,
-  },
-  badgeCompleted: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderColor: 'rgba(59, 130, 246, 0.3)',
-  },
-  badgeCancelled: {
-    backgroundColor: COLORS.dangerBg,
-    borderColor: COLORS.dangerBorder,
-  },
-  statusBadgeText: {
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  cardBody: {
-    gap: 8,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  infoText: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-  },
-  whiteText: {
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-  accentText: {
-    color: COLORS.accent,
-    fontWeight: 'bold',
-  },
-  cardActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingTop: 14,
-  },
-  btnReject: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: COLORS.danger,
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  btnRejectText: {
-    color: COLORS.danger,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  btnApprove: {
-    flex: 1,
-    backgroundColor: COLORS.accent,
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  btnApproveText: {
-    color: COLORS.accentDark,
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   emptyCard: {
     backgroundColor: COLORS.card,
