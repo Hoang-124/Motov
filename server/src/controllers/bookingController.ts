@@ -70,9 +70,9 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     // Check vehicle is available
     const isAvailable = await checkVehicleAvailability(vehicleId, pickupDateTime, returnDateTime);
     if (!isAvailable) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Xe này không có sẵn trong khoảng thời gian được chọn. Vui lòng chọn thời gian khác.' 
+      return res.status(400).json({
+        success: false,
+        message: 'Xe này không có sẵn trong khoảng thời gian được chọn. Vui lòng chọn thời gian khác.'
       });
     }
 
@@ -87,7 +87,10 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     // Calculate total amount
     const pickupDate = new Date(pickupDateTime);
     const returnDate = new Date(returnDateTime);
-    const rentalDays = Math.ceil((returnDate.getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24));
+    const diffTime = returnDate.getTime() - pickupDate.getTime();
+    const diffHours = diffTime / (1000 * 60 * 60);
+    // Nếu lố dưới 1 tiếng (hoặc số phút nhất định) thì không tính thêm ngày, tùy quy định của bạn
+    const rentalDays = diffHours <= 24 ? 1 : Math.ceil(diffHours / 24);
     let initialTotalAmount = calculateTotalAmount(vehicle.rentalPrice, rentalDays);
 
     let discountId = undefined;
@@ -98,7 +101,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     if (promoCode) {
       const cleanCode = promoCode.trim().toUpperCase().replace(/\s+/g, '');
       const discount = await Discount.findOne({ voucherCode: cleanCode });
-      
+
       if (!discount) {
         return res.status(400).json({ success: false, message: 'Mã giảm giá không tồn tại' });
       }
@@ -109,9 +112,9 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
 
       const now = new Date();
       if (now < discount.startDate) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Mã giảm giá chưa bắt đầu (Bắt đầu từ: ${discount.startDate.toLocaleDateString('vi-VN')})` 
+        return res.status(400).json({
+          success: false,
+          message: `Mã giảm giá chưa bắt đầu (Bắt đầu từ: ${discount.startDate.toLocaleDateString('vi-VN')})`
         });
       }
       if (now > discount.endDate) {
@@ -128,9 +131,9 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       }
 
       if (discount.minOrderAmount && initialTotalAmount < discount.minOrderAmount) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Mã giảm giá yêu cầu đơn hàng tối thiểu ${discount.minOrderAmount.toLocaleString()} VNĐ` 
+        return res.status(400).json({
+          success: false,
+          message: `Mã giảm giá yêu cầu đơn hàng tối thiểu ${discount.minOrderAmount.toLocaleString()} VNĐ`
         });
       }
 
@@ -236,7 +239,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         });
 
         if (owner.email) {
-          sendNewBookingAlertToOwnerEmail(owner.email, emailDetails).catch(err => 
+          sendNewBookingAlertToOwnerEmail(owner.email, emailDetails).catch(err =>
             console.error('Lỗi khi gửi email thông báo cho chủ xe:', err)
           );
         }
@@ -308,10 +311,12 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
     }
 
     // Authorization: only owner, admin, staff, or vehicle owner can view
-    const isOwner = booking.userId._id.toString() === userId;
+    const bookingUserId = (booking.userId as any)._id?.toString() || booking.userId.toString();
+    const isOwner = bookingUserId === userId;
     const userRoles = req.user?.roles || [];
     const isStaffOrAdmin = userRoles.includes('Staff') || userRoles.includes('Admin');
-    const isVehicleOwner = await checkIfVehicleOwner(booking.vehicleId._id as any, userId);
+    const vehicleId = (booking.vehicleId as any)._id || booking.vehicleId;
+    const isVehicleOwner = await checkIfVehicleOwner(vehicleId, userId);
 
     if (!isOwner && !isStaffOrAdmin && !isVehicleOwner) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền xem booking này' });
@@ -390,8 +395,8 @@ export const getAllBookings = async (req: AuthRequest, res: Response) => {
     const userRoles = req.user?.roles || [];
     const isAdminOrStaff = userRoles.includes('Admin') || userRoles.includes('Staff');
     const isOwner = userRoles.includes('Owner');
-    
-    // Allow Admin, Staff, and Owner to view bookings
+
+    // Cho phép Admin, Staff và Owner truy cập
     if (!isAdminOrStaff && !isOwner) {
       return res.status(403).json({
         success: false,
@@ -409,18 +414,18 @@ export const getAllBookings = async (req: AuthRequest, res: Response) => {
     if (vehicleId) query.vehicleId = vehicleId;
     if (queryUserId) query.userId = queryUserId;
 
-    // For Owner: Restrict to bookings associated with the Owner's vehicles
+    // Lọc riêng cho dữ liệu của Owner: Chỉ hiển thị đơn của những xe do user này làm chủ
     if (isOwner && !isAdminOrStaff) {
       const myVehicles = await Vehicle.find({ ownerId: userId }, '_id');
       const myVehicleIds = myVehicles.map(v => v._id);
-      
+
       if (vehicleId) {
-        // If owner requests a specific vehicle, ensure they own it
+        // Nếu Owner chủ động truyền lên một ID xe cụ thể, cần đảm bảo họ thực sự sở hữu xe đó
         const hasAccess = myVehicleIds.some(id => id.toString() === vehicleId.toString());
         if (!hasAccess) {
           return res.status(403).json({
             success: false,
-            message: 'Bạn không có quyền xem thông tin của xe này'
+            message: 'Bạn không có quyền xem thông tin đơn hàng của chiếc xe này'
           });
         }
       } else {
@@ -494,6 +499,7 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: validation.error });
     }
 
+    const vehicleId = (booking.vehicleId as any)._id || booking.vehicleId;
     // Update vehicle status based on booking status
     if (status === 'Confirmed') {
       await Vehicle.findByIdAndUpdate(booking.vehicleId._id, { status: 'Rented' });
@@ -502,7 +508,8 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
         console.error('Error running checkLowAvailabilityAlert in booking confirmed:', err)
       );
     } else if (status === 'Completed' || status === 'Cancelled') {
-      await Vehicle.findByIdAndUpdate(booking.vehicleId._id, { status: 'Available' });
+      // Kết thúc chuyến hoặc Huỷ đơn -> Xe rảnh lại
+      await Vehicle.findByIdAndUpdate(vehicleId, { status: 'Available' });
     }
 
     // Update booking
@@ -551,11 +558,19 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
 
           // Gửi email
           if (customer.email) {
-            sendBookingConfirmedEmail(customer.email, emailDetails).catch(err => 
+            sendBookingConfirmedEmail(customer.email, emailDetails).catch(err =>
               console.error('Lỗi khi gửi email xác nhận duyệt xe:', err)
             );
           }
         } else if (status === 'Cancelled') {
+          // HOÀN TRẢ VOUCHER NẾU CÓ
+          if (booking.discountId) {
+            await Discount.findByIdAndUpdate(booking.discountId, { $inc: { usedCount: -1 } });
+            await User.findByIdAndUpdate(booking.userId, {
+              $pull: { usedVouchers: { bookingId: booking._id } }
+            });
+          }
+
           // Tạo thông báo in-app
           await Notification.create({
             userId: customer._id,
@@ -626,12 +641,35 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: validation.error });
     }
 
+    // BỔ SUNG: Chặn khách hàng (isOwner) huỷ đơn sát giờ (dưới 6 tiếng)
+    if (isOwner && !isAdmin) {
+      const now = new Date();
+      const pickupTime = new Date(booking.pickupDateTime);
+      const hoursRemaining = (pickupTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (hoursRemaining < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Không thể hủy đơn đặt xe do đã sát giờ nhận xe (Yêu cầu hủy trước tối thiểu 6 tiếng).'
+        });
+      }
+    }
+
+    // HOÀN TRẢ VOUCHER NẾU KHÁCH TỰ HỦY
+    if (booking.discountId) {
+      await Discount.findByIdAndUpdate(booking.discountId, { $inc: { usedCount: -1 } });
+      await User.findByIdAndUpdate(booking.userId, {
+        $pull: { usedVouchers: { bookingId: booking._id } }
+      });
+    }
+
     // Update booking
     booking.status = 'Cancelled';
     booking.cancelReason = cancelReason || 'Người dùng yêu cầu hủy';
 
-    // Release vehicle
-    await Vehicle.findByIdAndUpdate(booking.vehicleId._id, { status: 'Available' });
+    // Release vehicle (Sửa lỗi ép kiểu tài liệu đã populate)
+    const vehicleId = (booking.vehicleId as any)._id || booking.vehicleId;
+    await Vehicle.findByIdAndUpdate(vehicleId, { status: 'Available' });
 
     const cancelledBooking = await booking.save();
 
@@ -991,7 +1029,11 @@ async function checkIfVehicleOwner(vehicleId: any, userId?: string): Promise<boo
 function formatBookingResponse(booking: any) {
   const pickupDate = new Date(booking.pickupDateTime);
   const returnDate = new Date(booking.returnDateTime);
-  const rentalDays = Math.ceil((returnDate.getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Đồng bộ cách tính block 24h
+  const diffTime = returnDate.getTime() - pickupDate.getTime();
+  const diffHours = diffTime / (1000 * 60 * 60);
+  const rentalDays = diffHours <= 24 ? 1 : Math.ceil(diffHours / 24);
 
   return {
     id: booking._id,
@@ -1032,6 +1074,177 @@ function getStatusLabel(status: string): string {
   return labels[status] || status;
 }
 
+// ============================================
+// STAFF: CONFIRM BOOKING
+// ============================================
+export const confirmBookingByStaff = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body; // Ghi chú từ staff nếu có
+
+    // 1. Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'ID booking không hợp lệ' });
+    }
+
+    // 2. Tìm booking và nạp thông tin xe
+    const booking = await Booking.findById(id).populate('vehicleId');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Đơn hàng không tồn tại' });
+    }
+
+    // 3. Kiểm tra xem trạng thái đơn có hợp lệ để duyệt không (Phải là Pending)
+    if (booking.status !== 'Pending') {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Không thể duyệt đơn hàng này (Trạng thái hiện tại: ${booking.status})` 
+      });
+    }
+
+    // 4. Cập nhật trạng thái sang Confirmed
+    booking.status = 'Confirmed';
+    if (notes) {
+      booking.surcharges.push({
+        surchargeType: 'Ghi chú từ nhân viên duyệt',
+        amount: 0,
+        description: notes,
+        isPaid: true,
+        createdAt: new Date()
+      });
+    }
+
+    const updatedBooking = await booking.save();
+
+    // 5. Gửi thông báo & email cho khách hàng (Bọc trong try-catch để tránh crash đơn)
+    try {
+      const customer = await User.findById(updatedBooking.userId);
+      if (customer && customer.email) {
+        const pickupDate = new Date(updatedBooking.pickupDateTime);
+        const returnDate = new Date(updatedBooking.returnDateTime);
+        
+        // Tính số ngày (Đồng bộ block 24h)
+        const diffHours = (returnDate.getTime() - pickupDate.getTime()) / (1000 * 60 * 60);
+        const rentalDays = diffHours <= 24 ? 1 : Math.ceil(diffHours / 24);
+
+        const emailDetails = {
+          bookingCode: updatedBooking.bookingCode,
+          vehicleName: updatedBooking.vehicleSnapshot?.name || 'Xe',
+          pickupDateTime: updatedBooking.pickupDateTime,
+          returnDateTime: updatedBooking.returnDateTime,
+          pickupLocation: updatedBooking.pickupLocation?.address || 'Nhận tại cửa hàng',
+          totalAmount: updatedBooking.totalAmount,
+          rentalDays,
+          discountAmount: updatedBooking.discountAmount
+        };
+
+        // Gửi thông báo in-app
+        await Notification.create({
+          userId: customer._id,
+          title: 'Đơn đặt xe được phê duyệt',
+          message: `Đơn đặt xe ${updatedBooking.bookingCode} của bạn đã được nhân viên hệ thống phê duyệt.`,
+          type: 'BookingConfirmed',
+          relatedId: updatedBooking._id
+        });
+
+        // Gửi Email
+        sendBookingConfirmedEmail(customer.email, emailDetails).catch(err =>
+          console.error('Lỗi gửi email xác nhận từ Staff:', err)
+        );
+      }
+    } catch (notiError) {
+      console.error('Lỗi tạo thông báo khi Staff duyệt đơn:', notiError);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: '✓ Duyệt đơn đặt xe thành công!',
+      booking: formatBookingResponse(updatedBooking)
+    });
+
+  } catch (error: any) {
+    console.error('Lỗi khi staff duyệt booking:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi máy chủ nội bộ khi duyệt đơn',
+      error: error.message
+    });
+  }
+};
+
+// ============================================
+// STAFF: CONFIRM BIKE PICKUP (Khách nhận xe)
+// ============================================
+export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body; // Ghi chú tình trạng xe lúc bàn giao nếu có
+
+    // 1. Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'ID booking không hợp lệ' });
+    }
+
+    // 2. Tìm đơn hàng
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Đơn hàng không tồn tại' });
+    }
+
+    // 3. Kiểm tra điều kiện: Đơn hàng phải ở trạng thái 'Confirmed' thì mới được pickup
+    if (booking.status !== 'Confirmed') {
+      return res.status(400).json({
+        success: false,
+        message: `Không thể xác nhận nhận xe. Đơn hàng phải ở trạng thái "Đã xác nhận" (Trạng thái hiện tại: ${booking.status})`
+      });
+    }
+
+    // 4. Cập nhật trạng thái Đơn hàng sang 'Ongoing' (Đang đi)
+    booking.status = 'Ongoing'; // Hoặc 'Renting' tùy thuộc vào Enum trong Model Booking của bạn
+    
+    if (notes) {
+      booking.surcharges.push({
+        surchargeType: 'Ghi chú bàn giao xe',
+        amount: 0,
+        description: notes,
+        isPaid: true,
+        createdAt: new Date()
+      });
+    }
+    const updatedBooking = await booking.save();
+
+    // 5. Cập nhật trạng thái Xe sang 'Rented' (Đang cho thuê) để đồng bộ hệ thống
+    const vehicleId = (booking.vehicleId as any)._id || booking.vehicleId;
+    await Vehicle.findByIdAndUpdate(vehicleId, { status: 'Rented' });
+
+    // 6. Tạo thông báo in-app cho Khách hàng biết xe đã được bàn giao
+    try {
+      await Notification.create({
+        userId: booking.userId,
+        title: 'Chuyến đi của bạn đã bắt đầu',
+        message: `Nhân viên đã xác nhận bàn giao xe cho đơn hàng ${booking.bookingCode}. Chúc bạn có một chuyến đi an toàn!`,
+        type: 'BookingConfirmed',
+        relatedId: booking._id
+      });
+    } catch (notiError) {
+      console.error('Lỗi tạo thông báo khi staff xác nhận pickup:', notiError);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: '✓ Xác nhận khách lấy xe thành công! Trạng thái xe đã chuyển sang Đang cho thuê.',
+      booking: formatBookingResponse(updatedBooking)
+    });
+
+  } catch (error: any) {
+    console.error('Lỗi khi staff xác nhận pickup:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi máy chủ nội bộ khi xác nhận nhận xe',
+      error: error.message
+    });
+  }
+};
+
 export default {
   createBooking,
   getBookingById,
@@ -1041,6 +1254,8 @@ export default {
   cancelBooking,
   deleteBooking,
   getBookingsByVehicle,
+  confirmBookingByStaff,
+  confirmBikePickupByStaff,
   getBookingTracking,
   returnMotorbike
 };
