@@ -268,7 +268,17 @@ export const Header = () => {
           {user ? (
             <>
               {/* Notification Bell Icon */}
-              <div className="relative">
+              <div 
+                className="relative"
+                onMouseEnter={() => {
+                  setIsNotiOpen(true);
+                  setIsDropdownOpen(false); // Close profile dropdown if open
+                }}
+                onMouseLeave={() => {
+                  setIsNotiOpen(false);
+                  setShowNotiMenu(false);
+                }}
+              >
                 <button
                   onClick={() => {
                     setIsNotiOpen(!isNotiOpen);
@@ -288,7 +298,7 @@ export const Header = () => {
                 <AnimatePresence>
                   {isNotiOpen && (
                     <>
-                      <div className="fixed inset-0 z-40 bg-transparent" onClick={() => { setIsNotiOpen(false); setShowNotiMenu(false); }} />
+                      <div className="fixed inset-0 z-40 bg-transparent md:hidden" onClick={() => { setIsNotiOpen(false); setShowNotiMenu(false); }} />
                       <motion.div
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
