@@ -88,6 +88,23 @@ export const Bookings = () => {
     }
   };
 
+  // Hàm gọi API trả xe máy
+  const handleReturnBooking = async (id: string) => {
+    const confirm = window.confirm(t('myBookingsPage.returnConfirm'));
+    if (!confirm) return;
+
+    try {
+      setLoading(true);
+      await bookingService.returnMotorbike(id, new Date().toISOString());
+      window.alert(t('myBookingsPage.returnSuccess'));
+      // Tải lại danh sách mới từ Server
+      await loadMyBookings();
+    } catch (err: any) {
+      window.alert(err.response?.data?.message || (language === 'vi' ? 'Không thể trả xe vào lúc này!' : 'Failed to return motorbike at this moment!'));
+      setLoading(false);
+    }
+  };
+
   const translateStatusLabel = (status: string, label: string) => {
     if (language === 'vi') return label;
     if (status === 'Pending') return 'Pending';
@@ -218,6 +235,14 @@ export const Bookings = () => {
                     >
                       <Trash2 size={16} />
                       {t('myBookingsPage.cancelReq')}
+                    </button>
+                  ) : booking.status === 'Ongoing' ? (
+                    <button 
+                      onClick={() => handleReturnBooking(booking.id)}
+                      disabled={loading}
+                      className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-bold cursor-pointer disabled:opacity-50"
+                    >
+                      {t('myBookingsPage.returnBtn')}
                     </button>
                   ) : booking.status === 'Completed' ? (
                     reviewedBookingIds.includes(booking.id) ? (
