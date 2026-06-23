@@ -299,7 +299,7 @@ export const Bookings = () => {
                     <button 
                       onClick={() => openReturnModal(booking)}
                       disabled={loading}
-                      className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-bold cursor-pointer disabled:opacity-50"
+                      className="flex items-center justify-center gap-2 bg-neon text-dark hover:bg-[#bbf000] px-4 py-2.5 rounded-xl transition-all text-sm w-full md:w-auto font-bold cursor-pointer disabled:opacity-50 shadow-[0_0_10px_rgba(204,255,0,0.2)]"
                     >
                       {t('myBookingsPage.returnBtn')}
                     </button>
@@ -456,7 +456,7 @@ export const Bookings = () => {
                 exit={{ scale: 0.95, y: 15, opacity: 0 }}
                 className="bg-surface border border-white/10 rounded-2xl p-6 shadow-2xl relative w-full max-w-md z-10 overflow-hidden text-gray-300"
               >
-                <div className="absolute top-0 inset-x-0 h-1 bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]"></div>
+                <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
                 
                 <button 
                   onClick={() => setShowReturnModal(false)}
@@ -466,7 +466,7 @@ export const Bookings = () => {
                 </button>
 
                 <h3 className="font-display font-black text-lg text-white uppercase mb-4 flex items-center gap-2">
-                  <Clock size={20} className="text-purple-400 shrink-0" />
+                  <Clock size={20} className="text-neon shrink-0" />
                   {t('myBookingsPage.returnModalTitle')}
                 </h3>
 
@@ -497,7 +497,7 @@ export const Bookings = () => {
                     </div>
                     <div className="border-t border-white/5 my-2 pt-2 flex justify-between items-center">
                       <span className="text-gray-400">{t('myBookingsPage.returnModalActualReturn')}</span>
-                      <span className="font-bold text-purple-400 font-mono">{details.now.toLocaleString('vi-VN')}</span>
+                      <span className="font-bold text-neon font-mono">{details.now.toLocaleString('vi-VN')}</span>
                     </div>
                   </div>
 
@@ -563,7 +563,7 @@ export const Bookings = () => {
                     type="button"
                     onClick={handleReturnBookingSubmit}
                     disabled={loading}
-                    className="px-4 py-2.5 bg-purple-600 text-white hover:bg-purple-700 font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(168,85,247,0.3)] cursor-pointer disabled:opacity-50"
+                    className="px-4 py-2.5 bg-neon text-dark hover:bg-[#bbf000] font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(204,255,0,0.3)] cursor-pointer disabled:opacity-50"
                   >
                     {t('myBookingsPage.returnModalConfirmButton')}
                   </button>
