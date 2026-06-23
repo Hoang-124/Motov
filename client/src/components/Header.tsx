@@ -24,6 +24,8 @@ export const Header = () => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotiOpen, setIsNotiOpen] = useState(false);
+  const [notiFilter, setNotiFilter] = useState<'all' | 'unread'>('all');
+  const [showNotiMenu, setShowNotiMenu] = useState(false);
 
   // Lấy thông báo định kỳ
   const fetchNotifications = async () => {
@@ -286,67 +288,151 @@ export const Header = () => {
                 <AnimatePresence>
                   {isNotiOpen && (
                     <>
-                      <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsNotiOpen(false)} />
+                      <div className="fixed inset-0 z-40 bg-transparent" onClick={() => { setIsNotiOpen(false); setShowNotiMenu(false); }} />
                       <motion.div
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl w-[320px] md:w-[360px] overflow-hidden text-gray-300 font-sans"
+                        className="absolute right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl w-[320px] md:w-[360px] overflow-hidden text-gray-300 font-sans pb-2"
                       >
                         {/* Top Neon line */}
                         <div className="absolute top-0 inset-x-0 h-[3px] bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
 
                         {/* Header */}
-                        <div className="p-4 flex items-center justify-between border-b border-white/5 bg-black/20">
-                          <span className="font-bold text-white text-sm uppercase tracking-wider">Thông báo ({unreadCount})</span>
-                          {unreadCount > 0 && (
+                        <div className="p-4 flex items-center justify-between pb-2">
+                          <span className="font-bold text-white text-base">Thông báo</span>
+                          <div className="relative">
                             <button 
-                              onClick={handleMarkAllAsRead}
-                              className="text-xs text-neon hover:underline cursor-pointer flex items-center gap-1 font-semibold border-none bg-transparent"
+                              onClick={() => setShowNotiMenu(!showNotiMenu)}
+                              className="w-8 h-8 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
                             >
-                              <Check size={12} /> Đọc tất cả
+                              <span className="text-sm font-bold tracking-widest leading-none">•••</span>
                             </button>
-                          )}
+                            {/* Submenu for Mark all as read */}
+                            {showNotiMenu && (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={() => setShowNotiMenu(false)} />
+                                <div className="absolute right-0 mt-1 w-48 bg-surface border border-white/10 rounded-lg shadow-xl z-20 py-1 text-xs">
+                                  <button
+                                    onClick={() => {
+                                      handleMarkAllAsRead();
+                                      setShowNotiMenu(false);
+                                    }}
+                                    className="w-full px-4 py-2.5 hover:bg-white/5 text-left text-gray-300 hover:text-white flex items-center gap-2 cursor-pointer border-none bg-transparent"
+                                  >
+                                    <Check size={14} className="text-neon" /> Đánh dấu tất cả đã đọc
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Facebook-style Pill Filters */}
+                        <div className="flex gap-2 px-4 pb-3 border-b border-white/5">
+                          <button
+                            onClick={() => setNotiFilter('all')}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border-none ${
+                              notiFilter === 'all'
+                                ? 'bg-neon/15 text-neon shadow-[0_0_8px_rgba(204,255,0,0.1)]'
+                                : 'bg-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                            }`}
+                          >
+                            Tất cả
+                          </button>
+                          <button
+                            onClick={() => setNotiFilter('unread')}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border-none ${
+                              notiFilter === 'unread'
+                                ? 'bg-neon/15 text-neon shadow-[0_0_8px_rgba(204,255,0,0.1)]'
+                                : 'bg-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                            }`}
+                          >
+                            {unreadCount > 0 ? `Chưa đọc (${unreadCount})` : 'Chưa đọc'}
+                          </button>
                         </div>
 
                         {/* List content */}
-                        <div className="max-h-[360px] overflow-y-auto divide-y divide-white/5">
-                          {notifications.length === 0 ? (
-                            <div className="p-8 text-center text-gray-500 text-sm">
+                        <div className="max-h-[320px] overflow-y-auto py-2 space-y-0.5">
+                          {notifications.filter(n => notiFilter === 'all' || !n.isRead).length === 0 ? (
+                            <div className="p-8 text-center text-gray-500 text-xs italic">
                               Không có thông báo nào.
                             </div>
                           ) : (
-                            notifications.map((noti) => (
-                              <div
-                                key={noti._id}
-                                onClick={() => handleMarkAsRead(noti._id, noti.relatedId)}
-                                className={`p-4 flex gap-3 text-left transition-all duration-200 cursor-pointer ${
-                                  noti.isRead ? 'opacity-70 hover:opacity-100 hover:bg-white/5' : 'bg-neon/5 hover:bg-neon/10 border-l-2 border-neon'
-                                }`}
-                              >
-                                {/* Status Indicator Color */}
-                                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                                  noti.type === 'BookingConfirmed' ? 'bg-green-500' :
-                                  noti.type === 'BookingCancelled' ? 'bg-red-500' :
-                                  noti.type === 'BookingPending' ? 'bg-yellow-500' :
-                                  'bg-neon'
-                                }`} />
-                                
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-bold text-white truncate">{noti.title}</p>
-                                  <p className="text-xs text-gray-400 mt-1 line-clamp-2 leading-relaxed">{noti.message}</p>
-                                  <span className="text-[10px] text-gray-500 mt-2 block">{formatTimeAgo(noti.createdAt)}</span>
-                                </div>
-
-                                <button 
-                                  onClick={(e) => handleDeleteNotification(e, noti._id)}
-                                  className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-all h-fit border-none bg-transparent cursor-pointer"
+                            notifications
+                              .filter(n => notiFilter === 'all' || !n.isRead)
+                              .map((noti) => (
+                                <div
+                                  key={noti._id}
+                                  onClick={() => handleMarkAsRead(noti._id, noti.relatedId)}
+                                  className={`group p-3 flex gap-3 text-left transition-all duration-200 cursor-pointer rounded-lg mx-2 ${
+                                    noti.isRead 
+                                      ? 'hover:bg-white/5' 
+                                      : 'bg-neon/5 hover:bg-neon/10'
+                                  }`}
                                 >
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                            ))
+                                  {/* Left side: Circular Icon Container like FB avatar */}
+                                  <div className="relative w-11 h-11 rounded-full bg-black/40 border border-white/5 flex items-center justify-center shrink-0">
+                                    {noti.type === 'BookingConfirmed' ? (
+                                      <ClipboardList size={20} className="text-green-400" />
+                                    ) : noti.type === 'BookingCancelled' ? (
+                                      <ClipboardList size={20} className="text-red-400" />
+                                    ) : noti.type === 'BookingPending' ? (
+                                      <ClipboardList size={20} className="text-yellow-400" />
+                                    ) : noti.type === 'IdentityVerified' ? (
+                                      <UserCheck size={20} className="text-green-400" />
+                                    ) : (
+                                      <Bell size={20} className="text-neon" />
+                                    )}
+                                    
+                                    {/* Mini badge at bottom-right corner */}
+                                    <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-surface shadow-md ${
+                                      noti.type === 'BookingConfirmed' ? 'bg-green-500 text-white' :
+                                      noti.type === 'BookingCancelled' ? 'bg-red-500 text-white' :
+                                      noti.type === 'BookingPending' ? 'bg-yellow-500 text-dark' :
+                                      'bg-neon text-dark'
+                                    }`}>
+                                      {noti.type === 'BookingConfirmed' ? (
+                                        <Check size={8} className="stroke-[3]" />
+                                      ) : noti.type === 'BookingCancelled' ? (
+                                        <X size={8} className="stroke-[3]" />
+                                      ) : (
+                                        <Bell size={8} className="stroke-[3]" />
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Middle Content */}
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-xs text-white leading-relaxed ${noti.isRead ? 'font-normal' : 'font-bold'}`}>
+                                      {noti.title}
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">{noti.message}</p>
+                                    <span className={`text-[10px] mt-1.5 block ${noti.isRead ? 'text-gray-500' : 'text-neon font-semibold'}`}>
+                                      {formatTimeAgo(noti.createdAt)}
+                                    </span>
+                                  </div>
+
+                                  {/* Right side status & action */}
+                                  <div className="flex flex-col items-center justify-between self-stretch shrink-0 py-0.5 gap-2">
+                                    {/* Unread indicator dot */}
+                                    {!noti.isRead ? (
+                                      <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] my-auto" />
+                                    ) : (
+                                      <div className="w-2.5 h-2.5 opacity-0" />
+                                    )}
+                                    
+                                    {/* Delete Button (shows on hover like FB) */}
+                                    <button 
+                                      onClick={(e) => handleDeleteNotification(e, noti._id)}
+                                      className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-all border-none bg-transparent cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))
                           )}
                         </div>
                       </motion.div>
