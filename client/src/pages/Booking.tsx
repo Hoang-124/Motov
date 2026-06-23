@@ -291,14 +291,14 @@ export const Booking = () => {
 
   return (
     <div className="pt-28 pb-20 min-h-screen bg-dark">
-      <div className="max-w-6xl mx-auto px-4 lg:px-8">
+      <div className="w-full max-w-[95%] xl:max-w-[1400px] 2xl:max-w-[1600px] mx-auto px-4 lg:px-8 2xl:px-12">
         
         <Link to="/bikes" className="inline-flex items-center gap-2 text-gray-400 hover:text-neon transition-colors mb-8 text-sm group">
           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
           Quay lại danh sách xe
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           
           {/* Form Side */}
           <div className="lg:col-span-7 bg-surface border border-gray-800 rounded-2xl p-6 md:p-8 shadow-xl">
