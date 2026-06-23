@@ -91,8 +91,8 @@ export const AdminDashboard = () => {
         
         {/* Title and Welcome */}
         <div className="mb-10 text-center md:text-left">
-          <h1 className="font-display font-black text-4xl text-neon uppercase text-glow tracking-tight mb-2">
-            Bảng Điều Khiển Admin
+          <h1 className="font-display font-black text-3xl text-white tracking-tight mb-2">
+            Bảng điều khiển admin
           </h1>
           <p className="text-gray-400 text-sm">
             Hệ thống thống kê & giám sát hoạt động cho chuỗi cửa hàng Motov Đà Nẵng
@@ -108,7 +108,7 @@ export const AdminDashboard = () => {
             className="bg-surface border border-gray-800 rounded-2xl p-6 flex items-center justify-between shadow-lg"
           >
             <div>
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Tổng Số Đơn Thuê</p>
+              <p className="text-xs text-gray-500 font-semibold mb-1">Tổng số đơn thuê</p>
               <h3 className="font-display font-bold text-3xl text-white">{stats.totalBookings}</h3>
               <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
                 <TrendingUp size={12} className="text-neon" />
@@ -126,8 +126,8 @@ export const AdminDashboard = () => {
             className="bg-surface border border-gray-800 rounded-2xl p-6 flex items-center justify-between shadow-lg"
           >
             <div>
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Doanh Thu Dự Kiến</p>
-              <h3 className="font-display font-bold text-2xl text-neon">{formatCurrency(stats.totalRevenue)}</h3>
+              <p className="text-xs text-gray-500 font-semibold mb-1">Doanh thu dự kiến</p>
+              <h3 className="font-display font-bold text-2xl text-emerald-400">{formatCurrency(stats.totalRevenue)}</h3>
               <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
                 <TrendingUp size={12} className="text-neon" />
                 <span>Tính từ đơn thuê thành công</span>
@@ -144,7 +144,7 @@ export const AdminDashboard = () => {
             className="bg-surface border border-gray-800 rounded-2xl p-6 flex items-center justify-between shadow-lg"
           >
             <div>
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Xe Đang Thuê</p>
+              <p className="text-xs text-gray-500 font-semibold mb-1">Xe đang thuê</p>
               <h3 className="font-display font-bold text-3xl text-white">{stats.activeRentals} / {stats.totalBikes}</h3>
               <p className="text-[10px] text-gray-400 mt-2">Đang lưu thông trên đường</p>
             </div>
@@ -159,7 +159,7 @@ export const AdminDashboard = () => {
             className="bg-surface border border-gray-800 rounded-2xl p-6 flex items-center justify-between shadow-lg"
           >
             <div>
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Số Khách Hàng</p>
+              <p className="text-xs text-gray-500 font-semibold mb-1">Số khách hàng</p>
               <h3 className="font-display font-bold text-3xl text-white">{stats.totalUsers}</h3>
               <p className="text-[10px] text-gray-400 mt-2">Tổng tài khoản đã đăng ký</p>
             </div>
@@ -176,8 +176,8 @@ export const AdminDashboard = () => {
           {/* Latest bookings */}
           <div className="lg:col-span-8 bg-surface border border-gray-800 rounded-2xl p-6 shadow-xl">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="font-display font-bold text-xl text-white uppercase">
-                Đơn Thuê Mới Nhất
+              <h3 className="font-display font-bold text-lg text-white">
+                Đơn thuê mới nhất
               </h3>
               <Link to="/admin/bookings" className="text-xs text-neon hover:underline flex items-center gap-1">
                 Xem tất cả đơn
@@ -221,8 +221,8 @@ export const AdminDashboard = () => {
 
           {/* Breakdown Distribution */}
           <div className="lg:col-span-4 bg-surface border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6">
-            <h3 className="font-display font-bold text-xl text-white uppercase border-b border-gray-800 pb-3">
-              Trạng Thái Đơn Hàng
+            <h3 className="font-display font-bold text-lg text-white border-b border-gray-800 pb-3">
+              Trạng thái đơn hàng
             </h3>
 
             <div className="space-y-4">
@@ -251,8 +251,8 @@ export const AdminDashboard = () => {
               })}
             </div>
 
-            <h3 className="font-display font-bold text-xl text-white uppercase border-b border-gray-800 pb-3 pt-2">
-              Phân Loại Xe Máy
+            <h3 className="font-display font-bold text-lg text-white border-b border-gray-800 pb-3 pt-2">
+              Phân loại xe máy
             </h3>
             
             <div className="space-y-3">
