@@ -191,10 +191,10 @@ export const Booking = () => {
       return `Năm trả xe không hợp lệ! Vui lòng chọn năm từ ${currentYear} đến 2100.`;
     }
 
-    // Cho phép sai lệch nhỏ 10 phút
-    const minPickup = new Date(now.getTime() - 10 * 60 * 1000);
+    // Cho phép sai lệch lùi 30 phút để bù trừ thời gian thao tác điền form
+    const minPickup = new Date(now.getTime() - 30 * 60 * 1000);
     if (start < minPickup) {
-      return 'Thời gian lấy xe không được ở trong quá khứ!';
+      return 'Thời gian lấy xe không được ở trong quá khứ (trễ không quá 30 phút)!';
     }
 
     // Thời gian trả xe phải sau thời gian lấy xe ít nhất 1 giờ
