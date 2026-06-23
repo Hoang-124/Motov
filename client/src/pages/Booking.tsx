@@ -143,6 +143,44 @@ export const Booking = () => {
     );
   }
 
+  const validateDates = (pickup: string, dropoff: string) => {
+    const now = new Date();
+    const start = new Date(pickup);
+    const end = new Date(dropoff);
+
+    if (isNaN(start.getTime())) {
+      return 'Thời gian lấy xe không hợp lệ!';
+    }
+    if (isNaN(end.getTime())) {
+      return 'Thời gian trả xe không hợp lệ!';
+    }
+
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+    const currentYear = now.getFullYear();
+
+    if (startYear < currentYear || startYear > 2100) {
+      return `Năm lấy xe không hợp lệ! Vui lòng chọn năm từ ${currentYear} đến 2100.`;
+    }
+    if (endYear < currentYear || endYear > 2100) {
+      return `Năm trả xe không hợp lệ! Vui lòng chọn năm từ ${currentYear} đến 2100.`;
+    }
+
+    // Cho phép sai lệch nhỏ 10 phút
+    const minPickup = new Date(now.getTime() - 10 * 60 * 1000);
+    if (start < minPickup) {
+      return 'Thời gian lấy xe không được ở trong quá khứ!';
+    }
+
+    // Thời gian trả xe phải sau thời gian lấy xe ít nhất 1 giờ
+    const minDropoff = new Date(start.getTime() + 60 * 60 * 1000);
+    if (end < minDropoff) {
+      return 'Thời gian trả xe phải sau thời gian lấy xe ít nhất 1 giờ!';
+    }
+
+    return null;
+  };
+
   // Hàm xử lý gửi Đơn lên Backend
   const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,12 +188,32 @@ export const Booking = () => {
 
     if (step < 2) {
       // Validate ngày tháng ở bước 1 trước khi sang bước 2
-      if (new Date(pickupDate) >= new Date(returnDate)) {
-        setApiError('Ngày trả xe phải sau ngày nhận xe!');
+      const dateError = validateDates(pickupDate, returnDate);
+      if (dateError) {
+        setApiError(dateError);
         return;
       }
       setStep(step + 1);
     } else {
+      // Validate bước 2
+      if (!phone.trim()) {
+        setApiError('Vui lòng nhập số điện thoại liên lạc!');
+        return;
+      }
+      const phoneRegex = /^(03|05|07|08|09)+([0-9]{8})$/;
+      if (!phoneRegex.test(phone.trim())) {
+        setApiError('Số điện thoại không đúng định dạng Việt Nam (10 chữ số, bắt đầu bằng 03, 05, 07, 08, 09)!');
+        return;
+      }
+      if (!license.trim()) {
+        setApiError('Vui lòng nhập số giấy phép lái xe!');
+        return;
+      }
+      if (license.trim().length < 6) {
+        setApiError('Số giấy phép lái xe không hợp lệ (tối thiểu 6 ký tự)!');
+        return;
+      }
+
       try {
         setLoading(true);
         
