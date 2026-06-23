@@ -4,8 +4,10 @@ import { CalendarDays, MapPin, ChevronDown } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getAllMotorbikes, Motorbike } from '../services/vehicleService';
 import { BikeCard } from '../components/BikeCard';
+import { useLanguage } from '../hooks/useLanguage';
 
 const HeroSearch = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [date, setDate] = useState('');
   const [location, setLocation] = useState('Son Tra Peninsula');
@@ -18,7 +20,7 @@ const HeroSearch = () => {
 
   return (
     <div className="bg-surface/85 backdrop-blur-xl p-6 rounded-2xl border border-white/10 w-full max-w-sm relative z-20 shadow-2xl">
-      <h3 className="text-white font-semibold mb-4 text-lg">Ngày Nhận/Trả</h3>
+      <h3 className="text-white font-semibold mb-4 text-lg">{t('home.pickupReturn')}</h3>
       
       <form onSubmit={handleSearch} className="space-y-4">
         {/* Date Input */}
@@ -28,7 +30,7 @@ const HeroSearch = () => {
           </div>
           <input 
             type="text" 
-            placeholder="Chọn ngày nhận & trả" 
+            placeholder={t('home.selectPickupReturn')} 
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all duration-300"
@@ -36,7 +38,7 @@ const HeroSearch = () => {
         </div>
 
         <div>
-          <h3 className="text-white font-semibold mb-2 text-sm mt-2">Địa Điểm</h3>
+          <h3 className="text-white font-semibold mb-2 text-sm mt-2">{t('home.location')}</h3>
           
           <div className="space-y-2">
             <div className="relative">
@@ -48,9 +50,9 @@ const HeroSearch = () => {
                 onChange={(e) => setLocation(e.target.value)}
                 className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none appearance-none cursor-pointer transition-all duration-300"
               >
-                <option value="Son Tra Peninsula">Bán đảo Sơn Trà</option>
-                <option value="Da Nang Airport">Sân bay Đà Nẵng</option>
-                <option value="City Center">Trung tâm Thành phố</option>
+                <option value="Son Tra Peninsula">{t('home.sonTra')}</option>
+                <option value="Da Nang Airport">{t('home.airport')}</option>
+                <option value="City Center">{t('home.cityCenter')}</option>
               </select>
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <ChevronDown size={16} className="text-gray-400" />
@@ -63,7 +65,7 @@ const HeroSearch = () => {
           type="submit"
           className="w-full bg-neon text-dark font-bold py-3.5 mt-4 rounded-lg hover:bg-[#bbf000] focus:ring-4 focus:outline-none focus:ring-neon/30 transition-all duration-300 shadow-[0_0_15px_rgba(204,255,0,0.4)] hover:shadow-[0_0_25px_rgba(204,255,0,0.6)] cursor-pointer"
         >
-          TÌM XE (SEARCH)
+          {t('home.searchBikes')}
         </button>
       </form>
     </div>
@@ -71,6 +73,7 @@ const HeroSearch = () => {
 };
 
 const HeroSection = () => {
+  const { t } = useLanguage();
   return (
     <section className="relative pt-24 pb-16 lg:pt-32 lg:pb-24 min-h-[85vh] flex items-center overflow-hidden">
       {/* Background Image & Overlay */}
@@ -100,11 +103,11 @@ const HeroSection = () => {
           </motion.div>
           <div className="hidden lg:block relative z-20 text-right pr-8">
             <h2 className="text-5xl font-display font-black text-white leading-tight uppercase">
-              Tự Do <br /> Khám Phá <br />
-              <span className="text-neon text-glow">Đường Phố</span>
+              {t('home.freeToExplore')} <br />
+              <span className="text-neon text-glow">{t('home.streets')}</span>
             </h2>
             <p className="text-gray-400 mt-4 max-w-sm ml-auto text-sm leading-relaxed">
-              Trải nghiệm dịch vụ thuê xe máy cao cấp chất lượng hàng đầu. Giao nhận xe tận nơi nhanh chóng, thủ tục đơn giản.
+              {t('home.heroSubtitle')}
             </p>
           </div>
         </div>
@@ -118,12 +121,13 @@ interface SectionProps {
 }
 
 const PopularSection = ({ bikes }: SectionProps) => {
+  const { t } = useLanguage();
   const featuredBikes = bikes.slice(0, 3);
   return (
     <section className="py-20 max-w-7xl mx-auto px-4 lg:px-8">
       <div className="flex flex-col md:flex-row justify-between items-end mb-12">
         <h2 className="font-display font-bold text-3xl md:text-4xl text-neon uppercase text-glow">
-          CÁC DÒNG XE ĐƯỢC YÊU THÍCH
+          {t('home.popularBikes')}
         </h2>
       </div>
 
@@ -137,6 +141,7 @@ const PopularSection = ({ bikes }: SectionProps) => {
 };
 
 const HighQualitySection = ({ bikes }: SectionProps) => {
+  const { t } = useLanguage();
   const otherBikes = bikes.slice(3, 6);
   return (
     <section className="py-20 border-t border-white/5">
@@ -144,10 +149,10 @@ const HighQualitySection = ({ bikes }: SectionProps) => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-4">
             <h2 className="font-display font-bold text-3xl md:text-4xl text-white uppercase leading-tight">
-              THUÊ XE ĐÀ NẴNG <br/><span className="text-neon text-glow">CHẤT LƯỢNG CAO</span>
+              {t('home.highQualityTitle')}
             </h2>
             <p className="mt-6 text-gray-400 leading-relaxed text-sm">
-              Trải nghiệm những dòng xe hiện đại, được bảo dưỡng định kỳ, đảm bảo an toàn tuyệt đối cho mọi chuyến đi của bạn. Khám phá thành phố biển xinh đẹp không giới hạn.
+              {t('home.highQualitySubtitle')}
             </p>
             <div className="mt-8 flex flex-col gap-4">
               <div className="flex items-center gap-3">
@@ -155,8 +160,8 @@ const HighQualitySection = ({ bikes }: SectionProps) => {
                   ✓
                 </div>
                 <div>
-                  <h4 className="text-white font-semibold text-sm">Bảo Dưỡng Định Kỳ</h4>
-                  <p className="text-xs text-gray-500">Mỗi xe đều được kiểm tra kỹ lưỡng trước khi giao</p>
+                  <h4 className="text-white font-semibold text-sm">{t('home.maintenance')}</h4>
+                  <p className="text-xs text-gray-500">{t('home.maintenanceDesc')}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -164,8 +169,8 @@ const HighQualitySection = ({ bikes }: SectionProps) => {
                   ✓
                 </div>
                 <div>
-                  <h4 className="text-white font-semibold text-sm">Hỗ Trợ 24/7</h4>
-                  <p className="text-xs text-gray-500">Đội ngũ kỹ thuật hỗ trợ tận nơi trên mọi hành trình</p>
+                  <h4 className="text-white font-semibold text-sm">{t('home.support')}</h4>
+                  <p className="text-xs text-gray-500">{t('home.supportDesc')}</p>
                 </div>
               </div>
             </div>
@@ -185,19 +190,20 @@ const HighQualitySection = ({ bikes }: SectionProps) => {
 };
 
 const BannerCTA = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   return (
     <section className="py-24 border-y border-white/5 relative overflow-hidden bg-gradient-to-r from-neon/5 to-transparent">
       <div className="absolute inset-0 bg-neon/5 blur-3xl rounded-full translate-y-1/2 scale-150"></div>
       <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
         <h2 className="font-display font-bold text-4xl md:text-5xl text-white uppercase leading-tight mb-8">
-          KHÁM PHÁ ĐÀ NẴNG <br/> THEO CÁCH THUỘC VỀ <span className="text-neon text-glow">RIÊNG BẠN</span>
+          {t('home.exploreYourWay')}
         </h2>
         <button 
           onClick={() => navigate('/bikes')}
           className="bg-neon text-dark font-bold px-10 py-4 rounded-full text-lg hover:bg-[#bbf000] focus:ring-4 focus:outline-none focus:ring-neon/30 transition-all duration-300 shadow-[0_0_25px_rgba(204,255,0,0.5)] hover:shadow-[0_0_40px_rgba(204,255,0,0.8)] cursor-pointer"
         >
-          ĐẶT CHỖ NGAY (BOOK NOW)
+          {t('home.bookNow')}
         </button>
       </div>
     </section>

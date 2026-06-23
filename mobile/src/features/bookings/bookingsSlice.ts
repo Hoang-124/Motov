@@ -18,7 +18,7 @@ const mockBookings: Booking[] = [
     fullName: "Nguyễn Văn An",
     phone: "0905123456",
     status: "Chờ duyệt",
-    statusLabel: "⏳ Chờ duyệt",
+    statusLabel: "Chờ duyệt",
     createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
     pickupDateTime: "2026-06-16T08:00:00.000Z",
     returnDateTime: "2026-06-18T08:00:00.000Z",
@@ -39,7 +39,7 @@ const mockBookings: Booking[] = [
     fullName: "Trần Thị Bình",
     phone: "0905987654",
     status: "Đang thuê",
-    statusLabel: "🚴 Đang thuê",
+    statusLabel: "Đang thuê",
     createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     pickupDateTime: "2026-06-14T08:00:00.000Z",
     returnDateTime: "2026-06-16T08:00:00.000Z",
@@ -60,7 +60,7 @@ const mockBookings: Booking[] = [
     fullName: "Lê Văn Cường",
     phone: "0905555666",
     status: "Đã trả",
-    statusLabel: "✓ Hoàn thành",
+    statusLabel: "Hoàn thành",
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     pickupDateTime: "2026-06-10T08:00:00.000Z",
     returnDateTime: "2026-06-12T08:00:00.000Z",
@@ -110,7 +110,7 @@ const bookingsSlice = createSlice({
     cancelBooking(state, action: PayloadAction<string>) {
       state.bookings = state.bookings.map(b => 
         b.id === action.payload 
-          ? { ...b, status: 'Đã hủy', statusLabel: '❌ Đã hủy' } 
+          ? { ...b, status: 'Đã hủy', statusLabel: 'Đã hủy' } 
           : b
       );
     },
@@ -126,7 +126,7 @@ const bookingsSlice = createSlice({
       const { id, rating, content } = action.payload;
       state.bookings = state.bookings.map(b => 
         b.id === id 
-          ? { ...b, status: 'Đã đánh giá', statusLabel: '✓ Đã đánh giá', feedback: { rating, content } } 
+          ? { ...b, status: 'Đã đánh giá', statusLabel: 'Đã đánh giá', feedback: { rating, content } } 
           : b
       );
     },
@@ -146,7 +146,7 @@ const bookingsSlice = createSlice({
         return {
           ...b,
           status: 'Đã trả',
-          statusLabel: '✓ Hoàn thành',
+          statusLabel: 'Hoàn thành',
           totalAmount: currentAmount + lateFee,
           surcharges: newSurcharges
         };

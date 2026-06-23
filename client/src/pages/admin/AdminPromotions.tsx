@@ -492,7 +492,7 @@ export const AdminPromotions = () => {
                 )}
                 {formSuccess && (
                   <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-xs flex items-center gap-2 font-semibold animate-pulse">
-                    <span>✅ {formSuccess}</span>
+                    <span>{formSuccess}</span>
                   </div>
                 )}
 

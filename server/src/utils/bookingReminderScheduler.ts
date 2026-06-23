@@ -54,7 +54,7 @@ export const checkAndSendBookingReminders = async () => {
         const formattedTime = new Date(booking.pickupDateTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
         await Notification.create({
           userId: customer._id,
-          title: '⏰ Sắp đến giờ nhận xe máy',
+          title: 'Sắp đến giờ nhận xe máy',
           message: `Đơn đặt xe ${booking.bookingCode} cho dòng xe ${booking.vehicleSnapshot.name} của bạn sắp đến giờ nhận bàn giao (${formattedTime} hôm nay). Vui lòng đến điểm giao nhận xe đúng giờ.`,
           type: 'System',
           relatedId: booking._id
@@ -112,7 +112,7 @@ export const checkAndSendBookingReminders = async () => {
         const formattedTime = new Date(booking.returnDateTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
         await Notification.create({
           userId: customer._id,
-          title: '⏳ Sắp đến hạn trả xe máy',
+          title: 'Sắp đến hạn trả xe máy',
           message: `Lượt thuê xe máy ${booking.vehicleSnapshot.name} thuộc đơn ${booking.bookingCode} của bạn sắp hết hạn vào lúc ${formattedTime} hôm nay. Vui lòng di chuyển về địa điểm giao xe để trả xe đúng giờ, tránh phát sinh phí trễ hạn.`,
           type: 'System',
           relatedId: booking._id
@@ -145,5 +145,5 @@ export const initBookingReminderScheduler = () => {
     checkAndSendBookingReminders();
   }, intervalTime);
 
-  console.log('⏰ [Scheduler] Đã khởi tạo hệ thống nhắc nhở tự động (Booking Reminder) thành công (chu kỳ 15 phút).');
+  console.log('[Scheduler] Đã khởi tạo hệ thống nhắc nhở tự động (Booking Reminder) thành công (chu kỳ 15 phút).');
 };

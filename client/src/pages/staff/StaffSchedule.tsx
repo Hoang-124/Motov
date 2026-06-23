@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Calendar, RefreshCw, Truck, Flag, Bike, User, Clock, Check } from 'lucide-react';
 
 // Định nghĩa kiểu dữ liệu để TypeScript không bắt lỗi
 interface Booking {
@@ -87,15 +88,19 @@ export const StaffSchedule: React.FC = () => {
     <div className="p-6 max-w-6xl mx-auto bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">📅 Lịch Trình Thuê Xe Hôm Nay</h1>
-          <p className="text-sm text-gray-500">Ngày: {new Date().toLocaleDateString('vi-VN')}</p>
+        <div className="flex items-center gap-2">
+          <Calendar className="text-blue-600" size={28} />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Lịch Trình Thuê Xe Hôm Nay</h1>
+            <p className="text-sm text-gray-500">Ngày: {new Date().toLocaleDateString('vi-VN')}</p>
+          </div>
         </div>
         <button 
           onClick={fetchDailyBookings} 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition font-medium"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition font-medium flex items-center gap-1.5 cursor-pointer"
         >
-          🔄 Làm mới
+          <RefreshCw size={14} />
+          Làm mới
         </button>
       </div>
 
@@ -110,16 +115,22 @@ export const StaffSchedule: React.FC = () => {
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div 
           onClick={() => setActiveTab('pickup')}
-          className={`p-4 rounded-xl border cursor-pointer transition text-center ${activeTab === 'pickup' ? 'bg-orange-50 border-orange-500 shadow-md' : 'bg-white hover:bg-gray-50'}`}
+          className={`p-4 rounded-xl border cursor-pointer transition text-center flex flex-col items-center justify-center ${activeTab === 'pickup' ? 'bg-orange-50 border-orange-500 shadow-md' : 'bg-white hover:bg-gray-50'}`}
         >
-          <p className="text-sm font-semibold text-orange-600 uppercase tracking-wider">🚚 Khách Lấy Xe (Pickups)</p>
+          <p className="text-sm font-semibold text-orange-600 uppercase tracking-wider flex items-center gap-1.5">
+            <Truck size={18} />
+            Khách Lấy Xe (Pickups)
+          </p>
           <p className="text-3xl font-black text-orange-700 mt-1">{pickupsToday.length}</p>
         </div>
         <div 
           onClick={() => setActiveTab('return')}
-          className={`p-4 rounded-xl border cursor-pointer transition text-center ${activeTab === 'return' ? 'bg-green-50 border-green-500 shadow-md' : 'bg-white hover:bg-gray-50'}`}
+          className={`p-4 rounded-xl border cursor-pointer transition text-center flex flex-col items-center justify-center ${activeTab === 'return' ? 'bg-green-50 border-green-500 shadow-md' : 'bg-white hover:bg-gray-50'}`}
         >
-          <p className="text-sm font-semibold text-green-600 uppercase tracking-wider">🏁 Khách Trả Xe (Returns)</p>
+          <p className="text-sm font-semibold text-green-600 uppercase tracking-wider flex items-center gap-1.5">
+            <Flag size={18} />
+            Khách Trả Xe (Returns)
+          </p>
           <p className="text-3xl font-black text-green-700 mt-1">{returnsToday.length}</p>
         </div>
       </div>
@@ -153,26 +164,33 @@ export const StaffSchedule: React.FC = () => {
                       {booking.status === 'Ongoing' ? 'Đang đi (Picked Up)' : 'Chờ lấy xe'}
                     </span>
                   </div>
-                  <h3 className="font-bold text-gray-800 text-lg mt-2">
-                    🏍️ {booking.vehicleId?.vehicleModel} - <span className="text-blue-600">{booking.vehicleId?.licensePlate}</span>
+                  <h3 className="font-bold text-gray-800 text-lg mt-2 flex items-center gap-1.5">
+                    <Bike size={18} className="text-gray-500" />
+                    {booking.vehicleId?.vehicleModel} - <span className="text-blue-600">{booking.vehicleId?.licensePlate}</span>
                   </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    👤 Khách hàng: <strong>{booking.userId?.lastName} {booking.userId?.firstName}</strong> ({booking.userId?.phoneNumber})
+                  <p className="text-sm text-gray-600 mt-1 flex items-center gap-1.5">
+                    <User size={14} className="text-gray-400" />
+                    Khách hàng: <strong>{booking.userId?.lastName} {booking.userId?.firstName}</strong> ({booking.userId?.phoneNumber})
                   </p>
-                  <p className="text-xs text-orange-600 font-medium mt-1">
-                    ⏰ Giờ hẹn lấy: {new Date(booking.pickupDateTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                  <p className="text-xs text-orange-600 font-medium mt-1 flex items-center gap-1.5">
+                    <Clock size={13} className="text-orange-500" />
+                    Giờ hẹn lấy: {new Date(booking.pickupDateTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
                 <div>
                   {booking.status !== 'Ongoing' ? (
                     <button
                       onClick={() => handleConfirmPickup(booking._id)}
-                      className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2 rounded-lg text-sm transition shadow-sm"
+                      className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2 rounded-lg text-sm transition shadow-sm flex items-center gap-1.5 cursor-pointer"
                     >
-                      🤝 Xác nhận giao xe
+                      <Check size={14} />
+                      Xác nhận giao xe
                     </button>
                   ) : (
-                    <span className="text-green-600 font-bold text-sm flex items-center gap-1">✓ Đã giao xe</span>
+                    <span className="text-green-600 font-bold text-sm flex items-center gap-1">
+                      <Check size={14} />
+                      Đã giao xe
+                    </span>
                   )}
                 </div>
               </div>
@@ -190,14 +208,17 @@ export const StaffSchedule: React.FC = () => {
                       Chờ trả xe
                     </span>
                   </div>
-                  <h3 className="font-bold text-gray-800 text-lg mt-2">
-                    🏍️ {booking.vehicleId?.vehicleModel} - <span className="text-blue-600">{booking.vehicleId?.licensePlate}</span>
+                  <h3 className="font-bold text-gray-800 text-lg mt-2 flex items-center gap-1.5">
+                    <Bike size={18} className="text-gray-500" />
+                    {booking.vehicleId?.vehicleModel} - <span className="text-blue-600">{booking.vehicleId?.licensePlate}</span>
                   </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    👤 Khách hàng: <strong>{booking.userId?.lastName} {booking.userId?.firstName}</strong> ({booking.userId?.phoneNumber})
+                  <p className="text-sm text-gray-600 mt-1 flex items-center gap-1.5">
+                    <User size={14} className="text-gray-400" />
+                    Khách hàng: <strong>{booking.userId?.lastName} {booking.userId?.firstName}</strong> ({booking.userId?.phoneNumber})
                   </p>
-                  <p className="text-xs text-green-600 font-medium mt-1">
-                    ⏰ Giờ hẹn trả: {new Date(booking.returnDateTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                  <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1.5">
+                    <Clock size={13} className="text-green-500" />
+                    Giờ hẹn trả: {new Date(booking.returnDateTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
                 <div className="text-right">

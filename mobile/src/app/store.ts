@@ -3,12 +3,14 @@ import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
 import bikesReducer from '../features/bikes/bikesSlice';
 import bookingsReducer from '../features/bookings/bookingsSlice';
 import userReducer from '../features/profile/userSlice';
+import languageReducer from '../features/profile/languageSlice';
 
 export const store = configureStore({
   reducer: {
     bikes: bikesReducer,
     bookings: bookingsReducer,
     user: userReducer,
+    language: languageReducer,
   },
 });
 

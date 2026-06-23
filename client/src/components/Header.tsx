@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare } from 'lucide-react';
+import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { notificationService, NotificationItem } from '../services/notificationService.js';
+import { useLanguage } from '../hooks/useLanguage';
 
 export const Header = () => {
+  const { language, setLanguage, t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const location = useLocation();
@@ -179,44 +181,44 @@ export const Header = () => {
   const getNavLinks = () => {
     if (!user) {
       return [
-        { path: '/', label: 'Trang Chủ' },
-        { path: '/bikes', label: 'Dòng Xe' },
-        { path: '/promotions', label: 'Khuyến Mãi' },
+        { path: '/', label: t('nav.home') },
+        { path: '/bikes', label: t('nav.bikes') },
+        { path: '/promotions', label: t('nav.promotions') },
       ];
     }
 
     if (user.role === 'admin') {
       return [
-        { path: '/admin/dashboard', label: 'Thống Kê' },
-        { path: '/admin/bikes', label: 'Quản Lý Xe' },
-        { path: '/admin/bookings', label: 'Đơn Toàn Hệ Thống' },
-        { path: '/admin/users', label: 'Phân Quyền' },
-        { path: '/admin/promotions', label: 'Khuyến Mãi' },
-        { path: '/admin/feedbacks', label: 'Quản Lý Đánh Giá' },
+        { path: '/admin/dashboard', label: t('nav.dashboard') },
+        { path: '/admin/bikes', label: t('nav.manageBikes') },
+        { path: '/admin/bookings', label: t('nav.allBookings') },
+        { path: '/admin/users', label: t('nav.roles') },
+        { path: '/admin/promotions', label: t('nav.promotions') },
+        { path: '/admin/feedbacks', label: t('nav.feedbacks') },
       ];
     }
 
     if (user.role === 'staff') {
       return [
-        { path: '/staff/bookings', label: 'Duyệt Đơn Thuê' },
-        { path: '/staff/bikes', label: 'Tình Trạng Xe' },
+        { path: '/staff/bookings', label: t('nav.approveBookings') },
+        { path: '/staff/bikes', label: t('nav.bikeStatus') },
       ];
     }
 
     if (user.role === 'owner') {
       return [
-        { path: '/owner/dashboard', label: 'Doanh Thu' },
-        { path: '/owner/bikes', label: 'Xe Của Tôi' },
-        { path: '/owner/bookings', label: 'Lịch Sử Thuê' },
+        { path: '/owner/dashboard', label: t('nav.revenue') },
+        { path: '/owner/bikes', label: t('nav.myBikes') },
+        { path: '/owner/bookings', label: t('nav.myBookings') },
       ];
     }
 
     // Default: Customer
     return [
-      { path: '/', label: 'Trang Chủ' },
-      { path: '/bikes', label: 'Dòng Xe' },
-      { path: '/bookings', label: 'Đơn Thuê Của Tôi' },
-      { path: '/promotions', label: 'Khuyến Mãi' },
+      { path: '/', label: t('nav.home') },
+      { path: '/bikes', label: t('nav.bikes') },
+      { path: '/bookings', label: t('nav.myBookings') },
+      { path: '/promotions', label: t('nav.promotions') },
     ];
   };
 
@@ -245,6 +247,22 @@ export const Header = () => {
 
         {/* User profile / Login button */}
         <div className="hidden md:flex items-center gap-4">
+          {/* Language Switcher */}
+          <div className="relative flex items-center bg-surface/50 border border-gray-800 rounded-full p-0.5 select-none">
+            <button
+              onClick={() => setLanguage('vi')}
+              className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${language === 'vi' ? 'bg-neon text-dark shadow-[0_0_10px_rgba(204,255,0,0.3)]' : 'text-gray-400 hover:text-white'}`}
+            >
+              VI
+            </button>
+            <button
+              onClick={() => setLanguage('en')}
+              className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${language === 'en' ? 'bg-neon text-dark shadow-[0_0_10px_rgba(204,255,0,0.3)]' : 'text-gray-400 hover:text-white'}`}
+            >
+              EN
+            </button>
+          </div>
+
           {user ? (
             <>
               {/* Notification Bell Icon */}
@@ -539,7 +557,7 @@ export const Header = () => {
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-surface border border-gray-800 text-sm font-medium text-gray-300 hover:border-neon hover:text-white transition-all duration-300"
             >
               <User size={16} />
-              Đăng Nhập
+              {t('common.login')}
             </Link>
           )}
         </div>
@@ -563,6 +581,25 @@ export const Header = () => {
               {link.label}
             </Link>
           ))}
+
+          {/* Language Switcher for Mobile */}
+          <div className="flex items-center justify-between border-t border-white/5 pt-4 mt-2">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ngôn ngữ / Language</span>
+            <div className="flex items-center bg-surface/50 border border-gray-800 rounded-full p-0.5 select-none">
+              <button
+                onClick={() => setLanguage('vi')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${language === 'vi' ? 'bg-neon text-dark shadow-[0_0_10px_rgba(204,255,0,0.2)]' : 'text-gray-400 hover:text-white'}`}
+              >
+                VI
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${language === 'en' ? 'bg-neon text-dark shadow-[0_0_10px_rgba(204,255,0,0.2)]' : 'text-gray-400 hover:text-white'}`}
+              >
+                EN
+              </button>
+            </div>
+          </div>
           
           {user ? (
             <div className="flex flex-col gap-3 border-t border-gray-800 pt-4 mt-2">
@@ -609,10 +646,10 @@ export const Header = () => {
             <Link 
               to="/auth" 
               onClick={() => setIsOpen(false)}
-              className="flex items-center justify-center gap-2 mt-2 px-4 py-2.5 rounded-lg bg-neon text-dark font-bold text-center"
+              className="flex items-center justify-center gap-2 mt-2 px-4 py-2.5 rounded-lg bg-neon text-dark font-bold text-center uppercase text-sm"
             >
               <User size={16} />
-              ĐĂNG NHẬP
+              {t('common.login')}
             </Link>
           )}
         </div>
@@ -646,8 +683,8 @@ export const Header = () => {
                   <LogOut size={18} />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">Đăng xuất</h4>
-                  <p className="text-gray-400 text-xs mt-0.5">Bạn muốn đăng xuất đúng không?</p>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">{t('common.logout')}</h4>
+                  <p className="text-gray-400 text-xs mt-0.5">{t('auth.logoutConfirm')}</p>
                 </div>
               </div>
               
@@ -656,7 +693,7 @@ export const Header = () => {
                   onClick={() => setShowLogoutModal(false)}
                   className="px-4 py-2 rounded-lg border border-gray-800 text-gray-400 hover:text-white hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-wider cursor-pointer text-center"
                 >
-                  Hủy
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={() => {
@@ -665,7 +702,7 @@ export const Header = () => {
                   }}
                   className="px-4 py-2 rounded-lg bg-neon text-dark hover:bg-[#bbf000] font-bold text-xs uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-[0_0_10px_rgba(204,255,0,0.2)] text-center"
                 >
-                  Đồng ý
+                  {t('common.confirm')}
                 </button>
               </div>
             </div>

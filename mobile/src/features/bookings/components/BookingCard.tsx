@@ -75,7 +75,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
             <Text style={styles.surchargeTitle}>Phụ thu phạt trễ hạn:</Text>
             {booking.surcharges.map((s, idx) => (
               <Text key={idx} style={styles.surchargeItem}>
-                ⚠️ {s.surchargeType}: +{s.amount.toLocaleString('vi-VN')} VNĐ
+                {s.surchargeType}: +{s.amount.toLocaleString('vi-VN')} VNĐ
               </Text>
             ))}
           </View>

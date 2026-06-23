@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, MapPin, ClipboardList, Trash2, RefreshCw, Star, X } from 'lucide-react';
+import { CalendarDays, MapPin, ClipboardList, Trash2, RefreshCw, Star, X, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { bookingService, Booking } from '../services/bookingService'; // Import Service
+import { useLanguage } from '../hooks/useLanguage';
 import { feedbackService } from '../services/feedbackService';
 import { BookingTrackingModal } from '../components/BookingTrackingModal';
 
 export const Bookings = () => {
+  const { language, t } = useLanguage();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -36,11 +38,11 @@ export const Bookings = () => {
         rating: feedbackRating,
         content: feedbackContent
       });
-      window.alert('Gửi đánh giá thành công! Cảm ơn phản hồi của bạn.');
+      window.alert(language === 'vi' ? 'Gửi đánh giá thành công! Cảm ơn phản hồi của bạn.' : 'Feedback submitted successfully! Thank you for your feedback.');
       setReviewedBookingIds(prev => [...prev, selectedBookingId]);
       setShowFeedbackModal(false);
     } catch (err: any) {
-      window.alert(err.response?.data?.message || 'Không thể gửi đánh giá vào lúc này!');
+      window.alert(err.response?.data?.message || (language === 'vi' ? 'Không thể gửi đánh giá vào lúc này!' : 'Failed to submit feedback at this moment!'));
     } finally {
       setLoading(false);
     }
@@ -54,7 +56,7 @@ export const Bookings = () => {
       const data = await bookingService.getMyBookings();
       setBookings(data);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Không thể kết nối danh sách đơn hàng từ hệ thống!');
+      setError(err.response?.data?.message || t('bookings.errorFetch'));
     } finally {
       setLoading(false);
     }
@@ -62,28 +64,38 @@ export const Bookings = () => {
 
   useEffect(() => {
     loadMyBookings();
-  }, []);
+  }, [language]);
 
   // Hàm gọi API hủy đơn
   const handleCancelBooking = async (id: string) => {
-    const reason = window.prompt('Vui lòng nhập lý do hủy đơn thuê xe:');
+    const reason = window.prompt(language === 'vi' ? 'Vui lòng nhập lý do hủy đơn thuê xe:' : 'Please enter the cancellation reason:');
     if (reason === null) return; // Nhấn hủy prompt
 
     if (!reason.trim()) {
-      window.alert('Bạn phải nhập lý do hủy đơn!');
+      window.alert(language === 'vi' ? 'Bạn phải nhập lý do hủy đơn!' : 'You must enter the cancellation reason!');
       return;
     }
 
     try {
       setLoading(true);
       await bookingService.cancelBooking(id, reason);
-      window.alert('Hủy đơn đặt xe thành công!');
+      window.alert(language === 'vi' ? 'Hủy đơn đặt xe thành công!' : 'Booking cancelled successfully!');
       // Tải lại danh sách mới cập nhật trạng thái từ Server
       await loadMyBookings();
     } catch (err: any) {
-      window.alert(err.response?.data?.message || 'Không thể hủy đơn vào lúc này!');
+      window.alert(err.response?.data?.message || (language === 'vi' ? 'Không thể hủy đơn vào lúc này!' : 'Failed to cancel booking at this moment!'));
       setLoading(false);
     }
+  };
+
+  const translateStatusLabel = (status: string, label: string) => {
+    if (language === 'vi') return label;
+    if (status === 'Pending') return 'Pending';
+    if (status === 'Confirmed') return 'Confirmed';
+    if (status === 'Ongoing') return 'Ongoing';
+    if (status === 'Completed') return 'Completed';
+    if (status === 'Cancelled') return 'Cancelled';
+    return label;
   };
 
   return (
@@ -95,10 +107,10 @@ export const Bookings = () => {
           <div className="text-center md:text-left">
             <h1 className="font-display font-black text-4xl text-neon uppercase text-glow tracking-tight mb-2 flex items-center justify-center md:justify-start gap-3">
               <ClipboardList size={36} />
-              Đơn Thuê Xe Của Bạn
+              {t('myBookingsPage.title')}
             </h1>
             <p className="text-gray-400 text-sm">
-              Danh sách các đơn đăng ký thuê xe máy thực tế của bạn trên hệ thống Motov
+              {t('myBookingsPage.subtitle')}
             </p>
           </div>
           <button 
@@ -106,19 +118,20 @@ export const Bookings = () => {
             className="flex items-center gap-2 text-xs bg-surface border border-gray-800 hover:border-gray-600 px-4 py-2 rounded-lg text-gray-300 transition-colors cursor-pointer"
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Làm mới dữ liệu
+            {t('myBookingsPage.refreshData')}
           </button>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-center text-sm">
-            ❌ {error}
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-center text-sm flex items-center justify-center gap-2">
+            <AlertCircle size={16} className="text-red-500" />
+            <span>{error}</span>
           </div>
         )}
 
         {/* Loading State */}
         {loading && bookings.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">Đang đồng bộ dữ liệu với máy chủ...</div>
+          <div className="text-center py-20 text-gray-400">{t('myBookingsPage.loadingData')}</div>
         ) : bookings.length > 0 ? (
           <div className="space-y-6">
             {bookings.map(booking => (
@@ -138,11 +151,10 @@ export const Bookings = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
-                        Mã đơn: {booking.bookingCode}
+                        {t('myBookingsPage.bookingCode', { code: booking.bookingCode })}
                       </span>
                       <h3 className="font-display font-bold text-xl text-white">{booking.vehicleModel}</h3>
                     </div>
-                    {/* Sử dụng trực tiếp label tiếng Việt kèm icon từ Backend truyền sang */}
                     <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
                       booking.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30' :
                       booking.status === 'Confirmed' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' :
@@ -150,7 +162,7 @@ export const Bookings = () => {
                       booking.status === 'Completed' ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' :
                       'bg-red-500/10 text-red-500 border-red-500/30' // Cancelled
                     }`}>
-                      {booking.statusLabel}
+                      {translateStatusLabel(booking.status, booking.statusLabel)}
                     </span>
                   </div>
 
@@ -158,31 +170,31 @@ export const Bookings = () => {
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <CalendarDays size={16} className="text-neon" />
-                        <span className="text-xs">Nhận: {new Date(booking.pickupDateTime).toLocaleString('vi-VN')}</span>
+                        <span className="text-xs">{t('myBookingsPage.pickup', { time: new Date(booking.pickupDateTime).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') })}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <CalendarDays size={16} className="text-gray-600" />
-                        <span className="text-xs">Trả: {new Date(booking.returnDateTime).toLocaleString('vi-VN')}</span>
+                        <span className="text-xs">{t('myBookingsPage.return', { time: new Date(booking.returnDateTime).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') })}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 items-start sm:items-center">
                       <MapPin size={16} className="text-neon mt-1 sm:mt-0" />
-                      <span className="text-xs line-clamp-2">Nơi giao xe: {booking.pickupLocation?.address || 'N/A'}</span>
+                      <span className="text-xs line-clamp-2">{t('myBookingsPage.pickupLoc', { loc: booking.pickupLocation?.address || 'N/A' })}</span>
                     </div>
                   </div>
 
                   {booking.cancelReason && (
                     <div className="p-2 bg-red-500/5 border border-red-500/10 rounded-lg text-xs text-red-400/80">
-                      <strong>Lý do hủy đơn:</strong> {booking.cancelReason}
+                      {t('myBookingsPage.cancelReason', { reason: booking.cancelReason })}
                     </div>
                   )}
 
                   <div className="pt-2 border-t border-gray-800/50 flex flex-wrap gap-4 text-xs text-gray-500 justify-between items-center">
                     <div>
-                      Hạn thuê: <span className="text-neon font-medium">{booking.rentalDays} ngày</span>
+                      {t('myBookingsPage.rentalDays', { days: booking.rentalDays })}
                     </div>
                     <div className="text-neon font-semibold text-sm">
-                      Tổng tiền thanh toán: {booking.totalAmount?.toLocaleString('vi-VN')} VNĐ
+                      {t('myBookingsPage.totalPay', { amount: booking.totalAmount?.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') })}
                     </div>
                   </div>
                   
@@ -191,7 +203,7 @@ export const Bookings = () => {
                       onClick={() => setTrackingBookingId(booking.id)}
                       className="text-xs text-blue-400 hover:text-blue-300 underline"
                     >
-                      Xem lịch trình chi tiết
+                      {t('myBookingsPage.detailSchedule')}
                     </button>
                   </div>
                 </div>
@@ -205,12 +217,12 @@ export const Bookings = () => {
                       className="flex items-center justify-center gap-2 text-red-500 hover:bg-red-500/10 border border-red-500/20 hover:border-red-500/40 px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-medium cursor-pointer disabled:opacity-50"
                     >
                       <Trash2 size={16} />
-                      Yêu cầu hủy
+                      {t('myBookingsPage.cancelReq')}
                     </button>
                   ) : booking.status === 'Completed' ? (
                     reviewedBookingIds.includes(booking.id) ? (
                       <span className="text-xs text-neon font-medium bg-neon/10 px-3 py-1.5 rounded-md border border-neon/20">
-                        ✓ Đã đánh giá
+                        ✓ {t('myBookingsPage.reviewed')}
                       </span>
                     ) : (
                       <button
@@ -219,12 +231,12 @@ export const Bookings = () => {
                         className="flex items-center justify-center gap-2 bg-neon text-dark hover:bg-[#bbf000] px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-bold cursor-pointer disabled:opacity-50 shadow-[0_0_10px_rgba(204,255,0,0.2)]"
                       >
                         <Star size={16} className="fill-dark text-dark" />
-                        Đánh giá xe
+                        {t('myBookingsPage.reviewBtn')}
                       </button>
                     )
                   ) : (
                     <span className="text-xs text-gray-500 font-medium bg-black/30 px-3 py-1.5 rounded-md border border-gray-900">
-                      {booking.status === 'Cancelled' ? 'Đã đóng đơn' : 'Khóa chỉnh sửa'}
+                      {booking.status === 'Cancelled' ? t('myBookingsPage.closed') : t('myBookingsPage.locked')}
                     </span>
                   )}
                 </div>
@@ -235,12 +247,12 @@ export const Bookings = () => {
         ) : (
           <div className="text-center py-24 border border-dashed border-gray-800 rounded-3xl bg-surface/30">
             <ClipboardList size={48} className="text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-white mb-2">Bạn chưa đặt xe nào</h3>
+            <h3 className="text-lg font-bold text-white mb-2">{t('myBookingsPage.noBookings')}</h3>
             <p className="text-gray-500 text-sm max-w-sm mx-auto mb-8">
-              Khám phá danh sách các dòng xe máy đa dạng tại Đà Nẵng và chọn chiếc xe yêu thích của bạn ngay hôm nay.
+              {t('myBookingsPage.noBookingsDesc')}
             </p>
             <Link to="/bikes" className="bg-neon text-dark font-bold px-8 py-3.5 rounded-full hover:bg-[#bbf000] transition-colors inline-block shadow-[0_0_15px_rgba(204,255,0,0.3)]">
-              TÌM XE NGAY
+              {t('myBookingsPage.findBikeNow')}
             </Link>
           </div>
         )}
@@ -275,7 +287,8 @@ export const Bookings = () => {
               </button>
 
               <h3 className="font-display font-black text-xl text-white uppercase mb-4 flex items-center gap-2">
-                ⭐ Đánh giá chuyến đi
+                <Star size={20} className="fill-neon text-neon shrink-0" />
+                Đánh giá chuyến đi
               </h3>
 
               <form onSubmit={handleSubmitFeedback} className="space-y-4">
@@ -297,11 +310,11 @@ export const Bookings = () => {
                     ))}
                   </div>
                   <span className="text-xs text-neon font-bold mt-2.5">
-                    {feedbackRating === 5 ? '🚀 Rất hài lòng' :
-                     feedbackRating === 4 ? '✨ Hài lòng' :
-                     feedbackRating === 3 ? '👌 Bình thường' :
-                     feedbackRating === 2 ? '⚠️ Chưa hài lòng' :
-                     '👎 Rất tệ'}
+                    {feedbackRating === 5 ? 'Rất hài lòng' :
+                     feedbackRating === 4 ? 'Hài lòng' :
+                     feedbackRating === 3 ? 'Bình thường' :
+                     feedbackRating === 2 ? 'Chưa hài lòng' :
+                     'Rất tệ'}
                   </span>
                 </div>
 

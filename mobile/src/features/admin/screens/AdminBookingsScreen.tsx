@@ -118,7 +118,7 @@ export const AdminBookingsScreen: React.FC = () => {
           }}
         >
           <Text style={[styles.tabBtnText, activeTab === 'bookings' && styles.tabBtnTextActive]}>
-            📋 Đơn đặt xe ({bookingsState.length})
+            Đơn đặt xe ({bookingsState.length})
           </Text>
         </TouchableOpacity>
 
@@ -130,7 +130,7 @@ export const AdminBookingsScreen: React.FC = () => {
           }}
         >
           <Text style={[styles.tabBtnText, activeTab === 'ownerRequests' && styles.tabBtnTextActive]}>
-            🤝 Duyệt đối tác ({ownerRequests.length})
+            Duyệt đối tác ({ownerRequests.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -208,7 +208,7 @@ export const AdminBookingsScreen: React.FC = () => {
                           <Text style={styles.surchargeTitle}>Phụ thu phạt trễ hạn:</Text>
                           {b.surcharges.map((s, idx) => (
                             <Text key={idx} style={styles.surchargeItem}>
-                              ⚠️ {s.surchargeType}: +{s.amount.toLocaleString('vi-VN')} VNĐ
+                              {s.surchargeType}: +{s.amount.toLocaleString('vi-VN')} VNĐ
                             </Text>
                           ))}
                         </View>
