@@ -245,6 +245,32 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         }
       }
 
+      // 2.5 Tìm tất cả Admin và Staff hoạt động để tạo thông báo in-app
+      const adminsAndStaffs = await User.find({
+        roles: { $in: ['Admin', 'Staff'] },
+        status: 'Active'
+      }, '_id');
+      
+      if (adminsAndStaffs && adminsAndStaffs.length > 0) {
+        const notiPromises = adminsAndStaffs.map(userObj => {
+          // Tránh gửi trùng cho chủ xe nếu chủ xe có cả role Admin/Staff
+          if (owner && owner._id.toString() === userObj._id.toString()) return Promise.resolve();
+          // Tránh gửi trùng cho khách hàng nếu họ có role Admin/Staff đang test
+          if (userId.toString() === userObj._id.toString()) return Promise.resolve();
+          
+          return Notification.create({
+            userId: userObj._id,
+            title: 'Đơn đặt xe mới chờ duyệt',
+            message: `Hệ thống nhận được đơn đặt xe mới ${savedBooking.bookingCode} đang chờ duyệt.`,
+            type: 'BookingPending',
+            relatedId: savedBooking._id
+          });
+        });
+        await Promise.all(notiPromises).catch(err => 
+          console.error('Lỗi khi tạo thông báo cho Admin/Staff:', err)
+        );
+      }
+
       // 3. Gửi email xác nhận cho khách hàng
       if (savedBooking.userId && (savedBooking.userId as any).email) {
         sendBookingCreatedEmail((savedBooking.userId as any).email, emailDetails).catch(err =>
