@@ -35,7 +35,7 @@ const logEtherealMail = (info: any, email: string) => {
   if (!useSMTP) {
     const previewUrl = nodemailer.getTestMessageUrl(info);
     console.log('---------------------------------------------------------');
-    console.log(`✉️ Ethereal Test Mail Sent to: ${email}`);
+    console.log(`Ethereal Test Mail Sent to: ${email}`);
     console.log(`🔗 Preview URL: ${previewUrl}`);
     console.log('---------------------------------------------------------');
     return previewUrl || false;
@@ -117,7 +117,7 @@ export const sendBookingCreatedEmail = async (email: string, booking: EmailBooki
         <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: center;">
           <p style="color: #a1a1aa; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Mã Đơn Đặt Chỗ</p>
           <p style="color: #ccff00; font-size: 24px; font-weight: bold; margin: 0; letter-spacing: 2px; font-family: monospace;">${booking.bookingCode}</p>
-          <p style="color: #fbbf24; font-size: 13px; margin: 10px 0 0 0; font-weight: bold;">⏳ Trạng thái: Đang chờ chủ xe duyệt</p>
+          <p style="color: #fbbf24; font-size: 13px; margin: 10px 0 0 0; font-weight: bold;">Trạng thái: Đang chờ chủ xe duyệt</p>
         </div>
 
         <p style="color: #e4e4e7; font-size: 14px;">Xin chào,</p>
@@ -239,7 +239,7 @@ export const sendBookingConfirmedEmail = async (email: string, booking: EmailBoo
   const mailOptions = {
     from: '"Motov System" <noreply@motov.com>',
     to: email,
-    subject: `🎉 [Motov] Đơn đặt xe ${booking.bookingCode} đã được phê duyệt thành công!`,
+    subject: `[Motov] Đơn đặt xe ${booking.bookingCode} đã được phê duyệt thành công!`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #27272a; border-radius: 12px; background-color: #09090b; color: #fff;">
         <h2 style="color: #22c55e; border-bottom: 2px solid #22c55e; padding-bottom: 12px; text-align: center; font-weight: 900; letter-spacing: 1px; margin-top: 0;">ĐƠN HÀNG ĐÃ ĐƯỢC PHÊ DUYỆT!</h2>
@@ -247,7 +247,7 @@ export const sendBookingConfirmedEmail = async (email: string, booking: EmailBoo
         <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: center;">
           <p style="color: #a1a1aa; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Mã Đơn Đặt Chỗ</p>
           <p style="color: #22c55e; font-size: 24px; font-weight: bold; margin: 0; letter-spacing: 2px; font-family: monospace;">${booking.bookingCode}</p>
-          <p style="color: #22c55e; font-size: 13px; margin: 10px 0 0 0; font-weight: bold;">✓ Trạng thái: Đã xác nhận thành công</p>
+          <p style="color: #22c55e; font-size: 13px; margin: 10px 0 0 0; font-weight: bold;">Trạng thái: Đã xác nhận thành công</p>
         </div>
 
         <p style="color: #e4e4e7; font-size: 14px;">Xin chào,</p>
@@ -281,7 +281,7 @@ export const sendBookingConfirmedEmail = async (email: string, booking: EmailBoo
         </table>
 
         <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 15px; margin: 25px 0;">
-          <h4 style="color: #22c55e; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase;">ℹ️ Hướng dẫn bàn giao nhận xe</h4>
+          <h4 style="color: #22c55e; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase;">Hướng dẫn bàn giao nhận xe</h4>
           <p style="color: #a1a1aa; font-size: 13px; line-height: 1.5; margin: 0 0 10px 0;">
             1. Vui lòng chuẩn bị sẵn **Căn cước công dân (CCCD)** và **Giấy phép lái xe (GPLX)** hợp lệ để đối chiếu khi nhận xe.
           </p>
@@ -307,7 +307,7 @@ export const sendBookingCancelledEmail = async (email: string, booking: EmailBoo
   const mailOptions = {
     from: '"Motov System" <noreply@motov.com>',
     to: email,
-    subject: `❌ [Motov] Thông báo hủy đơn đặt xe: ${booking.bookingCode}`,
+    subject: `[Motov] Thông báo hủy đơn đặt xe: ${booking.bookingCode}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #27272a; border-radius: 12px; background-color: #09090b; color: #fff;">
         <h2 style="color: #ef4444; border-bottom: 2px solid #ef4444; padding-bottom: 12px; text-align: center; font-weight: 900; letter-spacing: 1px; margin-top: 0;">HỦY ĐƠN ĐẶT XE</h2>
@@ -315,7 +315,7 @@ export const sendBookingCancelledEmail = async (email: string, booking: EmailBoo
         <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: center;">
           <p style="color: #a1a1aa; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Mã Đơn Đặt Chỗ</p>
           <p style="color: #ef4444; font-size: 24px; font-weight: bold; margin: 0; letter-spacing: 2px; font-family: monospace;">${booking.bookingCode}</p>
-          <p style="color: #ef4444; font-size: 13px; margin: 10px 0 0 0; font-weight: bold;">❌ Trạng thái: Đã bị hủy</p>
+          <p style="color: #ef4444; font-size: 13px; margin: 10px 0 0 0; font-weight: bold;">Trạng thái: Đã bị hủy</p>
         </div>
 
         <p style="color: #e4e4e7; font-size: 14px;">Xin chào,</p>
@@ -406,7 +406,7 @@ export const sendEmailVerification = async (email: string, token: string): Promi
   if (!useSMTP) {
     const previewUrl = nodemailer.getTestMessageUrl(info);
     console.log('---------------------------------------------------------');
-    console.log(`✉️ Ethereal Test Mail Sent (Verification) to: ${email}`);
+    console.log(`Ethereal Test Mail Sent (Verification) to: ${email}`);
     console.log(`🔗 Preview URL: ${previewUrl}`);
     console.log('---------------------------------------------------------');
     return previewUrl || false;
@@ -421,7 +421,7 @@ export const sendPickupReminderEmail = async (email: string, booking: EmailBooki
   const mailOptions = {
     from: '"Motov System" <noreply@motov.com>',
     to: email,
-    subject: `⏰ [Motov] Nhắc nhở: Sắp đến giờ nhận xe ${booking.bookingCode}`,
+    subject: `[Motov] Nhắc nhở: Sắp đến giờ nhận xe ${booking.bookingCode}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #27272a; border-radius: 12px; background-color: #09090b; color: #fff;">
         <h2 style="color: #ccff00; border-bottom: 2px solid #ccff00; padding-bottom: 12px; text-align: center; font-weight: 900; letter-spacing: 1px; margin-top: 0;">NHẮC NHỞ NHẬN XE</h2>
@@ -429,7 +429,7 @@ export const sendPickupReminderEmail = async (email: string, booking: EmailBooki
         <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: center;">
           <p style="color: #a1a1aa; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Mã Đơn Đặt Chỗ</p>
           <p style="color: #ccff00; font-size: 24px; font-weight: bold; margin: 0; letter-spacing: 2px; font-family: monospace;">${booking.bookingCode}</p>
-          <p style="color: #ccff00; font-size: 13px; margin: 10px 0 0 0; font-weight: bold;">⏰ Thời gian nhận xe: ${formatDateTime(booking.pickupDateTime)}</p>
+          <p style="color: #ccff00; font-size: 13px; margin: 10px 0 0 0; font-weight: bold;">Thời gian nhận xe: ${formatDateTime(booking.pickupDateTime)}</p>
         </div>
 
         <p style="color: #e4e4e7; font-size: 14px;">Xin chào,</p>
@@ -455,7 +455,7 @@ export const sendPickupReminderEmail = async (email: string, booking: EmailBooki
         </table>
 
         <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 15px; margin: 25px 0;">
-          <h4 style="color: #ccff00; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase;">⚠️ Lưu ý quan trọng</h4>
+          <h4 style="color: #ccff00; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase;">Lưu ý quan trọng</h4>
           <p style="color: #a1a1aa; font-size: 13px; line-height: 1.5; margin: 0 0 10px 0;">
             - Đừng quên mang theo **Căn cước công dân (CCCD)** và **Bằng lái xe (GPLX)** bản gốc để nhân viên hỗ trợ làm thủ tục bàn giao xe nhanh chóng.
           </p>
@@ -481,7 +481,7 @@ export const sendReturnReminderEmail = async (email: string, booking: EmailBooki
   const mailOptions = {
     from: '"Motov System" <noreply@motov.com>',
     to: email,
-    subject: `⏳ [Motov] Nhắc nhở: Sắp đến giờ trả xe máy ${booking.bookingCode}`,
+    subject: `[Motov] Nhắc nhở: Sắp đến giờ trả xe máy ${booking.bookingCode}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #27272a; border-radius: 12px; background-color: #09090b; color: #fff;">
         <h2 style="color: #ccff00; border-bottom: 2px solid #ccff00; padding-bottom: 12px; text-align: center; font-weight: 900; letter-spacing: 1px; margin-top: 0;">NHẮC NHỞ TRẢ XE</h2>
@@ -489,7 +489,7 @@ export const sendReturnReminderEmail = async (email: string, booking: EmailBooki
         <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: center;">
           <p style="color: #a1a1aa; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Mã Đơn Đặt Chỗ</p>
           <p style="color: #ccff00; font-size: 24px; font-weight: bold; margin: 0; letter-spacing: 2px; font-family: monospace;">${booking.bookingCode}</p>
-          <p style="color: #fbbf24; font-size: 13px; margin: 10px 0 0 0; font-weight: bold;">⏳ Hạn trả xe: ${formatDateTime(booking.returnDateTime)}</p>
+          <p style="color: #fbbf24; font-size: 13px; margin: 10px 0 0 0; font-weight: bold;">Hạn trả xe: ${formatDateTime(booking.returnDateTime)}</p>
         </div>
 
         <p style="color: #e4e4e7; font-size: 14px;">Xin chào,</p>
@@ -511,7 +511,7 @@ export const sendReturnReminderEmail = async (email: string, booking: EmailBooki
         </table>
 
         <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 15px; margin: 25px 0;">
-          <h4 style="color: #fbbf24; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase;">🚴 Quy định trả xe</h4>
+          <h4 style="color: #fbbf24; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase;">Quy định trả xe</h4>
           <p style="color: #a1a1aa; font-size: 13px; line-height: 1.5; margin: 0 0 10px 0;">
             1. Vui lòng trả xe với tình trạng vệ sinh sạch sẽ và mức nhiên liệu tương đương lúc nhận xe.
           </p>

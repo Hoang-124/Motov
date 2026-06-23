@@ -381,7 +381,7 @@ export const AdminBikes = () => {
                           </button>
                           {bike.status === 'Available' && getAvailableCountForModel(bike.vehicleModel) <= 1 && (
                             <span className="px-2 py-0.5 rounded text-[10px] bg-red-500/10 text-red-500 border border-red-500/25 font-bold shrink-0 animate-pulse">
-                              ⚠️ Sắp hết xe
+                              Sắp hết xe
                             </span>
                           )}
                         </div>
@@ -409,9 +409,9 @@ export const AdminBikes = () => {
                             bike.status === 'Rented' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                             'bg-red-500/10 text-red-500 border-red-500/20'
                           }`}>
-                            {bike.status === 'Available' ? '✓ Đang hoạt động' :
-                             bike.status === 'PendingApproval' ? '⏳ Chờ phê duyệt' :
-                             bike.status === 'Rented' ? '🚴 Đang cho thuê' : '🔧 Bảo trì'}
+                            {bike.status === 'Available' ? 'Đang hoạt động' :
+                             bike.status === 'PendingApproval' ? 'Chờ phê duyệt' :
+                             bike.status === 'Rented' ? 'Đang cho thuê' : 'Bảo trì'}
                           </span>
                           {bike.status === 'Available' && getAvailableCountForModel(bike.vehicleModel) <= 1 && (
                             <div className="text-[10px] text-red-500 font-semibold mt-1.5 flex items-center gap-1">

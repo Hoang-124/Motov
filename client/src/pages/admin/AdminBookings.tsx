@@ -241,32 +241,33 @@ export const AdminBookings = () => {
               setActiveTab('bookings');
               setSearchQuery('');
             }}
-            className={`pb-3 font-bold text-sm tracking-wide transition-all uppercase cursor-pointer ${
+            className={`pb-3 font-bold text-sm tracking-wide transition-all uppercase cursor-pointer flex items-center ${
               activeTab === 'bookings'
                 ? 'text-neon border-b-2 border-neon'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            📋 Điều phối đơn xe ({bookings.length})
+            <ClipboardList className="inline mr-2" size={16} /> Điều phối đơn xe ({bookings.length})
           </button>
           <button
             onClick={() => {
               setActiveTab('ownerRequests');
               setSearchQuery('');
             }}
-            className={`pb-3 font-bold text-sm tracking-wide transition-all uppercase cursor-pointer ${
+            className={`pb-3 font-bold text-sm tracking-wide transition-all uppercase cursor-pointer flex items-center ${
               activeTab === 'ownerRequests'
                 ? 'text-neon border-b-2 border-neon'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            🤝 Duyệt chủ xe mới ({ownerRequests.length})
+            <UserCheck className="inline mr-2" size={16} /> Duyệt chủ xe mới ({ownerRequests.length})
           </button>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-center text-sm">
-            ❌ {error}
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-center text-sm flex items-center justify-center gap-2">
+            <AlertCircle size={16} className="text-red-500" />
+            <span>{error}</span>
           </div>
         )}
 
@@ -287,11 +288,11 @@ export const AdminBookings = () => {
             <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0 md:col-span-2">
               {[
                 { key: 'All', label: 'Tất cả đơn' },
-                { key: 'Pending', label: '⏳ Chờ duyệt' },
-                { key: 'Confirmed', label: '✓ Đã xác nhận' },
-                { key: 'Ongoing', label: '🚴 Đang thuê' },
-                { key: 'Completed', label: '✓ Hoàn thành' },
-                { key: 'Cancelled', label: '❌ Đã hủy' }
+                { key: 'Pending', label: 'Chờ duyệt' },
+                { key: 'Confirmed', label: 'Đã xác nhận' },
+                { key: 'Ongoing', label: 'Đang thuê' },
+                { key: 'Completed', label: 'Hoàn thành' },
+                { key: 'Cancelled', label: 'Đã hủy' }
               ].map((status) => (
                 <button
                   key={status.key}

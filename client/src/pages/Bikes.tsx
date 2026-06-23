@@ -3,8 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { BikeCard } from '../components/BikeCard';
 import { SlidersHorizontal, Search, AlertCircle, Loader } from 'lucide-react';
 import { getAllMotorbikes, Motorbike } from '../services/vehicleService';
+import { useLanguage } from '../hooks/useLanguage';
 
 export const Bikes = () => {
+  const { language, t } = useLanguage();
   const [searchParams] = useSearchParams();
   const initialLocation = searchParams.get('location') || '';
   const initialDate = searchParams.get('date') || '';
@@ -22,7 +24,7 @@ export const Bikes = () => {
         const data = await getAllMotorbikes({ status: 'Available' });
         setBikes(data);
       } catch (err) {
-        setError('Failed to load motorbikes. Please try again later.');
+        setError(language === 'vi' ? 'Không thể tải danh sách xe máy. Vui lòng thử lại sau.' : 'Failed to load motorbikes. Please try again later.');
         console.error(err);
       } finally {
         setLoading(false);
@@ -30,7 +32,7 @@ export const Bikes = () => {
     };
 
     fetchBikes();
-  }, []);
+  }, [language]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -76,11 +78,11 @@ export const Bikes = () => {
         {/* Title */}
         <div className="mb-10 text-center md:text-left">
           <h1 className="font-display font-black text-4xl text-neon uppercase text-glow tracking-tight mb-2">
-            Danh Sách Xe Máy
+            {t('bikesPage.title')}
           </h1>
           <p className="text-gray-400 text-sm">
-            {initialLocation && `Đang tìm xe nhận tại: ${initialLocation}`}
-            {initialDate && ` • Ngày: ${initialDate}`}
+            {initialLocation && t('bikesPage.searchingAt', { location: initialLocation })}
+            {initialDate && ` • ${t('bikesPage.date', { date: initialDate })}`}
           </p>
         </div>
 
@@ -102,7 +104,7 @@ export const Bikes = () => {
               </div>
               <input 
                 type="text" 
-                placeholder="Tìm kiếm xe máy..." 
+                placeholder={t('bikesPage.searchPlaceholder')} 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none transition-all duration-300"
@@ -113,29 +115,29 @@ export const Bikes = () => {
             <div className="flex flex-wrap gap-4 items-center">
               {/* Filter by Category */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 font-medium uppercase tracking-wider hidden sm:inline">Danh mục:</span>
+                <span className="text-xs text-gray-500 font-medium uppercase tracking-wider hidden sm:inline">{t('bikesPage.categoryFilter')}</span>
                 <select 
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent p-3 outline-none appearance-none cursor-pointer transition-all duration-300"
                 >
                   {categories.map(c => (
-                    <option key={c} value={c}>{c === 'All' ? 'Tất cả' : c}</option>
+                    <option key={c} value={c}>{c === 'All' ? t('bikesPage.all') : c}</option>
                   ))}
                 </select>
               </div>
 
               {/* Sort by Price */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 font-medium uppercase tracking-wider hidden sm:inline">Sắp xếp giá:</span>
+                <span className="text-xs text-gray-500 font-medium uppercase tracking-wider hidden sm:inline">{t('bikesPage.priceSort')}</span>
                 <select 
                   value={priceSort}
                   onChange={(e) => setPriceSort(e.target.value)}
                   className="bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent p-3 outline-none appearance-none cursor-pointer transition-all duration-300"
                 >
-                  <option value="Default">Mặc định</option>
-                  <option value="LowToHigh">Từ thấp đến cao</option>
-                  <option value="HighToLow">Từ cao đến thấp</option>
+                  <option value="Default">{t('bikesPage.defaultSort')}</option>
+                  <option value="LowToHigh">{t('bikesPage.lowToHigh')}</option>
+                  <option value="HighToLow">{t('bikesPage.highToLow')}</option>
                 </select>
               </div>
             </div>
@@ -147,7 +149,7 @@ export const Bikes = () => {
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <Loader size={40} className="text-neon animate-spin mx-auto mb-4" />
-              <p className="text-gray-400">Đang tải xe máy...</p>
+              <p className="text-gray-400">{t('bikesPage.loading')}</p>
             </div>
           </div>
         )}
@@ -161,12 +163,12 @@ export const Bikes = () => {
           </div>
         ) : !loading && (
           <div className="text-center py-20 border border-dashed border-gray-800 rounded-2xl bg-surface/50">
-            <p className="text-gray-500 mb-2">Không tìm thấy xe máy phù hợp với bộ lọc.</p>
+            <p className="text-gray-500 mb-2">{t('bikesPage.noBikes')}</p>
             <button 
               onClick={() => { setSearchQuery(''); setSelectedCategory('All'); setPriceSort('Default'); }}
               className="text-neon text-sm underline hover:text-white transition-colors"
             >
-              Reset bộ lọc
+              {t('bikesPage.resetFilter')}
             </button>
           </div>
         )}

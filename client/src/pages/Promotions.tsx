@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { promotionService, Promotion } from '../services/promotionService';
 import { Tag, Calendar, Copy, Check, Percent, Ticket, AlertCircle, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLanguage } from '../hooks/useLanguage';
 
 export const Promotions = () => {
+  const { language, t } = useLanguage();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,13 +19,13 @@ export const Promotions = () => {
         setPromotions(data);
       } catch (err: any) {
         console.error('Lỗi khi tải khuyến mãi:', err);
-        setError('Không thể tải danh sách khuyến mãi. Vui lòng thử lại sau.');
+        setError(language === 'vi' ? 'Không thể tải danh sách khuyến mãi. Vui lòng thử lại sau.' : 'Failed to load promotions. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
     fetchPromotions();
-  }, []);
+  }, [language]);
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -35,7 +37,7 @@ export const Promotions = () => {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('vi-VN', {
+    return date.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -59,7 +61,7 @@ export const Promotions = () => {
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neon/10 border border-neon/30 text-neon text-xs font-semibold uppercase tracking-wider mb-4"
           >
             <Sparkles size={12} />
-            <span>Ưu đãi ngập tràn</span>
+            <span>{t('promotionsPage.banner')}</span>
           </motion.div>
           
           <motion.h1
@@ -68,7 +70,11 @@ export const Promotions = () => {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="font-display font-black text-4xl md:text-5xl text-white uppercase tracking-tight mb-4"
           >
-            Chương Trình <span className="text-neon text-glow">Khuyến Mãi</span>
+            {language === 'vi' ? (
+              <>Chương Trình <span className="text-neon text-glow">Khuyến Mãi</span></>
+            ) : (
+              <>Promotions & <span className="text-neon text-glow">Offers</span></>
+            )}
           </motion.h1>
           
           <motion.p
@@ -77,7 +83,7 @@ export const Promotions = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-gray-400 text-sm md:text-base leading-relaxed"
           >
-            Nhận ngay các mã giảm giá siêu hấp dẫn để hành trình trải nghiệm xe máy cùng <strong className="text-white">Motov</strong> của bạn thêm trọn vẹn và tiết kiệm.
+            {t('promotionsPage.subtitle')}
           </motion.p>
         </div>
 
@@ -85,7 +91,7 @@ export const Promotions = () => {
         {loading ? (
           <div className="flex flex-col justify-center items-center py-20">
             <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-neon border-r-2 border-transparent"></div>
-            <p className="text-gray-500 text-sm mt-4 font-semibold">Đang tìm kiếm ưu đãi...</p>
+            <p className="text-gray-500 text-sm mt-4 font-semibold">{t('promotionsPage.loading')}</p>
           </div>
         ) : error ? (
           <motion.div
@@ -103,9 +109,9 @@ export const Promotions = () => {
             className="max-w-md mx-auto bg-surface/50 border border-gray-800 rounded-2xl p-8 text-center"
           >
             <Ticket className="mx-auto text-gray-600 mb-4" size={48} />
-            <h3 className="text-white font-bold text-lg mb-2">Chưa Có Khuyến Mãi Nào</h3>
+            <h3 className="text-white font-bold text-lg mb-2">{t('promotionsPage.noPromos')}</h3>
             <p className="text-gray-500 text-xs leading-relaxed">
-              Các chương trình ưu đãi hiện tại đã hết lượt hoặc đã kết thúc. Hãy quay lại sau nhé!
+              {t('promotionsPage.noPromosDesc')}
             </p>
           </motion.div>
         ) : (
@@ -134,12 +140,12 @@ export const Promotions = () => {
                         </div>
                         <div>
                           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">
-                            {promo.discountCategory || 'Khuyến mãi'}
+                            {promo.discountCategory || t('promotionsPage.promoCategory')}
                           </span>
                           <span className="text-xs text-neon font-bold">
                             {promo.usageLimit !== undefined 
-                              ? `Còn ${promo.usageLimit - promo.usedCount} lượt` 
-                              : 'Không giới hạn lượt'}
+                              ? t('promotionsPage.remaining', { count: promo.usageLimit - promo.usedCount }) 
+                              : t('promotionsPage.unlimited')}
                           </span>
                         </div>
                       </div>
@@ -151,7 +157,7 @@ export const Promotions = () => {
                             : `${(promo.discountValue / 1000).toLocaleString()}K`}
                         </span>
                         <span className="text-[10px] font-bold text-gray-500 uppercase block tracking-wider mt-0.5">
-                          Giảm giá
+                          {t('promotionsPage.discount')}
                         </span>
                       </div>
                     </div>
@@ -162,7 +168,7 @@ export const Promotions = () => {
                         {promo.discountName}
                       </h3>
                       <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">
-                        {promo.description || 'Không có mô tả chi tiết cho chương trình khuyến mãi này.'}
+                        {promo.description || t('promotionsPage.noDesc')}
                       </p>
                     </div>
 
@@ -170,20 +176,24 @@ export const Promotions = () => {
                     <div className="pt-2 space-y-1.5 border-t border-white/5 text-[11px] text-gray-500">
                       {promo.minOrderAmount && promo.minOrderAmount > 0 ? (
                         <div className="flex justify-between">
-                          <span>Đơn tối thiểu:</span>
-                          <span className="text-gray-300 font-semibold">{promo.minOrderAmount.toLocaleString()} VNĐ</span>
+                          <span>{language === 'vi' ? 'Đơn tối thiểu:' : 'Min Order:'}</span>
+                          <span className="text-gray-300 font-semibold">
+                            {t('promotionsPage.minOrder', { amount: promo.minOrderAmount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') }).replace('Đơn tối thiểu: ', '').replace('Min Order: ', '')}
+                          </span>
                         </div>
                       ) : null}
                       {isPercentage && promo.maxDiscountAmount ? (
                         <div className="flex justify-between">
-                          <span>Giảm tối đa:</span>
-                          <span className="text-gray-300 font-semibold">{promo.maxDiscountAmount.toLocaleString()} VNĐ</span>
+                          <span>{language === 'vi' ? 'Giảm tối đa:' : 'Max Discount:'}</span>
+                          <span className="text-gray-300 font-semibold">
+                            {t('promotionsPage.maxDiscount', { amount: promo.maxDiscountAmount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') }).replace('Giảm tối đa: ', '').replace('Max Discount: ', '')}
+                          </span>
                         </div>
                       ) : null}
                       <div className="flex justify-between items-center">
                         <span className="flex items-center gap-1">
                           <Calendar size={10} />
-                          Hạn dùng:
+                          {language === 'vi' ? 'Hạn dùng:' : 'Expiry Date:'}
                         </span>
                         <span className="text-gray-300 font-semibold">{formatDate(promo.endDate)}</span>
                       </div>
@@ -207,12 +217,12 @@ export const Promotions = () => {
                       {isCopied ? (
                         <>
                           <Check size={12} />
-                          <span>Đã lưu</span>
+                          <span>{t('promotionsPage.copied')}</span>
                         </>
                       ) : (
                         <>
                           <Copy size={12} />
-                          <span>Copy</span>
+                          <span>{t('promotionsPage.copy')}</span>
                         </>
                       )}
                     </button>

@@ -269,7 +269,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         rentalDays,
         discountAmount: savedBooking.discountAmount,
         promoCodeUsed: savedBooking.promoCodeUsed,
-        message: '⏳ Đợi chủ xe xác nhận. Bạn sẽ nhận được thông báo khi được phê duyệt.'
+        message: 'Đợi chủ xe xác nhận. Bạn sẽ nhận được thông báo khi được phê duyệt.'
       }
     });
 
@@ -727,7 +727,7 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: '❌ Booking đã bị hủy thành công',
+      message: 'Booking đã bị hủy thành công',
       booking: formatBookingResponse(cancelledBooking)
     });
 
@@ -773,7 +773,7 @@ export const deleteBooking = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: '✓ Booking đã bị xóa khỏi hệ thống'
+      message: 'Booking đã bị xóa khỏi hệ thống'
     });
 
   } catch (error: any) {
@@ -1065,11 +1065,11 @@ function formatBookingResponse(booking: any) {
  */
 function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
-    'Pending': '⏳ Chờ xác nhận',
-    'Confirmed': '✓ Đã xác nhận',
-    'Ongoing': '🚴 Đang cho thuê',
-    'Completed': '✓ Hoàn tất',
-    'Cancelled': '❌ Đã hủy'
+    'Pending': 'Chờ xác nhận',
+    'Confirmed': 'Đã xác nhận',
+    'Ongoing': 'Đang cho thuê',
+    'Completed': 'Hoàn tất',
+    'Cancelled': 'Đã hủy'
   };
   return labels[status] || status;
 }
@@ -1157,7 +1157,7 @@ export const confirmBookingByStaff = async (req: AuthRequest, res: Response) => 
 
     res.status(200).json({
       success: true,
-      message: '✓ Duyệt đơn đặt xe thành công!',
+      message: 'Duyệt đơn đặt xe thành công!',
       booking: formatBookingResponse(updatedBooking)
     });
 
@@ -1231,7 +1231,7 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
 
     res.status(200).json({
       success: true,
-      message: '✓ Xác nhận khách lấy xe thành công! Trạng thái xe đã chuyển sang Đang cho thuê.',
+      message: 'Xác nhận khách lấy xe thành công! Trạng thái xe đã chuyển sang Đang cho thuê.',
       booking: formatBookingResponse(updatedBooking)
     });
 

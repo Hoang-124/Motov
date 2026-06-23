@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface FeedbackModalProps {
   visible: boolean;
@@ -24,18 +25,19 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
   bookingId,
   onSubmit,
 }) => {
+  const { t } = useLanguage();
   const [rating, setRating] = useState<number>(5);
   const [content, setContent] = useState<string>('');
 
   const handleRatingSubmit = () => {
     if (!bookingId) return;
     if (!content.trim()) {
-      Alert.alert('Cảnh Báo', 'Vui lòng nhập ý kiến phản hồi của bạn!');
+      Alert.alert(t('common.error'), t('feedback.commentPlaceholder'));
       return;
     }
 
     onSubmit(bookingId, rating, content);
-    Alert.alert('Thành Công', 'Cảm ơn phản hồi quý báu của bạn về chuyến đi!');
+    Alert.alert(t('common.success'), t('feedback.feedbackSuccess'));
     setContent('');
     setRating(5);
     onClose();
@@ -43,11 +45,11 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
 
   const getRatingLabel = (num: number) => {
     switch (num) {
-      case 5: return '🚀 Rất hài lòng';
-      case 4: return '✨ Hài lòng';
-      case 3: return '👌 Bình thường';
-      case 2: return '⚠️ Chưa hài lòng';
-      default: return '👎 Rất tệ';
+      case 5: return t('feedback.excellent');
+      case 4: return t('feedback.good');
+      case 3: return t('feedback.average');
+      case 2: return t('feedback.poor');
+      default: return t('feedback.terrible');
     }
   };
 
@@ -64,7 +66,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
           <View style={styles.modalHeader}>
             <View style={styles.headerTitleContainer}>
               <Feather name="star" size={18} color={COLORS.accent} style={{ marginRight: 8 }} />
-              <Text style={styles.modalTitle}>Đánh Giá Chuyến Đi</Text>
+              <Text style={styles.modalTitle}>{t('feedback.tripFeedback')}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Feather name="x" size={20} color={COLORS.textSecondary} />
@@ -75,7 +77,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
           <View style={styles.modalBody}>
             {/* Stars Selector */}
             <View style={styles.ratingBox}>
-              <Text style={styles.ratingBoxLabel}>Mức độ hài lòng của bạn</Text>
+              <Text style={styles.ratingBoxLabel}>{t('feedback.satisfaction')}</Text>
               
               <View style={styles.starsContainer}>
                 {[1, 2, 3, 4, 5].map((num) => (
@@ -98,12 +100,12 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
             </View>
 
             {/* Input Feedback Content */}
-            <Text style={styles.inputLabel}>Ý kiến phản hồi của bạn</Text>
+            <Text style={styles.inputLabel}>{t('feedback.tripFeedback')}</Text>
             <TextInput
               style={styles.textInput}
               value={content}
               onChangeText={setContent}
-              placeholder="Chia sẻ trải nghiệm của bạn về xe máy, thái độ phục vụ của chủ xe..."
+              placeholder={t('feedback.commentPlaceholder')}
               placeholderTextColor={COLORS.textMuted}
               multiline
               numberOfLines={4}
@@ -114,10 +116,10 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
           {/* Footer actions */}
           <View style={styles.footerContainer}>
             <TouchableOpacity style={styles.btnCancel} onPress={onClose}>
-              <Text style={styles.btnCancelText}>Hủy</Text>
+              <Text style={styles.btnCancelText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.btnSubmit} onPress={handleRatingSubmit}>
-              <Text style={styles.btnSubmitText}>Gửi đánh giá</Text>
+              <Text style={styles.btnSubmitText}>{t('feedback.submitFeedback')}</Text>
             </TouchableOpacity>
           </View>
         </View>

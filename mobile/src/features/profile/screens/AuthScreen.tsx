@@ -938,7 +938,7 @@ export const AuthScreen: React.FC = () => {
                         />
                       </View>
                       {touched.name && errors.name && (
-                        <Text style={styles.fieldErrorText}>⚠️ {errors.name}</Text>
+                        <Text style={styles.fieldErrorText}>{errors.name}</Text>
                       )}
                     </View>
                   )}
@@ -963,7 +963,7 @@ export const AuthScreen: React.FC = () => {
                         />
                       </View>
                       {touched.username && errors.username && (
-                        <Text style={styles.fieldErrorText}>⚠️ {errors.username}</Text>
+                        <Text style={styles.fieldErrorText}>{errors.username}</Text>
                       )}
                     </View>
                   )}
@@ -990,7 +990,7 @@ export const AuthScreen: React.FC = () => {
                       />
                     </View>
                     {touched.email && errors.email && (
-                      <Text style={styles.fieldErrorText}>⚠️ {errors.email}</Text>
+                      <Text style={styles.fieldErrorText}>{errors.email}</Text>
                     )}
                     {!isLogin && (
                       <Text style={styles.helperText}>
@@ -1040,7 +1040,7 @@ export const AuthScreen: React.FC = () => {
                       </TouchableOpacity>
                     </View>
                     {touched.password && errors.password && (
-                      <Text style={styles.fieldErrorText}>⚠️ {errors.password}</Text>
+                      <Text style={styles.fieldErrorText}>{errors.password}</Text>
                     )}
 
                     {/* Password Strength Meter (Sign Up only) */}
@@ -1108,7 +1108,7 @@ export const AuthScreen: React.FC = () => {
                         </TouchableOpacity>
                       </View>
                       {touched.confirmPassword && errors.confirmPassword && (
-                        <Text style={styles.fieldErrorText}>⚠️ {errors.confirmPassword}</Text>
+                        <Text style={styles.fieldErrorText}>{errors.confirmPassword}</Text>
                       )}
                     </View>
                   )}

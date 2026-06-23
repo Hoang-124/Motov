@@ -73,7 +73,7 @@ export const confirmCODPaymentByStaff = async (req: AuthRequest, res: Response) 
 
     res.status(200).json({
       success: true,
-      message: '✓ Xác nhận hóa đơn thanh toán tiền mặt (Cash) thành công!',
+      message: 'Xác nhận hóa đơn thanh toán tiền mặt (Cash) thành công!',
       payment
     });
 
