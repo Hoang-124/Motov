@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BikeCard } from '../components/BikeCard';
-import { SlidersHorizontal, Search, AlertCircle, Loader } from 'lucide-react';
+import { SlidersHorizontal, Search, AlertCircle, Loader, ChevronDown } from 'lucide-react';
 import { getAllMotorbikes, Motorbike } from '../services/vehicleService';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -37,6 +37,8 @@ export const Bikes = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [priceSort, setPriceSort] = useState('Default');
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [isSortOpen, setIsSortOpen] = useState(false);
 
   // Available bike categories
   const categories = useMemo(() => {
@@ -116,29 +118,83 @@ export const Bikes = () => {
               {/* Filter by Category */}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-500 font-medium uppercase tracking-wider hidden sm:inline">{t('bikesPage.categoryFilter')}</span>
-                <select 
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent p-3 outline-none appearance-none cursor-pointer transition-all duration-300"
-                >
-                  {categories.map(c => (
-                    <option key={c} value={c}>{c === 'All' ? t('bikesPage.all') : c}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <button 
+                    onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsSortOpen(false); }}
+                    className="flex items-center justify-between gap-3 bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg hover:border-neon focus:ring-2 focus:ring-neon focus:border-transparent px-4 py-3 min-w-[150px] transition-all duration-300 cursor-pointer text-left"
+                  >
+                    <span>{selectedCategory === 'All' ? t('bikesPage.all') : selectedCategory}</span>
+                    <ChevronDown size={16} className={`text-gray-500 transition-transform duration-300 ${isCategoryOpen ? 'rotate-180 text-neon' : ''}`} />
+                  </button>
+                  
+                  {isCategoryOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsCategoryOpen(false)} />
+                      <div className="absolute right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl w-48 overflow-hidden text-gray-300 py-1 font-sans">
+                        <div className="absolute top-0 inset-x-0 h-[2px] bg-neon shadow-[0_0_10px_rgba(204,255,0,0.5)]"></div>
+                        {categories.map(c => (
+                          <button
+                            key={c}
+                            onClick={() => {
+                              setSelectedCategory(c);
+                              setIsCategoryOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer bg-transparent border-none ${
+                              selectedCategory === c ? 'text-neon bg-neon/5 font-bold' : 'text-gray-300 hover:text-neon hover:bg-white/5'
+                            }`}
+                          >
+                            {c === 'All' ? t('bikesPage.all') : c}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Sort by Price */}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-500 font-medium uppercase tracking-wider hidden sm:inline">{t('bikesPage.priceSort')}</span>
-                <select 
-                  value={priceSort}
-                  onChange={(e) => setPriceSort(e.target.value)}
-                  className="bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent p-3 outline-none appearance-none cursor-pointer transition-all duration-300"
-                >
-                  <option value="Default">{t('bikesPage.defaultSort')}</option>
-                  <option value="LowToHigh">{t('bikesPage.lowToHigh')}</option>
-                  <option value="HighToLow">{t('bikesPage.highToLow')}</option>
-                </select>
+                <div className="relative">
+                  <button 
+                    onClick={() => { setIsSortOpen(!isSortOpen); setIsCategoryOpen(false); }}
+                    className="flex items-center justify-between gap-3 bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg hover:border-neon focus:ring-2 focus:ring-neon focus:border-transparent px-4 py-3 min-w-[150px] transition-all duration-300 cursor-pointer text-left"
+                  >
+                    <span>
+                      {priceSort === 'Default' && t('bikesPage.defaultSort')}
+                      {priceSort === 'LowToHigh' && t('bikesPage.lowToHigh')}
+                      {priceSort === 'HighToLow' && t('bikesPage.highToLow')}
+                    </span>
+                    <ChevronDown size={16} className={`text-gray-500 transition-transform duration-300 ${isSortOpen ? 'rotate-180 text-neon' : ''}`} />
+                  </button>
+                  
+                  {isSortOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsSortOpen(false)} />
+                      <div className="absolute right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl w-48 overflow-hidden text-gray-300 py-1 font-sans">
+                        <div className="absolute top-0 inset-x-0 h-[2px] bg-neon shadow-[0_0_10px_rgba(204,255,0,0.5)]"></div>
+                        {[
+                          { value: 'Default', label: t('bikesPage.defaultSort') },
+                          { value: 'LowToHigh', label: t('bikesPage.lowToHigh') },
+                          { value: 'HighToLow', label: t('bikesPage.highToLow') }
+                        ].map(item => (
+                          <button
+                            key={item.value}
+                            onClick={() => {
+                              setPriceSort(item.value);
+                              setIsSortOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer bg-transparent border-none ${
+                              priceSort === item.value ? 'text-neon bg-neon/5 font-bold' : 'text-gray-300 hover:text-neon hover:bg-white/5'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
