@@ -489,22 +489,22 @@ export const Bookings = () => {
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">{t('myBookingsPage.returnModalTimeInfo')}</span>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-400">{t('myBookingsPage.returnModalPickup')}</span>
-                      <span className="font-semibold text-white">{details.pickupTime.toLocaleString('vi-VN')}</span>
+                      <span className="font-semibold text-white font-mono">{details.pickupTime.toLocaleString('vi-VN')}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-400">{t('myBookingsPage.returnModalScheduledReturn')}</span>
-                      <span className="font-semibold text-white">{details.returnTime.toLocaleString('vi-VN')}</span>
+                      <span className="font-semibold text-white font-mono">{details.returnTime.toLocaleString('vi-VN')}</span>
                     </div>
                     <div className="border-t border-white/5 my-2 pt-2 flex justify-between items-center">
                       <span className="text-gray-400">{t('myBookingsPage.returnModalActualReturn')}</span>
-                      <span className="font-bold text-purple-400">{details.now.toLocaleString('vi-VN')}</span>
+                      <span className="font-bold text-purple-400 font-mono">{details.now.toLocaleString('vi-VN')}</span>
                     </div>
                   </div>
 
                   {/* Thông báo chi phí / hoàn trả */}
                   {details.type === 'early' && (
-                    <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl space-y-2">
-                      <div className="flex items-center gap-2 text-green-400 text-sm font-bold">
+                    <div className="bg-emerald-500/5 border border-emerald-500/10 p-4 rounded-xl space-y-2">
+                      <div className="flex items-center gap-2 text-emerald-400 text-sm font-bold">
                         <CheckCircle size={16} />
                         <span>{t('myBookingsPage.returnModalEarlyReturn')}</span>
                       </div>
@@ -514,7 +514,7 @@ export const Bookings = () => {
                           amount: details.amount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') 
                         })}
                       </p>
-                      <div className="flex gap-1.5 items-start text-[10px] text-green-400/80 leading-normal">
+                      <div className="flex gap-1.5 items-start text-[10px] text-emerald-400/80 leading-normal">
                         <Info size={12} className="shrink-0 mt-0.5" />
                         <span>{t('myBookingsPage.returnModalRefundNote')}</span>
                       </div>
@@ -522,7 +522,7 @@ export const Bookings = () => {
                   )}
 
                   {details.type === 'late' && (
-                    <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl space-y-2">
+                    <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-xl space-y-2">
                       <div className="flex items-center gap-2 text-amber-400 text-sm font-bold">
                         <ShieldAlert size={16} />
                         <span>{t('myBookingsPage.returnModalLateReturn')}</span>
@@ -537,7 +537,7 @@ export const Bookings = () => {
                   )}
 
                   {details.type === 'normal' && (
-                    <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl space-y-2">
+                    <div className="bg-blue-500/5 border border-blue-500/10 p-4 rounded-xl space-y-2">
                       <div className="flex items-center gap-2 text-blue-400 text-sm font-bold">
                         <CheckCircle size={16} />
                         <span>{t('myBookingsPage.returnModalNormalReturn')}</span>
@@ -551,11 +551,11 @@ export const Bookings = () => {
                   )}
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-white/5 mt-5">
+                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5 mt-5">
                   <button
                     type="button"
                     onClick={() => setShowReturnModal(false)}
-                    className="px-4 py-2.5 bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 rounded-lg transition-all text-xs font-bold uppercase cursor-pointer"
+                    className="px-4 py-2.5 bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 rounded-xl transition-all text-xs font-bold cursor-pointer flex items-center justify-center"
                   >
                     {t('myBookingsPage.returnModalCancelButton')}
                   </button>
@@ -563,7 +563,7 @@ export const Bookings = () => {
                     type="button"
                     onClick={handleReturnBookingSubmit}
                     disabled={loading}
-                    className="px-5 py-2.5 bg-purple-600 text-white hover:bg-purple-700 font-bold rounded-lg transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(168,85,247,0.3)] cursor-pointer disabled:opacity-50"
+                    className="px-4 py-2.5 bg-purple-600 text-white hover:bg-purple-700 font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(168,85,247,0.3)] cursor-pointer disabled:opacity-50"
                   >
                     {t('myBookingsPage.returnModalConfirmButton')}
                   </button>
@@ -648,18 +648,18 @@ export const Bookings = () => {
                     </div>
                   )}
 
-                  <div className="flex justify-end gap-3 pt-2">
+                  <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5 mt-5">
                     <button
                       type="button"
                       onClick={() => setShowCancelModal(false)}
-                      className="px-4 py-2.5 bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 rounded-lg transition-all text-xs font-bold uppercase cursor-pointer"
+                      className="px-4 py-2.5 bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 rounded-xl transition-all text-xs font-bold cursor-pointer flex items-center justify-center"
                     >
                       {t('common.cancel')}
                     </button>
                     <button
                       type="submit"
                       disabled={loading || isNearPickup}
-                      className="px-5 py-2.5 bg-red-600 text-white hover:bg-red-700 font-bold rounded-lg transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(239,68,68,0.2)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2.5 bg-red-600 text-white hover:bg-red-700 font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(239,68,68,0.2)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t('myBookingsPage.cancelModalConfirmBtn')}
                     </button>
