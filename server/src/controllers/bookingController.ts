@@ -963,13 +963,8 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { actualReturnTime } = req.body;
+    const userId = req.user?.id;
     
-    // Verify role is Staff or Admin (this is also done in the route middleware, but checking here too)
-    const userRoles = req.user?.roles || [];
-    if (!userRoles.includes('Staff') && !userRoles.includes('Admin')) {
-      return res.status(403).json({ success: false, message: 'Chỉ nhân viên hoặc quản trị viên mới có thể xác nhận trả xe' });
-    }
-
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'ID booking không hợp lệ' });
     }
@@ -977,6 +972,15 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
     const booking = await Booking.findById(id).populate('vehicleId');
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy booking' });
+    }
+
+    // Verify role or ownership
+    const userRoles = req.user?.roles || [];
+    const isStaffOrAdmin = userRoles.includes('Staff') || userRoles.includes('Admin');
+    const isBookingOwner = booking.userId.toString() === userId;
+
+    if (!isStaffOrAdmin && !isBookingOwner) {
+      return res.status(403).json({ success: false, message: 'Chỉ nhân viên, quản trị viên hoặc chính khách hàng thuê mới có thể xác nhận trả xe' });
     }
 
     if (booking.status !== 'Ongoing' && booking.status !== 'Confirmed') {

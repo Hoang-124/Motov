@@ -71,7 +71,7 @@ router.get('/:id/tracking', getBookingTracking as any);
  * Return motorbike and calculate late fees
  * Access: Admin, Staff
  */
-router.put('/:id/return', restrictTo('Admin', 'Staff') as any, returnMotorbike as any);
+router.put('/:id/return', restrictTo('Admin', 'Staff', 'Customer') as any, returnMotorbike as any);
 
 // ============================================
 // Owner Routes
