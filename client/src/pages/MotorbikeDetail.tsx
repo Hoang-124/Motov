@@ -4,16 +4,36 @@ import { ArrowLeft, AlertCircle, Loader, Edit2, Trash2, MapPin, Users, Zap, Chec
 import { motion, AnimatePresence } from 'motion/react';
 import { getMotorbikeById, Motorbike, deleteMotorbike } from '../services/vehicleService';
 import { feedbackService, FeedbackItem } from '../services/feedbackService';
+import { useLanguage } from '../hooks/useLanguage';
 
 export const MotorbikeDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { language, t } = useLanguage();
   const [motorbike, setMotorbike] = useState<Motorbike | null>(null);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        setCurrentUser(JSON.parse(userStr));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  const canEditOrDelete = currentUser && (
+    currentUser.role === 'admin' || 
+    currentUser.role === 'staff' || 
+    (currentUser.role === 'owner' && motorbike && typeof motorbike.ownerId !== 'string' && motorbike.ownerId?.email === currentUser.email)
+  );
 
   useEffect(() => {
     const fetchMotorbike = async () => {
@@ -218,21 +238,45 @@ export const MotorbikeDetail = () => {
 
             {/* Action Buttons */}
             <div className="flex gap-4 flex-wrap">
-              <button
-                onClick={() => navigate(`/motorbike/${motorbike._id}/edit`)}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-lg transition-colors"
-              >
-                <Edit2 size={18} />
-                Edit Motorbike
-              </button>
-              <button
-                onClick={handleOpenDeleteModal}
-                disabled={deleting}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-lg transition-colors"
-              >
-                <Trash2 size={18} />
-                {deleting ? 'Deleting...' : 'Delete Motorbike'}
-              </button>
+              {canEditOrDelete && (
+                <>
+                  <button
+                    onClick={() => navigate(`/motorbike/${motorbike._id}/edit`)}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-lg transition-colors"
+                  >
+                    <Edit2 size={18} />
+                    Edit Motorbike
+                  </button>
+                  <button
+                    onClick={handleOpenDeleteModal}
+                    disabled={deleting}
+                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={18} />
+                    {deleting ? 'Deleting...' : 'Delete Motorbike'}
+                  </button>
+                </>
+              )}
+
+              {/* Show Book Now button for customer/guest when motorbike is available */}
+              {(!currentUser || currentUser.role === 'customer') && (
+                <button
+                  onClick={() => {
+                    if (motorbike.status === 'Available') {
+                      navigate(`/booking/${motorbike._id}`);
+                    }
+                  }}
+                  disabled={motorbike.status !== 'Available'}
+                  className={`flex items-center gap-2 font-bold px-6 py-3 rounded-lg transition-all duration-300 ${
+                    motorbike.status === 'Available'
+                      ? 'bg-neon text-dark hover:bg-[#bbf000] shadow-[0_0_12px_rgba(204,255,0,0.25)] hover:shadow-[0_0_20px_rgba(204,255,0,0.5)]'
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  {motorbike.status === 'Available' ? t('bikesPage.bookNowBtn') : t('bikesPage.notAvailable')}
+                </button>
+              )}
+
               <button
                 onClick={() => navigate('/bikes')}
                 className="flex items-center gap-2 bg-neon text-dark hover:bg-[#bbf000] font-bold px-6 py-3 rounded-lg transition-colors"
