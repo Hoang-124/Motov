@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, MapPin, ClipboardList, Trash2, RefreshCw, Star, X, AlertCircle } from 'lucide-react';
+import { CalendarDays, MapPin, ClipboardList, Trash2, RefreshCw, Star, X, AlertCircle, Clock, ShieldAlert, CheckCircle, HelpCircle, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { bookingService, Booking } from '../services/bookingService'; // Import Service
 import { useLanguage } from '../hooks/useLanguage';
@@ -19,6 +19,15 @@ export const Bookings = () => {
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackContent, setFeedbackContent] = useState('');
   const [reviewedBookingIds, setReviewedBookingIds] = useState<string[]>([]);
+
+  // State cho Modal trả xe
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [activeReturnBooking, setActiveReturnBooking] = useState<Booking | null>(null);
+
+  // State cho Modal hủy đơn
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [activeCancelBookingId, setActiveCancelBookingId] = useState<string | null>(null);
+  const [cancelReasonInput, setCancelReasonInput] = useState('');
 
   const handleOpenFeedbackModal = (bookingId: string) => {
     setSelectedBookingId(bookingId);
@@ -66,20 +75,64 @@ export const Bookings = () => {
     loadMyBookings();
   }, [language]);
 
-  // Hàm gọi API hủy đơn
-  const handleCancelBooking = async (id: string) => {
-    const reason = window.prompt(language === 'vi' ? 'Vui lòng nhập lý do hủy đơn thuê xe:' : 'Please enter the cancellation reason:');
-    if (reason === null) return; // Nhấn hủy prompt
+  // Helper tính toán thông tin trả xe sớm/muộn
+  const getReturnDetails = (booking: Booking | null) => {
+    if (!booking) return null;
 
-    if (!reason.trim()) {
+    const pickupTime = new Date(booking.pickupDateTime);
+    const returnTime = new Date(booking.returnDateTime);
+    const now = new Date();
+
+    const totalRentalHours = Math.ceil((returnTime.getTime() - pickupTime.getTime()) / (1000 * 60 * 60));
+    // Đơn giá thuê mỗi giờ (sau giảm giá nếu có)
+    const hourlyRate = booking.totalAmount / (totalRentalHours || 1);
+
+    const diffMs = returnTime.getTime() - now.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+
+    let type: 'early' | 'late' | 'normal' = 'normal';
+    let hours = 0;
+    let amount = 0;
+
+    if (diffHours >= 2) {
+      // Trả sớm trên 2 tiếng
+      type = 'early';
+      hours = Math.floor(diffHours);
+      // Hoàn trả 50% đơn giá cho phần thời gian trả sớm
+      amount = Math.round(hours * hourlyRate * 0.5);
+      amount = Math.min(amount, booking.totalAmount);
+    } else if (diffHours < -0.25) {
+      // Trả muộn trên 15 phút (0.25 giờ)
+      type = 'late';
+      hours = Math.ceil(Math.abs(diffHours));
+      amount = Math.round(hours * hourlyRate); // Phí trễ đơn giản
+    }
+
+    return { type, hours, amount, pickupTime, returnTime, now };
+  };
+
+  // Hàm mở Modal hủy đơn
+  const openCancelModal = (id: string) => {
+    setActiveCancelBookingId(id);
+    setCancelReasonInput('');
+    setShowCancelModal(true);
+  };
+
+  // Hàm gọi API hủy đơn từ Modal
+  const handleCancelBookingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeCancelBookingId) return;
+
+    if (!cancelReasonInput.trim()) {
       window.alert(language === 'vi' ? 'Bạn phải nhập lý do hủy đơn!' : 'You must enter the cancellation reason!');
       return;
     }
 
     try {
       setLoading(true);
-      await bookingService.cancelBooking(id, reason);
-      window.alert(language === 'vi' ? 'Hủy đơn đặt xe thành công!' : 'Booking cancelled successfully!');
+      await bookingService.cancelBooking(activeCancelBookingId, cancelReasonInput);
+      window.alert(t('myBookingsPage.cancelModalSuccess'));
+      setShowCancelModal(false);
       // Tải lại danh sách mới cập nhật trạng thái từ Server
       await loadMyBookings();
     } catch (err: any) {
@@ -88,15 +141,21 @@ export const Bookings = () => {
     }
   };
 
-  // Hàm gọi API trả xe máy
-  const handleReturnBooking = async (id: string) => {
-    const confirm = window.confirm(t('myBookingsPage.returnConfirm'));
-    if (!confirm) return;
+  // Hàm mở Modal trả xe
+  const openReturnModal = (booking: Booking) => {
+    setActiveReturnBooking(booking);
+    setShowReturnModal(true);
+  };
+
+  // Hàm gọi API trả xe máy từ Modal
+  const handleReturnBookingSubmit = async () => {
+    if (!activeReturnBooking) return;
 
     try {
       setLoading(true);
-      await bookingService.returnMotorbike(id, new Date().toISOString());
+      await bookingService.returnMotorbike(activeReturnBooking.id, new Date().toISOString());
       window.alert(t('myBookingsPage.returnSuccess'));
+      setShowReturnModal(false);
       // Tải lại danh sách mới từ Server
       await loadMyBookings();
     } catch (err: any) {
@@ -229,7 +288,7 @@ export const Bookings = () => {
                 <div className="w-full md:w-auto flex justify-end md:self-center border-t md:border-t-0 pt-4 md:pt-0 border-gray-800/50">
                   {booking.status === 'Pending' ? (
                     <button 
-                      onClick={() => handleCancelBooking(booking.id)}
+                      onClick={() => openCancelModal(booking.id)}
                       disabled={loading}
                       className="flex items-center justify-center gap-2 text-red-500 hover:bg-red-500/10 border border-red-500/20 hover:border-red-500/40 px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-medium cursor-pointer disabled:opacity-50"
                     >
@@ -238,7 +297,7 @@ export const Bookings = () => {
                     </button>
                   ) : booking.status === 'Ongoing' ? (
                     <button 
-                      onClick={() => handleReturnBooking(booking.id)}
+                      onClick={() => openReturnModal(booking)}
                       disabled={loading}
                       className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-bold cursor-pointer disabled:opacity-50"
                     >
@@ -374,6 +433,242 @@ export const Bookings = () => {
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
+
+      {/* Custom Return Confirm Modal */}
+      <AnimatePresence>
+        {showReturnModal && activeReturnBooking && (() => {
+          const details = getReturnDetails(activeReturnBooking);
+          if (!details) return null;
+          return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowReturnModal(false)}
+                className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+              />
+              
+              <motion.div
+                initial={{ scale: 0.95, y: 15, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.95, y: 15, opacity: 0 }}
+                className="bg-surface border border-white/10 rounded-2xl p-6 shadow-2xl relative w-full max-w-md z-10 overflow-hidden text-gray-300"
+              >
+                <div className="absolute top-0 inset-x-0 h-1 bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]"></div>
+                
+                <button 
+                  onClick={() => setShowReturnModal(false)}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+                >
+                  <X size={20} />
+                </button>
+
+                <h3 className="font-display font-black text-lg text-white uppercase mb-4 flex items-center gap-2">
+                  <Clock size={20} className="text-purple-400 shrink-0" />
+                  {t('myBookingsPage.returnModalTitle')}
+                </h3>
+
+                <div className="space-y-4">
+                  {/* Tên xe */}
+                  <div className="flex gap-4 items-center bg-black/30 p-3 rounded-xl border border-white/5">
+                    <img 
+                      src={activeReturnBooking.vehicleImage} 
+                      alt={activeReturnBooking.vehicleModel} 
+                      className="w-16 h-10 object-cover rounded-md"
+                    />
+                    <div>
+                      <h4 className="font-bold text-white text-sm">{activeReturnBooking.vehicleModel}</h4>
+                      <p className="text-xs text-gray-500">{t('myBookingsPage.bookingCode', { code: activeReturnBooking.bookingCode })}</p>
+                    </div>
+                  </div>
+
+                  {/* Chi tiết thời gian */}
+                  <div className="space-y-2.5 text-xs bg-black/20 p-4 rounded-xl border border-white/5">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">{t('myBookingsPage.returnModalTimeInfo')}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">{t('myBookingsPage.returnModalPickup')}</span>
+                      <span className="font-semibold text-white">{details.pickupTime.toLocaleString('vi-VN')}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">{t('myBookingsPage.returnModalScheduledReturn')}</span>
+                      <span className="font-semibold text-white">{details.returnTime.toLocaleString('vi-VN')}</span>
+                    </div>
+                    <div className="border-t border-white/5 my-2 pt-2 flex justify-between items-center">
+                      <span className="text-gray-400">{t('myBookingsPage.returnModalActualReturn')}</span>
+                      <span className="font-bold text-purple-400">{details.now.toLocaleString('vi-VN')}</span>
+                    </div>
+                  </div>
+
+                  {/* Thông báo chi phí / hoàn trả */}
+                  {details.type === 'early' && (
+                    <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl space-y-2">
+                      <div className="flex items-center gap-2 text-green-400 text-sm font-bold">
+                        <CheckCircle size={16} />
+                        <span>{t('myBookingsPage.returnModalEarlyReturn')}</span>
+                      </div>
+                      <p className="text-xs leading-relaxed text-gray-300">
+                        {t('myBookingsPage.returnModalEarlyRefundDesc', { 
+                          earlyTime: `${details.hours} ${language === 'vi' ? 'giờ' : 'hours'}`, 
+                          amount: details.amount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') 
+                        })}
+                      </p>
+                      <div className="flex gap-1.5 items-start text-[10px] text-green-400/80 leading-normal">
+                        <Info size={12} className="shrink-0 mt-0.5" />
+                        <span>{t('myBookingsPage.returnModalRefundNote')}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {details.type === 'late' && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl space-y-2">
+                      <div className="flex items-center gap-2 text-amber-400 text-sm font-bold">
+                        <ShieldAlert size={16} />
+                        <span>{t('myBookingsPage.returnModalLateReturn')}</span>
+                      </div>
+                      <p className="text-xs leading-relaxed text-gray-300">
+                        {t('myBookingsPage.returnModalLateSurchargeDesc', { 
+                          lateTime: `${details.hours} ${language === 'vi' ? 'giờ' : 'hours'}`, 
+                          amount: details.amount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') 
+                        })}
+                      </p>
+                    </div>
+                  )}
+
+                  {details.type === 'normal' && (
+                    <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl space-y-2">
+                      <div className="flex items-center gap-2 text-blue-400 text-sm font-bold">
+                        <CheckCircle size={16} />
+                        <span>{t('myBookingsPage.returnModalNormalReturn')}</span>
+                      </div>
+                      <p className="text-xs text-gray-300">
+                        {t('myBookingsPage.returnModalNormalDesc', { 
+                          amount: activeReturnBooking.totalAmount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') 
+                        })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-white/5 mt-5">
+                  <button
+                    type="button"
+                    onClick={() => setShowReturnModal(false)}
+                    className="px-4 py-2.5 bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 rounded-lg transition-all text-xs font-bold uppercase cursor-pointer"
+                  >
+                    {t('myBookingsPage.returnModalCancelButton')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReturnBookingSubmit}
+                    disabled={loading}
+                    className="px-5 py-2.5 bg-purple-600 text-white hover:bg-purple-700 font-bold rounded-lg transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(168,85,247,0.3)] cursor-pointer disabled:opacity-50"
+                  >
+                    {t('myBookingsPage.returnModalConfirmButton')}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Custom Cancel Confirm Modal */}
+      <AnimatePresence>
+        {showCancelModal && activeCancelBookingId && (() => {
+          const booking = bookings.find(b => b.id === activeCancelBookingId);
+          if (!booking) return null;
+          
+          const now = new Date();
+          const pickupTime = new Date(booking.pickupDateTime);
+          const hoursRemaining = (pickupTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+          const isNearPickup = hoursRemaining < 6;
+
+          return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowCancelModal(false)}
+                className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+              />
+              
+              <motion.div
+                initial={{ scale: 0.95, y: 15, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.95, y: 15, opacity: 0 }}
+                className="bg-surface border border-white/10 rounded-2xl p-6 shadow-2xl relative w-full max-w-md z-10 overflow-hidden text-gray-300"
+              >
+                <div className="absolute top-0 inset-x-0 h-1 bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]"></div>
+                
+                <button 
+                  onClick={() => setShowCancelModal(false)}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+                >
+                  <X size={20} />
+                </button>
+
+                <h3 className="font-display font-black text-lg text-white uppercase mb-4 flex items-center gap-2">
+                  <Trash2 size={20} className="text-red-400 shrink-0" />
+                  {t('myBookingsPage.cancelModalTitle')}
+                </h3>
+
+                <form onSubmit={handleCancelBookingSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">
+                      {t('myBookingsPage.cancelModalReasonLabel')}
+                    </label>
+                    <textarea 
+                      required
+                      rows={3}
+                      placeholder={t('myBookingsPage.cancelModalPlaceholder')}
+                      value={cancelReasonInput}
+                      onChange={(e) => setCancelReasonInput(e.target.value)}
+                      className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent block p-2.5 outline-none transition-all resize-none"
+                    />
+                  </div>
+
+                  {isNearPickup ? (
+                    <div className="bg-red-500/10 border border-red-500/20 p-3.5 rounded-xl flex gap-2 items-start">
+                      <ShieldAlert size={16} className="text-red-400 shrink-0 mt-0.5" />
+                      <span className="text-xs text-red-400 leading-normal">
+                        {language === 'vi' 
+                          ? 'Đơn đặt xe đã sát giờ nhận (dưới 6 tiếng). Bạn không thể thực hiện hủy đơn vào lúc này.' 
+                          : 'This booking is too close to pickup time (under 6 hours). Cancellation is not allowed at this moment.'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="bg-white/5 border border-white/10 p-3 rounded-xl flex gap-2 items-center">
+                      <Info size={16} className="text-gray-400 shrink-0" />
+                      <span className="text-[11px] text-gray-400">
+                        {t('myBookingsPage.cancelModalWarning')}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCancelModal(false)}
+                      className="px-4 py-2.5 bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 rounded-lg transition-all text-xs font-bold uppercase cursor-pointer"
+                    >
+                      {t('common.cancel')}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading || isNearPickup}
+                      className="px-5 py-2.5 bg-red-600 text-white hover:bg-red-700 font-bold rounded-lg transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(239,68,68,0.2)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {t('myBookingsPage.cancelModalConfirmBtn')}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Modal Lịch trình Tracking */}

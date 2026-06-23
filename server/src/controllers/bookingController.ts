@@ -1004,8 +1004,9 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
     const dailyRate = vehicle?.rentalPrice || 0;
     const hourlyRate = dailyRate / 24;
 
-    // Calculate late fees
+    // Calculate late fees or early refund
     const lateFee = calculateLateFees(returnedTime, scheduledReturnTime, hourlyRate);
+    let earlyRefund = 0;
     
     if (lateFee > 0) {
       booking.surcharges.push({
@@ -1016,6 +1017,25 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
         createdAt: new Date()
       });
       booking.totalAmount += lateFee;
+    } else {
+      // Calculate early refund (returned earlier than scheduled by 2 hours or more)
+      const earlyHours = Math.floor((scheduledReturnTime.getTime() - returnedTime.getTime()) / (1000 * 60 * 60));
+      if (earlyHours >= 2) {
+        // Refund 50% of the hourly rate for the unused hours
+        earlyRefund = Math.round(earlyHours * hourlyRate * 0.5);
+        earlyRefund = Math.min(earlyRefund, booking.totalAmount); // Prevent negative total amounts
+        
+        if (earlyRefund > 0) {
+          booking.surcharges.push({
+            surchargeType: 'Early Return Refund',
+            amount: -earlyRefund,
+            description: `Hoàn tiền trả xe sớm ${earlyHours} giờ (Hoàn 50% đơn giá thuê).`,
+            isPaid: true,
+            createdAt: new Date()
+          });
+          booking.totalAmount -= earlyRefund;
+        }
+      }
     }
 
     booking.status = 'Completed';
@@ -1031,6 +1051,8 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
       message: 'Đã xác nhận trả xe thành công',
       lateFeeApplied: lateFee > 0,
       lateFeeAmount: lateFee,
+      earlyRefundApplied: earlyRefund > 0,
+      earlyRefundAmount: earlyRefund,
       booking: formatBookingResponse(booking)
     });
 
