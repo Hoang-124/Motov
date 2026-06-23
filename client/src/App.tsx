@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { LanguageProvider } from './hooks/useLanguage';
+import { ToastProvider } from './hooks/useToast';
 import { Home } from './pages/Home';
 import { Bikes } from './pages/Bikes';
 import { MotorbikeDetail } from './pages/MotorbikeDetail';
@@ -57,7 +58,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <LanguageProvider>
-        <div className="min-h-screen bg-dark text-white flex flex-col font-sans selection:bg-neon selection:text-dark">
+        <ToastProvider>
+          <div className="min-h-screen bg-dark text-white flex flex-col font-sans selection:bg-neon selection:text-dark">
           {/* Header Navigation */}
           <Header />
 
@@ -184,7 +186,8 @@ export default function App() {
 
           {/* Footer */}
           <Footer />
-        </div>
+          </div>
+        </ToastProvider>
       </LanguageProvider>
     </BrowserRouter>
   );

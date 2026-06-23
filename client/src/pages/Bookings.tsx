@@ -6,9 +6,11 @@ import { bookingService, Booking } from '../services/bookingService'; // Import 
 import { useLanguage } from '../hooks/useLanguage';
 import { feedbackService } from '../services/feedbackService';
 import { BookingTrackingModal } from '../components/BookingTrackingModal';
+import { useToast } from '../hooks/useToast';
 
 export const Bookings = () => {
   const { language, t } = useLanguage();
+  const { showToast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -47,11 +49,11 @@ export const Bookings = () => {
         rating: feedbackRating,
         content: feedbackContent
       });
-      window.alert(language === 'vi' ? 'Gửi đánh giá thành công! Cảm ơn phản hồi của bạn.' : 'Feedback submitted successfully! Thank you for your feedback.');
+      showToast(language === 'vi' ? 'Gửi đánh giá thành công! Cảm ơn phản hồi của bạn.' : 'Feedback submitted successfully! Thank you for your feedback.', 'success');
       setReviewedBookingIds(prev => [...prev, selectedBookingId]);
       setShowFeedbackModal(false);
     } catch (err: any) {
-      window.alert(err.response?.data?.message || (language === 'vi' ? 'Không thể gửi đánh giá vào lúc này!' : 'Failed to submit feedback at this moment!'));
+      showToast(err.response?.data?.message || (language === 'vi' ? 'Không thể gửi đánh giá vào lúc này!' : 'Failed to submit feedback at this moment!'), 'error');
     } finally {
       setLoading(false);
     }
@@ -124,19 +126,19 @@ export const Bookings = () => {
     if (!activeCancelBookingId) return;
 
     if (!cancelReasonInput.trim()) {
-      window.alert(language === 'vi' ? 'Bạn phải nhập lý do hủy đơn!' : 'You must enter the cancellation reason!');
+      showToast(language === 'vi' ? 'Bạn phải nhập lý do hủy đơn!' : 'You must enter the cancellation reason!', 'warning');
       return;
     }
 
     try {
       setLoading(true);
       await bookingService.cancelBooking(activeCancelBookingId, cancelReasonInput);
-      window.alert(t('myBookingsPage.cancelModalSuccess'));
+      showToast(t('myBookingsPage.cancelModalSuccess'), 'success');
       setShowCancelModal(false);
       // Tải lại danh sách mới cập nhật trạng thái từ Server
       await loadMyBookings();
     } catch (err: any) {
-      window.alert(err.response?.data?.message || (language === 'vi' ? 'Không thể hủy đơn vào lúc này!' : 'Failed to cancel booking at this moment!'));
+      showToast(err.response?.data?.message || (language === 'vi' ? 'Không thể hủy đơn vào lúc này!' : 'Failed to cancel booking at this moment!'), 'error');
       setLoading(false);
     }
   };
@@ -154,12 +156,12 @@ export const Bookings = () => {
     try {
       setLoading(true);
       await bookingService.returnMotorbike(activeReturnBooking.id, new Date().toISOString());
-      window.alert(t('myBookingsPage.returnSuccess'));
+      showToast(t('myBookingsPage.returnSuccess'), 'success');
       setShowReturnModal(false);
       // Tải lại danh sách mới từ Server
       await loadMyBookings();
     } catch (err: any) {
-      window.alert(err.response?.data?.message || (language === 'vi' ? 'Không thể trả xe vào lúc này!' : 'Failed to return motorbike at this moment!'));
+      showToast(err.response?.data?.message || (language === 'vi' ? 'Không thể trả xe vào lúc này!' : 'Failed to return motorbike at this moment!'), 'error');
       setLoading(false);
     }
   };
