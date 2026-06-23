@@ -21,9 +21,10 @@ export function validateBookingInput(data: any): { valid: boolean; error?: strin
     return { valid: false, error: 'Định dạng ngày tháng không hợp lệ. Vui lòng sử dụng format ISO (YYYY-MM-DD)' };
   }
 
-  // Check if pickup date is in the future
-  if (pickup < now) {
-    return { valid: false, error: 'Ngày lấy xe phải là ngày trong tương lai' };
+  // Check if pickup date is in the future (allow 30 minutes grace period for user operations)
+  const minPickup = new Date(now.getTime() - 30 * 60 * 1000);
+  if (pickup < minPickup) {
+    return { valid: false, error: 'Ngày lấy xe phải là ngày trong tương lai (hoặc trễ không quá 30 phút)' };
   }
 
   // Check if return date is after pickup date
