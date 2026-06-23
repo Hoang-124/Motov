@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getMotorbikeById, Motorbike } from '../services/vehicleService';
 import { CalendarDays, MapPin, Phone, User, CreditCard, ArrowLeft, CheckCircle2, Ticket, X as XIcon } from 'lucide-react';
@@ -11,6 +11,29 @@ export const Booking = () => {
   const navigate = useNavigate();
   
   const [bike, setBike] = useState<Motorbike | undefined>(undefined);
+  
+  const pickupInputRef = useRef<HTMLInputElement>(null);
+  const returnInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenPickupPicker = () => {
+    if (pickupInputRef.current) {
+      try {
+        pickupInputRef.current.showPicker();
+      } catch (e) {
+        pickupInputRef.current.focus();
+      }
+    }
+  };
+
+  const handleOpenReturnPicker = () => {
+    if (returnInputRef.current) {
+      try {
+        returnInputRef.current.showPicker();
+      } catch (e) {
+        returnInputRef.current.focus();
+      }
+    }
+  };
   const [activeImage, setActiveImage] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -322,26 +345,42 @@ export const Booking = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="block text-sm font-semibold text-gray-300">Thời gian lấy xe</label>
-                      <div className="relative">
+                      <div 
+                        onClick={handleOpenPickupPicker}
+                        className="relative flex items-center bg-black/50 border border-gray-800 rounded-lg hover:border-neon focus-within:ring-2 focus-within:ring-neon focus-within:border-transparent transition-all duration-300 cursor-pointer"
+                      >
+                        <div className="pl-3.5 pointer-events-none">
+                          <CalendarDays size={18} className="text-neon" />
+                        </div>
                         <input 
                           type="datetime-local" 
+                          ref={pickupInputRef}
                           required
                           value={pickupDate}
                           onChange={(e) => setPickupDate(e.target.value)}
-                          className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3.5 outline-none transition-all duration-300"
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full bg-transparent text-gray-300 text-sm block pl-3 p-3.5 outline-none cursor-pointer"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <label className="block text-sm font-semibold text-gray-300">Thời gian trả xe</label>
-                      <div className="relative">
+                      <div 
+                        onClick={handleOpenReturnPicker}
+                        className="relative flex items-center bg-black/50 border border-gray-800 rounded-lg hover:border-neon focus-within:ring-2 focus-within:ring-neon focus-within:border-transparent transition-all duration-300 cursor-pointer"
+                      >
+                        <div className="pl-3.5 pointer-events-none">
+                          <CalendarDays size={18} className="text-neon" />
+                        </div>
                         <input 
                           type="datetime-local" 
+                          ref={returnInputRef}
                           required
                           value={returnDate}
                           onChange={(e) => setReturnDate(e.target.value)}
-                          className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3.5 outline-none transition-all duration-300"
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full bg-transparent text-gray-300 text-sm block pl-3 p-3.5 outline-none cursor-pointer"
                         />
                       </div>
                     </div>
