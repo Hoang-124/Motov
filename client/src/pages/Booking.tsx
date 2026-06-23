@@ -239,6 +239,14 @@ export const Booking = () => {
         return;
       }
 
+      // Re-validate dates before calling API (in case user stayed on step 2 too long)
+      const dateError = validateDates(pickupDate, returnDate);
+      if (dateError) {
+        setApiError(dateError);
+        setStep(1); // Auto redirect back to step 1
+        return;
+      }
+
       try {
         setLoading(true);
         
@@ -254,8 +262,23 @@ export const Booking = () => {
 
         setSuccess(true);
       } catch (error: any) {
-        // Bắt mọi message thông báo lỗi (hết xe, trùng lịch, thiếu thông tin) từ BE trả về
-        setApiError(error.response?.data?.message || 'Có lỗi xảy ra khi đặt xe. Vui lòng thử lại!');
+        const errorMsg = error.response?.data?.message || 'Có lỗi xảy ra khi đặt xe. Vui lòng thử lại!';
+        setApiError(errorMsg);
+        
+        // Auto redirect to step 1 if the backend error is related to dates/times
+        const lowerMsg = errorMsg.toLowerCase();
+        if (
+          lowerMsg.includes('ngày') || 
+          lowerMsg.includes('thời gian') || 
+          lowerMsg.includes('quá khứ') || 
+          lowerMsg.includes('tương lai') ||
+          lowerMsg.includes('date') || 
+          lowerMsg.includes('time') || 
+          lowerMsg.includes('past') || 
+          lowerMsg.includes('future')
+        ) {
+          setStep(1);
+        }
       } finally {
         setLoading(false);
       }
