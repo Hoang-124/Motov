@@ -1,14 +1,13 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useBookingTracking, TrackingEvent } from '../hooks/useBookingTracking';
-import { Booking } from '../types';
-import { COLORS } from '../theme/colors';
+import { useBookingTracking, TrackingEvent } from '../../../hooks/useBookingTracking';
+import { COLORS } from '../../../theme/colors';
 
 interface BookingTrackingModalProps {
+  bookingId: string | null;
   visible: boolean;
   onClose: () => void;
-  booking: Booking | null;
 }
 
 const getStatusIcon = (status: string, completed: boolean) => {
@@ -35,13 +34,10 @@ const getStatusColorHex = (status: string, completed: boolean) => {
   }
 };
 
-export const BookingTrackingModal: React.FC<BookingTrackingModalProps> = ({ booking, visible, onClose }) => {
-  const bookingId = booking ? booking.id : null;
+export const BookingTrackingModal: React.FC<BookingTrackingModalProps> = ({ bookingId, visible, onClose }) => {
   const { timeline: rawTimeline, isLoading, error } = useBookingTracking(bookingId);
   // Guard: ensure timeline is always an array even if the API returns unexpected shape
   const timeline: TrackingEvent[] = Array.isArray(rawTimeline) ? rawTimeline : [];
-
-  if (!booking) return null;
 
   return (
     <Modal
@@ -57,13 +53,6 @@ export const BookingTrackingModal: React.FC<BookingTrackingModalProps> = ({ book
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={COLORS.textSecondary || '#374151'} />
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.bookingSummary}>
-            <Text style={styles.summaryLabel}>Mã đơn hàng</Text>
-            <Text style={styles.summaryValue}>#{booking.id}</Text>
-            <Text style={styles.summarySubText}>Xe: {booking.bikeName}</Text>
-            <Text style={styles.summarySubText}>Trạng thái: <Text style={styles.accentText}>{booking.statusLabel || booking.status}</Text></Text>
           </View>
 
           {isLoading ? (
@@ -149,34 +138,6 @@ const styles = StyleSheet.create({
   },
   closeBtn: {
     padding: 8,
-  },
-  bookingSummary: {
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 20,
-  },
-  summaryLabel: {
-    color: '#6B7280',
-    fontSize: 11,
-    textTransform: 'uppercase',
-  },
-  summaryValue: {
-    color: '#4F46E5',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginVertical: 2,
-  },
-  summarySubText: {
-    color: '#4B5563',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  accentText: {
-    color: '#4F46E5',
-    fontWeight: 'bold',
   },
   centerContainer: {
     paddingVertical: 40,

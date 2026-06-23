@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -14,11 +14,14 @@ import {
   updateBookingStatus,
   returnBookingWithFees,
   approveOwnerRequest,
-  rejectOwnerRequest
+  rejectOwnerRequest,
+  fetchBookings
 } from '../../bookings/bookingsSlice';
 import { Booking } from '../../../types';
 import { ReturnMotorbikeModal } from '../../../components/ReturnMotorbikeModal';
 import { useLanguage } from '../../../hooks/useLanguage';
+
+import { BookingCard } from '../../bookings/components/BookingCard';
 
 export const StaffBookingsScreen: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -27,7 +30,11 @@ export const StaffBookingsScreen: React.FC = () => {
   const ownerRequests = useAppSelector(state => state.bookings.ownerRequests);
 
   const [activeTab, setActiveTab] = useState<'bookings' | 'ownerRequests'>('bookings');
-  
+
+  useEffect(() => {
+    dispatch(fetchBookings());
+  }, [dispatch]);
+
   // Return Motorbike Modal States
   const [returnModalVisible, setReturnModalVisible] = useState(false);
   const [selectedReturnBooking, setSelectedReturnBooking] = useState<Booking | null>(null);
@@ -69,9 +76,21 @@ export const StaffBookingsScreen: React.FC = () => {
     ]);
   };
 
-  const pendingBookings = bookingsState.filter(b => b.status === 'Chờ duyệt');
-  const ongoingBookings = bookingsState.filter(b => b.status === 'Đang thuê');
-  const otherBookings = bookingsState.filter(b => b.status !== 'Chờ duyệt' && b.status !== 'Đang thuê');
+  const pendingBookings = bookingsState.filter(b => b.status === 'Chờ duyệt' || b.status === 'Pending');
+  const ongoingBookings = bookingsState.filter(b => b.status === 'Đang thuê' || b.status === 'Ongoing' || b.status === 'Confirmed' || b.status === 'Rented');
+  const otherBookings = bookingsState.filter(b =>
+    !['Chờ duyệt', 'Pending', 'Đang thuê', 'Ongoing', 'Confirmed', 'Rented'].includes(b.status)
+  );
+
+  const handleStaffAction = (booking: Booking, action: 'Confirmed' | 'Cancelled' | 'Ongoing' | 'Return') => {
+    if (action === 'Confirmed') handleAction(booking.id, 'Confirmed', 'Chờ nhận xe');
+    if (action === 'Cancelled') handleAction(booking.id, 'Cancelled', 'Đã hủy');
+    if (action === 'Ongoing') handleAction(booking.id, 'Ongoing', 'Đang thuê');
+    if (action === 'Return') {
+      setSelectedReturnBooking(booking);
+      setReturnModalVisible(true);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -122,38 +141,15 @@ export const StaffBookingsScreen: React.FC = () => {
             <View style={styles.listContainer}>
               {pendingBookings.length > 0 ? (
                 pendingBookings.map(b => (
-                  <View key={b.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                      <Text style={styles.bikeName}>{b.bikeName}</Text>
-                      <View style={[styles.statusBadge, styles.badgePending]}>
-                        <Text style={[styles.statusBadgeText, { color: COLORS.warning }]}>
-                          {b.statusLabel || b.status}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.cardBody}>
-                      <Text style={styles.infoText}>Khách thuê: <Text style={styles.whiteText}>{b.fullName}</Text></Text>
-                      <Text style={styles.infoText}>SĐT: <Text style={styles.whiteText}>{b.phone}</Text></Text>
-                      <Text style={styles.infoText}>Hạn thuê: <Text style={styles.whiteText}>{b.date}</Text></Text>
-                      <Text style={styles.infoText}>Điểm giao xe: <Text style={styles.whiteText}>{b.location}</Text></Text>
-                    </View>
-
-                    <View style={styles.cardActions}>
-                      <TouchableOpacity 
-                        style={styles.btnReject} 
-                        onPress={() => handleAction(b.id, 'Đã hủy', 'Đã hủy')}
-                      >
-                        <Text style={styles.btnRejectText}>Từ chối</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={styles.btnApprove} 
-                        onPress={() => handleAction(b.id, 'Đang thuê', 'Đang thuê')}
-                      >
-                        <Text style={styles.btnApproveText}>Phê duyệt</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    isStaff={true}
+                    onStaffAction={handleStaffAction}
+                    handleCancelBooking={() => { }}
+                    onOpenFeedback={() => { }}
+                    onOpenTracking={() => { }}
+                  />
                 ))
               ) : (
                 <View style={styles.emptyCard}>
@@ -167,34 +163,15 @@ export const StaffBookingsScreen: React.FC = () => {
             <View style={styles.listContainer}>
               {ongoingBookings.length > 0 ? (
                 ongoingBookings.map(b => (
-                  <View key={b.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                      <Text style={styles.bikeName}>{b.bikeName}</Text>
-                      <View style={[styles.statusBadge, styles.badgeOngoing]}>
-                        <Text style={[styles.statusBadgeText, { color: COLORS.approved }]}>
-                          {b.statusLabel || b.status}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    <View style={styles.cardBody}>
-                      <Text style={styles.infoText}>Khách: <Text style={styles.whiteText}>{b.fullName}</Text></Text>
-                      <Text style={styles.infoText}>Hạn trả: <Text style={styles.whiteText}>{b.date.split(' - ')[1] || b.date}</Text></Text>
-                    </View>
-
-                    <View style={styles.cardActions}>
-                      <TouchableOpacity 
-                        style={styles.btnReturn} 
-                        onPress={() => {
-                          setSelectedReturnBooking(b);
-                          setReturnModalVisible(true);
-                        }}
-                      >
-                        <Feather name="key" size={12} color={COLORS.accentDark} style={{ marginRight: 6 }} />
-                        <Text style={styles.btnReturnText}>Thu hồi xe</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    isStaff={true}
+                    onStaffAction={handleStaffAction}
+                    handleCancelBooking={() => { }}
+                    onOpenFeedback={() => { }}
+                    onOpenTracking={() => { }}
+                  />
                 ))
               ) : (
                 <View style={styles.emptyCard}>
@@ -208,28 +185,15 @@ export const StaffBookingsScreen: React.FC = () => {
             <View style={styles.listContainer}>
               {otherBookings.length > 0 ? (
                 otherBookings.slice(0, 5).map(b => (
-                  <View key={b.id} style={[styles.card, { opacity: 0.85 }]}>
-                    <View style={styles.cardHeader}>
-                      <Text style={styles.bikeName}>{b.bikeName}</Text>
-                      <View style={[
-                        styles.statusBadge,
-                        (b.status === 'Đã trả' || b.status === 'Completed' || b.status === 'Đã đánh giá') && styles.badgeCompleted,
-                        (b.status === 'Đã hủy' || b.status === 'Cancelled') && styles.badgeCancelled,
-                      ]}>
-                        <Text style={[
-                          styles.statusBadgeText,
-                          (b.status === 'Đã trả' || b.status === 'Completed' || b.status === 'Đã đánh giá') && { color: '#3b82f6' },
-                          (b.status === 'Đã hủy' || b.status === 'Cancelled') && { color: COLORS.danger },
-                        ]}>
-                          {b.statusLabel || b.status}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.cardBody}>
-                      <Text style={styles.infoText}>Khách: <Text style={styles.whiteText}>{b.fullName}</Text></Text>
-                      <Text style={styles.infoText}>Hạn thuê: <Text style={styles.whiteText}>{b.date}</Text></Text>
-                    </View>
-                  </View>
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    isStaff={true}
+                    onStaffAction={handleStaffAction}
+                    handleCancelBooking={() => { }}
+                    onOpenFeedback={() => { }}
+                    onOpenTracking={() => { }}
+                  />
                 ))
               ) : (
                 <View style={styles.emptyCard}>
@@ -264,14 +228,14 @@ export const StaffBookingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.cardActions}>
-                      <TouchableOpacity 
-                        style={styles.btnReject} 
+                      <TouchableOpacity
+                        style={styles.btnReject}
                         onPress={() => handleRejectOwner(r.id, r.name)}
                       >
                         <Text style={styles.btnRejectText}>Từ chối</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={styles.btnApprove} 
+                      <TouchableOpacity
+                        style={styles.btnApprove}
                         onPress={() => handleApproveOwner(r.id, r.name)}
                       >
                         <Text style={styles.btnApproveText}>Duyệt đối tác</Text>
