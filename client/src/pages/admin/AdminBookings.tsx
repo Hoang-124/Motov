@@ -217,9 +217,9 @@ export const AdminBookings = () => {
         {/* Top Header Actions */}
         <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-display font-black text-neon uppercase tracking-tight text-glow flex items-center gap-3">
-              <ClipboardList size={32} />
-              Hệ thống Quản lý Đơn hàng & Đối tác (Admin)
+            <h1 className="text-2xl font-display font-black text-white tracking-tight flex items-center gap-3">
+              <ClipboardList size={28} className="text-gray-400" />
+              Hệ thống quản lý đơn hàng & đối tác
             </h1>
             <p className="text-gray-400 text-sm mt-1">
               Phê duyệt đối tác chủ xe mới, phê duyệt đơn đặt xe và điều phối quy trình thuê xe
@@ -329,7 +329,7 @@ export const AdminBookings = () => {
                 <tbody>
                   {filteredBookings.map((booking) => (
                     <tr key={booking.id} className="border-b border-gray-800/60 hover:bg-surface/20 transition-colors">
-                      <td className="py-4 px-6 font-mono text-neon text-xs font-semibold">
+                      <td className="py-4 px-6 font-mono text-neon text-xs font-semibold whitespace-nowrap">
                         {booking.bookingCode}
                       </td>
                       <td className="py-4 px-6">
@@ -346,16 +346,16 @@ export const AdminBookings = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-xs text-gray-300">
+                      <td className="py-4 px-6 text-xs text-gray-300 whitespace-nowrap">
                         <div className="flex items-center gap-1"><CalendarDays size={12} className="text-gray-500" /> Nhận: {formatDate(booking.pickupDateTime)}</div>
                         <div className="flex items-center gap-1 mt-1"><CalendarDays size={12} className="text-gray-500" /> Trả: {formatDate(booking.returnDateTime)}</div>
-                        <div className="text-gray-500 mt-1">Số ngày: <span className="text-white font-semibold">{booking.rentalDays} ngày</span></div>
+                        <div className="text-gray-500 mt-1">Số ngày: <span className="text-white font-semibold whitespace-nowrap">{booking.rentalDays} ngày</span></div>
                       </td>
-                      <td className="py-4 px-6 font-semibold text-white">
+                      <td className="py-4 px-6 font-semibold text-white whitespace-nowrap">
                         {booking.totalAmount.toLocaleString('vi-VN')} VNĐ
                       </td>
                       <td className="py-4 px-6">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusColorClass(booking.status)}`}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${getStatusColorClass(booking.status)}`}>
                           {booking.statusLabel}
                         </span>
                       </td>

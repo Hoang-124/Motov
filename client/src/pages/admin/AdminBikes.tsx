@@ -284,8 +284,8 @@ export const AdminBikes = () => {
 
         <div className="flex flex-col sm:flex-row justify-between items-center mb-10 gap-4">
           <div className="text-center sm:text-left">
-            <h1 className="font-display font-black text-4xl text-neon uppercase text-glow tracking-tight mb-2">
-              Quản Lý Dòng Xe
+            <h1 className="font-display font-black text-3xl text-white tracking-tight mb-2">
+              Quản lý dòng xe
             </h1>
             <p className="text-gray-400 text-sm">
               Xem danh sách, kiểm duyệt xe mới của chủ xe đối tác hoặc cập nhật thông tin dòng xe máy
@@ -304,7 +304,7 @@ export const AdminBikes = () => {
             <button
               onClick={openAddModal}
               disabled={isLoading}
-              className="flex items-center gap-2 bg-neon text-dark font-bold px-6 py-3.5 rounded-lg hover:bg-[#bbf000] transition-all duration-300 shadow-[0_0_15px_rgba(204,255,0,0.3)] hover:scale-102 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              className="flex items-center gap-2 bg-neon text-dark font-bold px-5 py-3 rounded-lg hover:bg-[#bbf000] transition-all duration-300 shadow-md hover:shadow-[0_0_12px_rgba(204,255,0,0.25)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               <Plus size={18} />
               THÊM XE MỚI
@@ -388,7 +388,7 @@ export const AdminBikes = () => {
                         <span className="text-[10px] text-gray-500 font-mono block mt-1">Biển số: {bike.licensePlate}</span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="px-2.5 py-0.5 rounded text-xs bg-black text-neon border border-neon/15">
+                        <span className="px-2.5 py-0.5 rounded text-xs bg-black text-neon border border-neon/15 whitespace-nowrap">
                           {bike.category}
                         </span>
                       </td>
@@ -400,10 +400,10 @@ export const AdminBikes = () => {
                           </span>
                         </div>
                       </td>
-                      <td className="py-4 px-6 font-medium text-neon">{bike.rentalPrice.toLocaleString('vi-VN')} VNĐ</td>
+                      <td className="py-4 px-6 font-medium text-neon whitespace-nowrap">{bike.rentalPrice.toLocaleString('vi-VN')} VNĐ</td>
                       <td className="py-4 px-6">
                         <div>
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${
                             bike.status === 'Available' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
                             bike.status === 'PendingApproval' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
                             bike.status === 'Rented' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
