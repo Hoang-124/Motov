@@ -8,6 +8,7 @@ export interface Bike {
   images?: string[];
   featured: boolean;
   ownerEmail?: string;
+  ownerId?: string;
 }
 
 export interface Surcharge {

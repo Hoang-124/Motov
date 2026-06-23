@@ -275,7 +275,12 @@ export const login = async (req: Request, res: Response) => {
         role: mapBackendRoleToFrontend(user.roles),
         phoneNumber: user.phoneNumber,
         avatarUrl: user.avatarUrl || '',
-        status: user.status
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        gender: user.gender || '',
+        dob: user.dob || '',
+        status: user.status,
+        identityStatus: user.identityStatus || null
       }
     });
   } catch (error: any) {
@@ -609,7 +614,12 @@ export const googleLogin = async (req: Request, res: Response) => {
         role: mapBackendRoleToFrontend(user.roles),
         phoneNumber: user.phoneNumber || '',
         avatarUrl: user.avatarUrl || '',
-        status: user.status
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        gender: user.gender || '',
+        dob: user.dob || '',
+        status: user.status,
+        identityStatus: user.identityStatus || null
       }
     });
 

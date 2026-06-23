@@ -1,104 +1,200 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { Booking, OwnerRequest } from '../../types';
+import { API_BASE_URL } from '../../constants/api';
 
 interface BookingsState {
   bookings: Booking[];
   ownerRequests: OwnerRequest[];
+  loading: boolean;
+  error: string | null;
 }
 
-const mockBookings: Booking[] = [
-  {
-    id: "BKG-9843",
-    bikeId: "honda-vision-smartkey",
-    bikeName: "Honda Vision Smartkey",
-    image: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&q=80&w=800",
-    price: "90.000",
-    date: "16/06/2026 - 18/06/2026",
-    location: "Sân bay Đà Nẵng",
-    fullName: "Nguyễn Văn An",
-    phone: "0905123456",
-    status: "Chờ duyệt",
-    statusLabel: "Chờ duyệt",
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-    pickupDateTime: "2026-06-16T08:00:00.000Z",
-    returnDateTime: "2026-06-18T08:00:00.000Z",
-    pickupLocation: { address: "Sân bay Đà Nẵng" },
-    returnLocation: { address: "Sân bay Đà Nẵng" },
-    rentalDays: 2,
-    totalAmount: 180000,
-    surcharges: [],
-  },
-  {
-    id: "BKG-7654",
-    bikeId: "honda-air-blade",
-    bikeName: "Honda Air Blade",
-    image: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&q=80&w=800",
-    price: "130.000",
-    date: "14/06/2026 - 16/06/2026",
-    location: "Ga Đà Nẵng",
-    fullName: "Trần Thị Bình",
-    phone: "0905987654",
-    status: "Đang thuê",
-    statusLabel: "Đang thuê",
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    pickupDateTime: "2026-06-14T08:00:00.000Z",
-    returnDateTime: "2026-06-16T08:00:00.000Z",
-    pickupLocation: { address: "Ga Đà Nẵng" },
-    returnLocation: { address: "Ga Đà Nẵng" },
-    rentalDays: 2,
-    totalAmount: 260000,
-    surcharges: [],
-  },
-  {
-    id: "BKG-1209",
-    bikeId: "vespa-sprint-primavera",
-    bikeName: "Vespa Sprint / Primavera",
-    image: "https://images.unsplash.com/photo-1623910398863-71ab529fb3df?auto=format&fit=crop&q=80&w=800",
-    price: "220.000",
-    date: "10/06/2026 - 12/06/2026",
-    location: "Sân bay Đà Nẵng",
-    fullName: "Lê Văn Cường",
-    phone: "0905555666",
-    status: "Đã trả",
-    statusLabel: "Hoàn thành",
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    pickupDateTime: "2026-06-10T08:00:00.000Z",
-    returnDateTime: "2026-06-12T08:00:00.000Z",
-    pickupLocation: { address: "Sân bay Đà Nẵng" },
-    returnLocation: { address: "Sân bay Đà Nẵng" },
-    rentalDays: 2,
-    totalAmount: 440000,
-    surcharges: [],
-  }
-];
-
-const mockOwnerRequests: OwnerRequest[] = [
-  {
-    id: "REQ-001",
-    username: "tranthim",
-    email: "tranthim@gmail.com",
-    name: "Trần Thị Mơ",
-    phoneNumber: "0905112233",
-    status: "Pending",
-    ownerRequestStatus: "Pending",
-    createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "REQ-002",
-    username: "lethanhn",
-    email: "lethanhn@gmail.com",
-    name: "Lê Thanh Nghị",
-    phoneNumber: "0905445566",
-    status: "Pending",
-    ownerRequestStatus: "Pending",
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  }
-];
 
 const initialState: BookingsState = {
-  bookings: mockBookings,
-  ownerRequests: mockOwnerRequests,
+  bookings: [],
+  ownerRequests: [],
+  loading: false,
+  error: null,
 };
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'Pending': return 'Chờ duyệt';
+    case 'Confirmed': return 'Đã duyệt';
+    case 'Rented': return 'Đang thuê';
+    case 'Completed': return 'Hoàn thành';
+    case 'Cancelled': return 'Đã hủy';
+    default: return status;
+  }
+};
+
+const normaliseBooking = (b: any): Booking => ({
+  id: b._id || b.id,
+  bookingCode: b.bookingCode || '',
+  bikeId: b.vehicleId || '',
+  bikeName: b.vehicleSnapshot?.name || b.vehicleModel || '',
+  image: b.vehicleSnapshot?.image || '',
+  price: String(b.vehicleSnapshot?.rentalPrice || b.totalAmount || ''),
+  date: b.pickupDateTime ? new Date(b.pickupDateTime).toLocaleDateString('vi-VN') : '',
+  location: b.pickupLocation?.address || '',
+  fullName: '',
+  phone: '',
+  status: b.status || 'Pending',
+  statusLabel: getStatusLabel(b.status || 'Pending'),
+  createdAt: b.createdAt ? new Date(b.createdAt).toLocaleDateString('vi-VN') : '',
+  pickupDateTime: b.pickupDateTime,
+  returnDateTime: b.returnDateTime,
+  totalAmount: b.totalAmount,
+  rentalDays: b.rentalDays,
+  surcharges: b.surcharges || [],
+});
+
+export const fetchBookings = createAsyncThunk('bookings/fetchBookings', async (_, { getState, rejectWithValue }) => {
+  try {
+    const state: any = getState();
+    const token = state.user?.token;
+    const role = state.user?.role;
+    if (!token) return rejectWithValue('No token found');
+
+    const endpoint = (role === 'staff' || role === 'admin') 
+      ? `${API_BASE_URL}/bookings` 
+      : `${API_BASE_URL}/bookings/my-bookings`;
+
+    const res = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success) return rejectWithValue(data.message);
+    return (data.bookings as any[]).map(normaliseBooking);
+  } catch (error: any) {
+    return rejectWithValue(error.message);
+  }
+});
+
+export const fetchOwnerRequests = createAsyncThunk('bookings/fetchOwnerRequests', async (_, { getState, rejectWithValue }) => {
+  try {
+    const state: any = getState();
+    const token = state.user?.token;
+    if (!token) return rejectWithValue('No token found');
+
+    const res = await fetch(`${API_BASE_URL}/auth/owner-requests`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success) return rejectWithValue(data.message);
+    return data.requests as OwnerRequest[];
+  } catch (error: any) {
+    return rejectWithValue(error.message);
+  }
+});
+
+export const approveOwnerRequest = createAsyncThunk('bookings/approveOwnerRequest', async (id: string, { getState, rejectWithValue }) => {
+  try {
+    const state: any = getState();
+    const token = state.user?.token;
+    const res = await fetch(`${API_BASE_URL}/auth/owner-requests/${id}/approve`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success) return rejectWithValue(data.message);
+    return id;
+  } catch (error: any) {
+    return rejectWithValue(error.message);
+  }
+});
+
+export const rejectOwnerRequest = createAsyncThunk('bookings/rejectOwnerRequest', async (id: string, { getState, rejectWithValue }) => {
+  try {
+    const state: any = getState();
+    const token = state.user?.token;
+    const res = await fetch(`${API_BASE_URL}/auth/owner-requests/${id}/reject`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success) return rejectWithValue(data.message);
+    return id;
+  } catch (error: any) {
+    return rejectWithValue(error.message);
+  }
+});
+
+export const updateBookingStatus = createAsyncThunk('bookings/updateBookingStatus', async ({ id, status, notes }: { id: string; status: string; notes?: string; statusLabel?: string }, { getState, rejectWithValue }) => {
+  try {
+    const state: any = getState();
+    const token = state.user?.token;
+    const res = await fetch(`${API_BASE_URL}/bookings/${id}`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}` 
+      },
+      body: JSON.stringify({ status, notes })
+    });
+    const data = await res.json();
+    if (!data.success) return rejectWithValue(data.message);
+    return { id, status, statusLabel: getStatusLabel(status) };
+  } catch (error: any) {
+    return rejectWithValue(error.message);
+  }
+});
+
+export const createBookingApi = createAsyncThunk(
+  'bookings/createBooking',
+  async (
+    payload: {
+      vehicleId: string;
+      pickupDateTime: string;
+      returnDateTime: string;
+      pickupLocation?: string | { address: string; coordinates: number[] };
+      returnLocation?: string | { address: string; coordinates: number[] };
+      promoCode?: string;
+    },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const state: any = getState();
+      const token = state.user?.token;
+      if (!token) return rejectWithValue('Chưa đăng nhập');
+
+      const res = await fetch(`${API_BASE_URL}/bookings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!data.success) return rejectWithValue(data.message);
+      return data.booking;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const cancelBooking = createAsyncThunk('bookings/cancelBooking', async (id: string, { getState, rejectWithValue }) => {
+  try {
+    const state: any = getState();
+    const token = state.user?.token;
+    // Tạm thời gọi POST /cancel nếu backend hỗ trợ, nếu không thì dùng update status.
+    const res = await fetch(`${API_BASE_URL}/bookings/${id}/cancel`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}` 
+      },
+      body: JSON.stringify({ cancelReason: 'Người dùng yêu cầu hủy' })
+    });
+    const data = await res.json();
+    if (!data.success) return rejectWithValue(data.message);
+    return id;
+  } catch (error: any) {
+    return rejectWithValue(error.message);
+  }
+});
 
 const bookingsSlice = createSlice({
   name: 'bookings',
@@ -107,21 +203,7 @@ const bookingsSlice = createSlice({
     addBooking(state, action: PayloadAction<Booking>) {
       state.bookings = [action.payload, ...state.bookings];
     },
-    cancelBooking(state, action: PayloadAction<string>) {
-      state.bookings = state.bookings.map(b => 
-        b.id === action.payload 
-          ? { ...b, status: 'Đã hủy', statusLabel: 'Đã hủy' } 
-          : b
-      );
-    },
-    updateBookingStatus(state, action: PayloadAction<{ id: string; status: string; statusLabel: string }>) {
-      const { id, status, statusLabel } = action.payload;
-      state.bookings = state.bookings.map(b => 
-        b.id === id 
-          ? { ...b, status, statusLabel } 
-          : b
-      );
-    },
+
     submitFeedback(state, action: PayloadAction<{ id: string; rating: number; content: string }>) {
       const { id, rating, content } = action.payload;
       state.bookings = state.bookings.map(b => 
@@ -151,24 +233,76 @@ const bookingsSlice = createSlice({
           surcharges: newSurcharges
         };
       });
-    },
-    approveOwnerRequest(state, action: PayloadAction<string>) {
-      state.ownerRequests = state.ownerRequests.filter(r => r.id !== action.payload);
-    },
-    rejectOwnerRequest(state, action: PayloadAction<string>) {
-      state.ownerRequests = state.ownerRequests.filter(r => r.id !== action.payload);
     }
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchBookings.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchBookings.fulfilled, (state, action) => {
+        state.loading = false;
+        state.bookings = action.payload;
+      })
+      .addCase(fetchBookings.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(fetchOwnerRequests.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchOwnerRequests.fulfilled, (state, action) => {
+        state.loading = false;
+        state.ownerRequests = action.payload;
+      })
+      .addCase(fetchOwnerRequests.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(approveOwnerRequest.fulfilled, (state, action) => {
+        state.ownerRequests = state.ownerRequests.filter(r => r.id !== action.payload);
+      })
+      .addCase(rejectOwnerRequest.fulfilled, (state, action) => {
+        state.ownerRequests = state.ownerRequests.filter(r => r.id !== action.payload);
+      })
+      .addCase(updateBookingStatus.fulfilled, (state, action) => {
+        const { id, status, statusLabel } = action.payload;
+        state.bookings = state.bookings.map(b => 
+          b.id === id 
+            ? { ...b, status: status as any, statusLabel } 
+            : b
+        );
+      })
+      .addCase(cancelBooking.fulfilled, (state, action) => {
+        state.bookings = state.bookings.map(b => 
+          b.id === action.payload 
+            ? { ...b, status: 'Cancelled' as any, statusLabel: 'Đã hủy' } 
+            : b
+        );
+      })
+      .addCase(createBookingApi.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createBookingApi.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload) {
+          state.bookings = [normaliseBooking(action.payload), ...state.bookings];
+        }
+      })
+      .addCase(createBookingApi.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+  }
 });
 
 export const { 
   addBooking, 
-  cancelBooking, 
-  updateBookingStatus, 
   submitFeedback, 
-  returnBookingWithFees,
-  approveOwnerRequest,
-  rejectOwnerRequest
+  returnBookingWithFees
 } = bookingsSlice.actions;
 
 export default bookingsSlice.reducer;

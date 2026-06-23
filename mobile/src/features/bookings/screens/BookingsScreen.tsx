@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,9 +11,9 @@ import { Feather } from '@expo/vector-icons';
 import { BookingCard } from '../components/BookingCard';
 import { COLORS } from '../../../theme/colors';
 import { useAppDispatch, useAppSelector } from '../../../app/store';
-import { cancelBooking, submitFeedback } from '../bookingsSlice';
+import { cancelBooking, submitFeedback, fetchBookings } from '../bookingsSlice';
 import { Booking } from '../../../types';
-import { BookingTrackingModal } from '../../../components/BookingTrackingModal';
+import { BookingTrackingModal } from '../components/BookingTrackingModal';
 import { FeedbackModal } from '../../../components/FeedbackModal';
 
 interface BookingsScreenProps {
@@ -23,6 +23,10 @@ interface BookingsScreenProps {
 export const BookingsScreen: React.FC<BookingsScreenProps> = ({ setActiveTab }) => {
   const dispatch = useAppDispatch();
   const bookings = useAppSelector(state => state.bookings.bookings);
+
+  useEffect(() => {
+    dispatch(fetchBookings());
+  }, [dispatch]);
 
   // Modal states
   const [trackingVisible, setTrackingVisible] = useState(false);
@@ -97,7 +101,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ setActiveTab }) 
           setTrackingVisible(false);
           setSelectedTrackingBooking(null);
         }}
-        booking={selectedTrackingBooking}
+        bookingId={selectedTrackingBooking?.id || null}
       />
 
       {/* Feedback Modal Component */}
