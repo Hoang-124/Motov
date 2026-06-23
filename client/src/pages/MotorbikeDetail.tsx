@@ -135,7 +135,7 @@ export const MotorbikeDetail = () => {
 
   return (
     <div className="pt-28 pb-20 min-h-screen bg-dark">
-      <div className="max-w-4xl mx-auto px-4 lg:px-8">
+      <div className="w-full max-w-[95%] xl:max-w-[1400px] 2xl:max-w-[1600px] mx-auto px-4 lg:px-8 2xl:px-12">
         {/* Back Button */}
         <button
           onClick={() => navigate('/bikes')}
@@ -146,11 +146,11 @@ export const MotorbikeDetail = () => {
         </button>
 
         {/* Main Content (2-Column Grid Layout) */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start mb-12">
           
           {/* Left Column: Image and Thumbnails Overlay */}
-          <div className="md:col-span-7 space-y-4">
-            <div className="relative aspect-square md:aspect-[4/3] bg-black border border-gray-800 rounded-2xl overflow-hidden group">
+          <div className="lg:col-span-7 space-y-4">
+            <div className="relative aspect-square md:aspect-[4/3] lg:aspect-[16/10] bg-black border border-gray-800 rounded-2xl overflow-hidden group">
               <img
                 src={activeImage || imageUrl}
                 alt={motorbike.vehicleModel}
@@ -193,7 +193,7 @@ export const MotorbikeDetail = () => {
           </div>
 
           {/* Right Column: Motorbike Details & Action Buttons */}
-          <div className="md:col-span-5 bg-surface border border-gray-800 rounded-2xl p-6 md:p-8 flex flex-col justify-between min-h-[400px]">
+          <div className="lg:col-span-5 bg-surface border border-gray-800 rounded-2xl p-6 md:p-8 flex flex-col justify-between min-h-[400px]">
             <div>
               {/* Header Title & Pricing */}
               <div className="flex justify-between items-start gap-4 mb-6">
@@ -256,7 +256,7 @@ export const MotorbikeDetail = () => {
                 {motorbike.features && motorbike.features.length > 0 && (
                   <div className="space-y-2 bg-black/25 p-4 rounded-xl border border-gray-800/40">
                     <h3 className="text-[10px] text-white font-bold uppercase tracking-wider mb-2">Đặc tính</h3>
-                    <div className="space-y-1.5 max-h-[80px] overflow-y-auto pr-1">
+                    <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
                       {motorbike.features.map((feature, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs text-gray-300">
                           <span className="w-1.5 h-1.5 rounded-full bg-neon shrink-0"></span>
