@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { Feedback } from '../models/Feedback.js';
 import { User } from '../models/User.js';
 import { Booking } from '../models/Booking.js';
+import { Vehicle } from '../models/Vehicle.js';
 import { Notification } from '../models/Notification.js';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { detectBadWords } from '../utils/badWordsFilter.js';
@@ -237,6 +238,17 @@ export const blockFeedback = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // 4. Send Notification to Vehicle Owner
+    const vehicle = await Vehicle.findById(feedback.vehicleId);
+    if (vehicle && vehicle.ownerId) {
+      await Notification.create({
+        userId: vehicle.ownerId,
+        title: 'Đánh giá vi phạm đã bị gỡ bỏ',
+        message: `Một đánh giá không phù hợp trên xe "${vehicle.vehicleModel}" (Biển số: ${vehicle.licensePlate}) của bạn đã bị Admin gỡ bỏ do vi phạm tiêu chuẩn cộng đồng.`,
+        type: 'System'
+      });
+    }
+
     res.status(200).json({
       success: true,
       message: 'Gỡ đánh giá và cảnh cáo thành viên thành công',
@@ -318,6 +330,56 @@ export const unblockFeedback = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi khôi phục đánh giá',
+      error: error.message
+    });
+  }
+};
+
+// [DELETE] /api/feedbacks/:id - Delete feedback completely (Admin only)
+export const deleteFeedback = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const feedback = await Feedback.findById(id);
+    if (!feedback) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đánh giá cần xóa'
+      });
+    }
+
+    // 1. Send Notifications to Customer and Owner before deleting
+    // Notify Customer (Author)
+    await Notification.create({
+      userId: feedback.userId,
+      title: 'Đánh giá đã bị xóa',
+      message: `Đánh giá của bạn trên hệ thống đã bị Admin xóa hoàn toàn khỏi cơ sở dữ liệu.`,
+      type: 'System'
+    });
+
+    // Notify Vehicle Owner (if exists and has owner)
+    const vehicle = await Vehicle.findById(feedback.vehicleId);
+    if (vehicle && vehicle.ownerId) {
+      await Notification.create({
+        userId: vehicle.ownerId,
+        title: 'Đánh giá trên xe của bạn đã bị xóa',
+        message: `Một đánh giá trên xe "${vehicle.vehicleModel}" (Biển số: ${vehicle.licensePlate}) của bạn đã bị Admin xóa hoàn toàn khỏi hệ thống.`,
+        type: 'System'
+      });
+    }
+
+    // 2. Delete from database
+    await Feedback.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Xóa đánh giá vĩnh viễn thành công'
+    });
+  } catch (error: any) {
+    console.error('Error deleting feedback:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi máy chủ khi xóa đánh giá',
       error: error.message
     });
   }

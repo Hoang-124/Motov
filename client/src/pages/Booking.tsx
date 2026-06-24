@@ -619,7 +619,9 @@ export const Booking = () => {
             </div>
 
             <div>
-              <span className="text-xs text-neon font-semibold uppercase px-2.5 py-1 rounded bg-neon/10 border border-neon/30">{bike.category}</span>
+              <span className="text-xs text-neon font-semibold uppercase px-2.5 py-1 rounded bg-neon/10 border border-neon/30">
+                {typeof bike.category === 'object' && bike.category !== null ? (bike.category as any).name : bike.category}
+              </span>
               <h2 className="font-display font-black text-2xl text-white mt-3">{bike.vehicleModel}</h2>
               <p className="text-neon font-semibold text-lg mt-1">{bike.rentalPrice ? bike.rentalPrice.toLocaleString() : '0'} VNĐ / Ngày</p>
             </div>
@@ -627,7 +629,9 @@ export const Booking = () => {
             <div className="border-t border-gray-800 pt-4 space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Loại xe:</span>
-                <span className="text-white font-medium">{bike.category}</span>
+                <span className="text-white font-medium">
+                  {typeof bike.category === 'object' && bike.category !== null ? (bike.category as any).name : bike.category}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Bảo hiểm:</span>

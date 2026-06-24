@@ -73,7 +73,7 @@ describe('getBookingTracking()', () => {
       status: 'Available',
       licensePlate: '12-A3 45678',
       transmissionType: 'Manual',
-      category: 'Motorbike',
+      category: new mongoose.Types.ObjectId(),
       vehicleModel: 'Honda Wave'
     });
 
@@ -110,7 +110,7 @@ describe('getBookingTracking()', () => {
       status: 'Available',
       licensePlate: '12-A3 45678',
       transmissionType: 'Manual',
-      category: 'Motorbike',
+      category: new mongoose.Types.ObjectId(),
       vehicleModel: 'Honda Wave'
     });
 
@@ -226,7 +226,7 @@ describe('returnMotorbike()', () => {
       status: 'Rented',
       licensePlate: '12-A3 45678',
       transmissionType: 'Manual',
-      category: 'Motorbike',
+      category: new mongoose.Types.ObjectId(),
       vehicleModel: 'Honda Wave'
     });
 
@@ -269,7 +269,7 @@ describe('returnMotorbike()', () => {
       status: 'Rented',
       licensePlate: '12-A3 45678',
       transmissionType: 'Manual',
-      category: 'Motorbike',
+      category: new mongoose.Types.ObjectId(),
       vehicleModel: 'Honda Wave'
     });
 

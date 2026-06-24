@@ -22,20 +22,21 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
     ? bike.imageUrls[0] 
     : 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&q=80&w=800';
 
-  const translateCategory = (cat: string) => {
-    if (language === 'vi') return cat;
+  const translateCategory = (cat: any) => {
+    const catName = typeof cat === 'object' && cat !== null ? cat.name : cat || '';
+    if (language === 'vi') return catName;
     if (language === 'ko') {
-      if (cat === 'Xe Côn Tay') return '수동 바이크 (매뉴얼)';
-      if (cat === 'Xe Máy Điện') return '전기 스쿠터';
-      if (cat === 'Xe Ga') return '자동 스쿠터 (오토)';
-      if (cat === 'Xe Số') return '세미오토';
-      return cat;
+      if (catName === 'Xe Côn Tay') return '수동 바이크 (매뉴얼)';
+      if (catName === 'Xe Máy Điện') return '전기 스쿠터';
+      if (catName === 'Xe Ga') return '자동 스쿠터 (오토)';
+      if (catName === 'Xe Số') return '세미오토';
+      return catName;
     }
-    if (cat === 'Xe Côn Tay') return 'Clutch Bike';
-    if (cat === 'Xe Máy Điện') return 'Electric Bike';
-    if (cat === 'Xe Ga') return 'Scooter';
-    if (cat === 'Xe Số') return 'Semi-Automatic';
-    return cat;
+    if (catName === 'Xe Côn Tay') return 'Clutch Bike';
+    if (catName === 'Xe Máy Điện') return 'Electric Bike';
+    if (catName === 'Xe Ga') return 'Scooter';
+    if (catName === 'Xe Số') return 'Semi-Automatic';
+    return catName;
   };
 
   const translateFeature = (feat: string) => {

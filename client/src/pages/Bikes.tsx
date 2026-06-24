@@ -42,7 +42,12 @@ export const Bikes = () => {
 
   // Available bike categories
   const categories = useMemo(() => {
-    const allCategories = bikes.map(bike => bike.category);
+    const allCategories = bikes.map(bike => {
+      if (typeof bike.category === 'object' && bike.category !== null) {
+        return (bike.category as any).name;
+      }
+      return bike.category;
+    }).filter(Boolean);
     return ['All', ...Array.from(new Set(allCategories))];
   }, [bikes]);
 
@@ -52,16 +57,24 @@ export const Bikes = () => {
 
     // Search query filter
     if (searchQuery.trim() !== '') {
-      result = result.filter(bike => 
-        bike.vehicleModel.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bike.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bike.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      result = result.filter(bike => {
+        const catName = typeof bike.category === 'object' && bike.category !== null
+          ? (bike.category as any).name
+          : bike.category;
+        return bike.vehicleModel.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (catName && catName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          bike.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      });
     }
 
     // Category filter
     if (selectedCategory !== 'All') {
-      result = result.filter(bike => bike.category === selectedCategory);
+      result = result.filter(bike => {
+        const catName = typeof bike.category === 'object' && bike.category !== null
+          ? (bike.category as any).name
+          : bike.category;
+        return catName === selectedCategory;
+      });
     }
 
     // Sort by price

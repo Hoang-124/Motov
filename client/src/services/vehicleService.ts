@@ -1,4 +1,5 @@
-// API service for vehicle/motorbike management
+import { Category } from './categoryService';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export interface Motorbike {
@@ -18,7 +19,7 @@ export interface Motorbike {
   rentalPrice: number;
   status: 'Available' | 'Rented' | 'Maintenance' | 'PendingApproval';
   description?: string;
-  category: string;
+  category: Category | string;
   transmissionType: 'Manual' | 'Automatic' | 'Semi-Automatic';
   regCertificateUrl?: string;
   imageUrls: string[];

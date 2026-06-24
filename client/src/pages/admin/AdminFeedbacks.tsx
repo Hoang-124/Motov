@@ -21,6 +21,7 @@ export const AdminFeedbacks = () => {
   const [isBlockOpen, setIsBlockOpen] = useState(false);
   const [isUnblockOpen, setIsUnblockOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   // Reason form state
   const [blockReason, setBlockReason] = useState('');
@@ -129,6 +130,29 @@ export const AdminFeedbacks = () => {
   const handleOpenDetail = (feedback: FeedbackItem) => {
     setSelectedFeedback(feedback);
     setIsDetailOpen(true);
+  };
+
+  // Open Delete Confirmation Modal
+  const handleOpenDelete = (feedback: FeedbackItem) => {
+    setSelectedFeedback(feedback);
+    setIsDeleteOpen(true);
+  };
+
+  // Delete Feedback Action
+  const handleDeleteFeedback = async () => {
+    if (!selectedFeedback) return;
+    setFormSaving(true);
+    try {
+      await feedbackService.deleteFeedback(selectedFeedback._id);
+      setIsDeleteOpen(false);
+      showToast('Đã xóa hoàn toàn đánh giá khỏi hệ thống thành công.');
+      fetchFeedbacks();
+    } catch (err: any) {
+      showToast(err.response?.data?.message || 'Lỗi khi xóa đánh giá.', true);
+      setIsDeleteOpen(false);
+    } finally {
+      setFormSaving(false);
+    }
   };
 
   // Render Star Rating
@@ -373,6 +397,14 @@ export const AdminFeedbacks = () => {
                               <Lock size={14} />
                             </button>
                           )}
+
+                          <button
+                            onClick={() => handleOpenDelete(fb)}
+                            className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-red-500 hover:bg-white/10 transition-all cursor-pointer"
+                            title="Xóa đánh giá vĩnh viễn"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </td>
 
@@ -548,6 +580,77 @@ export const AdminFeedbacks = () => {
                   className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(34,197,94,0.2)] cursor-pointer disabled:opacity-50"
                 >
                   {formSaving ? 'Đang xử lý...' : 'Xác nhận khôi phục'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ============================================================== */}
+      {/* 2.5. DELETE CONFIRMATION MODAL                                 */}
+      {/* ============================================================== */}
+      <AnimatePresence>
+        {isDeleteOpen && selectedFeedback && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsDeleteOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              className="bg-surface border border-red-500/20 rounded-2xl p-6 shadow-2xl relative w-full max-w-md z-10 overflow-hidden"
+            >
+              {/* Red top line */}
+              <div className="absolute top-0 inset-x-0 h-1 bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.5)]"></div>
+              
+              <button 
+                onClick={() => setIsDeleteOpen(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+
+              <h3 className="font-display font-black text-xl text-red-500 uppercase mb-4 flex items-center gap-2">
+                🚨 Xóa vĩnh viễn đánh giá
+              </h3>
+
+              <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                Bạn có chắc chắn muốn xóa **hoàn toàn** bản ghi đánh giá này khỏi cơ sở dữ liệu không?
+              </p>
+
+              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-xs text-red-400 mb-5 flex items-start gap-2.5">
+                <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
+                <p>
+                  Hành động này **không thể hoàn tác**. Bản ghi đánh giá sẽ bị loại bỏ vĩnh viễn khỏi cơ sở dữ liệu và không thể khôi phục lại.
+                </p>
+              </div>
+
+              <div className="bg-black/35 p-3 rounded-lg border border-white/5 mb-5 space-y-1.5 text-xs text-gray-400">
+                <p>NỘI DUNG: "{selectedFeedback.content}"</p>
+                <p className="text-neon">Người viết: @{selectedFeedback.userId?.username}</p>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setIsDeleteOpen(false)}
+                  disabled={formSaving}
+                  className="px-4 py-2 bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 rounded-lg transition-all text-xs font-bold uppercase cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleDeleteFeedback}
+                  disabled={formSaving}
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(220,38,38,0.2)] cursor-pointer disabled:opacity-50"
+                >
+                  {formSaving ? 'Đang xóa...' : 'Xác nhận xóa vĩnh viễn'}
                 </button>
               </div>
             </motion.div>
