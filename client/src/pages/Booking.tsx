@@ -47,6 +47,8 @@ export const Booking = () => {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [license, setLicense] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Banking'>('Banking');
+  const [deliveryMethod, setDeliveryMethod] = useState<'StorePickup' | 'HomeDelivery'>('StorePickup');
   const [success, setSuccess] = useState(false);
   const [apiError, setApiError] = useState(''); // Lưu lỗi từ server nếu có
 
@@ -139,6 +141,22 @@ export const Booking = () => {
             const resData = await response.json();
             if (response.ok && resData.success) {
               setIdentityStatus(resData.user.identityStatus || 'Unverified');
+              if (resData.user.phoneNumber) {
+                setPhone(resData.user.phoneNumber);
+              }
+              if (resData.user.citizenIdInfo?.idNumber) {
+                setLicense(resData.user.citizenIdInfo.idNumber);
+              }
+              let nameVal = resData.user.citizenIdInfo?.fullName;
+              if (!nameVal) {
+                const parts = [];
+                if (resData.user.lastName) parts.push(resData.user.lastName);
+                if (resData.user.firstName) parts.push(resData.user.firstName);
+                nameVal = parts.join(' ');
+              }
+              if (nameVal && nameVal.trim()) {
+                setFullName(nameVal.trim());
+              }
             }
           } catch (err) {
             console.error('Lỗi kiểm tra eKYC:', err);
@@ -250,15 +268,25 @@ export const Booking = () => {
       try {
         setLoading(true);
         
-        // Gọi API tạo đơn thuê xe thực tế
-        await bookingService.createBooking({
-          vehicleId: bike._id!, // ID xe liên kết database
+        // Gửi thông tin tạo đơn
+        const response = await bookingService.createBooking({
+          vehicleId: bike._id!,
           pickupDateTime: new Date(pickupDate).toISOString(),
           returnDateTime: new Date(returnDate).toISOString(),
-          pickupLocation: { address: location },
-          returnLocation: { address: location },
-          promoCode: appliedPromo ? appliedPromo.voucherCode : undefined
+          pickupLocation: { address: deliveryMethod === 'StorePickup' ? 'Nhận tại cửa hàng Motov' : location },
+          returnLocation: { address: deliveryMethod === 'StorePickup' ? 'Trả tại cửa hàng Motov' : location },
+          promoCode: appliedPromo ? appliedPromo.voucherCode : undefined,
+          paymentMethod,
+          deliveryMethod
         });
+
+        if (paymentMethod === 'Banking') {
+          const resUrl = await bookingService.getVNPayUrl(response.booking.id);
+          if (resUrl.paymentUrl) {
+            window.location.href = resUrl.paymentUrl;
+            return;
+          }
+        }
 
         setSuccess(true);
       } catch (error: any) {
@@ -411,24 +439,98 @@ export const Booking = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-300">Địa điểm giao nhận xe</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <MapPin size={18} className="text-neon" />
-                      </div>
-                      <select 
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none appearance-none cursor-pointer transition-all duration-300"
+                  {/* Payment Method */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-semibold text-gray-300">Phương thức thanh toán</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod('Banking');
+                        }}
+                        className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border text-sm font-bold transition-all cursor-pointer ${
+                          paymentMethod === 'Banking'
+                            ? 'bg-neon/10 border-neon text-neon shadow-[0_0_10px_rgba(204,255,0,0.1)]'
+                            : 'bg-black/50 border-gray-800 text-gray-400 hover:border-gray-700 hover:text-white'
+                        }`}
                       >
-                        <option value="Sân bay Đà Nẵng">Sân bay Đà Nẵng</option>
-                        <option value="Ga Đà Nẵng">Ga Đà Nẵng</option>
-                        <option value="Bán đảo Sơn Trà">Bán đảo Sơn Trà</option>
-                        <option value="Khách sạn khu vực Mỹ Khê">Khách sạn khu vực Mỹ Khê</option>
-                      </select>
+                        <CreditCard size={18} />
+                        VNPAY Banking
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod('Cash');
+                          setDeliveryMethod('StorePickup'); // Auto force store pickup
+                        }}
+                        className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border text-sm font-bold transition-all cursor-pointer ${
+                          paymentMethod === 'Cash'
+                            ? 'bg-neon/10 border-neon text-neon shadow-[0_0_10px_rgba(204,255,0,0.1)]'
+                            : 'bg-black/50 border-gray-800 text-gray-400 hover:border-gray-700 hover:text-white'
+                        }`}
+                      >
+                        <User size={18} />
+                        Tiền mặt
+                      </button>
                     </div>
                   </div>
+
+                  {/* Delivery Method */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-semibold text-gray-300">Hình thức giao nhận xe</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryMethod('StorePickup')}
+                        className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border text-sm font-bold transition-all cursor-pointer ${
+                          deliveryMethod === 'StorePickup'
+                            ? 'bg-neon/10 border-neon text-neon shadow-[0_0_10px_rgba(204,255,0,0.1)]'
+                            : 'bg-black/50 border-gray-800 text-gray-400 hover:border-gray-700 hover:text-white'
+                        }`}
+                      >
+                        Nhận tại cửa hàng
+                      </button>
+                      <button
+                        type="button"
+                        disabled={paymentMethod === 'Cash'}
+                        onClick={() => setDeliveryMethod('HomeDelivery')}
+                        className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border text-sm font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                          deliveryMethod === 'HomeDelivery'
+                            ? 'bg-neon/10 border-neon text-neon shadow-[0_0_10px_rgba(204,255,0,0.1)]'
+                            : 'bg-black/50 border-gray-800 text-gray-400 hover:border-gray-700 hover:text-white'
+                        }`}
+                      >
+                        Giao xe tận nơi
+                      </button>
+                    </div>
+                    {paymentMethod === 'Cash' && (
+                      <p className="text-[10px] text-yellow-500/80 italic">
+                        * Thanh toán bằng tiền mặt bắt buộc nhận xe trực tiếp tại cửa hàng Motov.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Delivery Location Selection */}
+                  {deliveryMethod === 'HomeDelivery' && (
+                    <div className="space-y-2 animate-fade-in">
+                      <label className="block text-sm font-semibold text-gray-300">Địa điểm giao xe tận nơi</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <MapPin size={18} className="text-neon" />
+                        </div>
+                        <select 
+                          value={location}
+                          onChange={(e) => setLocation(e.target.value)}
+                          className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none appearance-none cursor-pointer transition-all duration-300"
+                        >
+                          <option value="Sân bay Đà Nẵng">Sân bay Đà Nẵng</option>
+                          <option value="Ga Đà Nẵng">Ga Đà Nẵng</option>
+                          <option value="Bán đảo Sơn Trà">Bán đảo Sơn Trà</option>
+                          <option value="Khách sạn khu vực Mỹ Khê">Khách sạn khu vực Mỹ Khê</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -443,9 +545,9 @@ export const Booking = () => {
                       <input 
                         type="text" 
                         required
-                        disabled // Khóa lại vì BE lấy thông tin dựa trên Account Login
                         value={fullName}
-                        className="w-full bg-gray-900/50 border border-gray-800 text-gray-500 text-sm rounded-lg block pl-10 p-3.5 outline-none"
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none transition-all duration-300"
                       />
                     </div>
                   </div>
@@ -540,8 +642,16 @@ export const Booking = () => {
                 </div>
               )}
               <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Hình thức nhận xe:</span>
+                <span className="text-white font-medium">{deliveryMethod === 'StorePickup' ? 'Nhận tại cửa hàng' : 'Giao xe tận nơi'}</span>
+              </div>
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Giao nhận tại:</span>
-                <span className="text-white font-medium">{location}</span>
+                <span className="text-white font-medium">{deliveryMethod === 'StorePickup' ? 'Nhận tại cửa hàng Motov' : location}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Thanh toán bằng:</span>
+                <span className="text-neon font-medium">{paymentMethod === 'Banking' ? 'VNPAY Banking (Online)' : 'Tiền mặt (Trực tiếp)'}</span>
               </div>
             </div>
 
@@ -624,6 +734,36 @@ export const Booking = () => {
                       {(totalAmountBeforeDiscount - (appliedPromo ? appliedPromo.discountAmount : 0)).toLocaleString()} VNĐ
                     </span>
                   </div>
+                  
+                  {paymentMethod === 'Banking' ? (
+                    <>
+                      <div className="flex justify-between text-xs text-yellow-400 font-bold border-t border-dashed border-white/5 pt-2.5">
+                        <span>Đặt cọc giữ xe (VNPAY 30%):</span>
+                        <span>
+                          {Math.round((totalAmountBeforeDiscount - (appliedPromo ? appliedPromo.discountAmount : 0)) * 0.3).toLocaleString()} VNĐ
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-300">
+                        <span>Thanh toán còn lại (70%):</span>
+                        <span>
+                          {((totalAmountBeforeDiscount - (appliedPromo ? appliedPromo.discountAmount : 0)) - Math.round((totalAmountBeforeDiscount - (appliedPromo ? appliedPromo.discountAmount : 0)) * 0.3)).toLocaleString()} VNĐ
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between text-xs text-yellow-400 font-bold border-t border-dashed border-white/5 pt-2.5">
+                        <span>Đặt cọc giữ xe:</span>
+                        <span>0 VNĐ (Không cần cọc online)</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-300">
+                        <span>Thanh toán trực tiếp tại cửa hàng (100%):</span>
+                        <span>
+                          {(totalAmountBeforeDiscount - (appliedPromo ? appliedPromo.discountAmount : 0)).toLocaleString()} VNĐ
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (

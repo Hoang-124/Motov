@@ -150,6 +150,8 @@ export const createBookingApi = createAsyncThunk(
       pickupLocation?: string | { address: string; coordinates: number[] };
       returnLocation?: string | { address: string; coordinates: number[] };
       promoCode?: string;
+      paymentMethod?: 'Cash' | 'Banking';
+      deliveryMethod?: 'StorePickup' | 'HomeDelivery';
     },
     { getState, rejectWithValue }
   ) => {
@@ -187,6 +189,28 @@ export const cancelBooking = createAsyncThunk('bookings/cancelBooking', async (i
         Authorization: `Bearer ${token}` 
       },
       body: JSON.stringify({ cancelReason: 'Người dùng yêu cầu hủy' })
+    });
+    const data = await res.json();
+    if (!data.success) return rejectWithValue(data.message);
+    return id;
+  } catch (error: any) {
+    return rejectWithValue(error.message);
+  }
+});
+
+export const returnBookingApi = createAsyncThunk('bookings/returnBooking', async (id: string, { getState, rejectWithValue }) => {
+  try {
+    const state: any = getState();
+    const token = state.user?.token;
+    if (!token) return rejectWithValue('Chưa đăng nhập');
+
+    const res = await fetch(`${API_BASE_URL}/bookings/${id}/return`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}` 
+      },
+      body: JSON.stringify({ returnedAt: new Date().toISOString() })
     });
     const data = await res.json();
     if (!data.success) return rejectWithValue(data.message);
@@ -293,6 +317,22 @@ const bookingsSlice = createSlice({
         }
       })
       .addCase(createBookingApi.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(returnBookingApi.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(returnBookingApi.fulfilled, (state, action) => {
+        state.loading = false;
+        state.bookings = state.bookings.map(b => 
+          b.id === action.payload 
+            ? { ...b, status: 'Completed' as any, statusLabel: 'Hoàn thành' } 
+            : b
+        );
+      })
+      .addCase(returnBookingApi.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

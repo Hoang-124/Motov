@@ -7,7 +7,7 @@ export const useReturnMotorbike = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const executeReturn = async (bookingId: string, actualReturnTime: string) => {
+  const executeReturn = async (bookingId: string, actualReturnTime: string, returnReason?: string) => {
     setIsSubmitting(true);
     setError(null);
     setSuccess(null);
@@ -15,8 +15,9 @@ export const useReturnMotorbike = () => {
     try {
       // Sanitize input to prevent XSS
       const cleanTime = DOMPurify.sanitize(actualReturnTime);
+      const cleanReason = returnReason ? DOMPurify.sanitize(returnReason) : undefined;
       
-      const data = await bookingService.returnMotorbike(bookingId, cleanTime);
+      const data = await bookingService.returnMotorbike(bookingId, cleanTime, cleanReason);
       setSuccess('Thu hồi xe thành công!');
       return data;
     } catch (err: any) {

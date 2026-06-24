@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -14,6 +14,7 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { Bike } from '../../../types';
 import { COLORS } from '../../../theme/colors';
 import { useAppSelector } from '../../../app/store';
+import { PromotionsModal } from '../components/PromotionsModal';
 
 const { width } = Dimensions.get('window');
 
@@ -41,6 +42,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   setActiveTab,
 }) => {
   const bikes = useAppSelector(state => state.bikes.bikes);
+  const [promotionsVisible, setPromotionsVisible] = useState(false);
   const featuredBikes = bikes.filter(b => b.featured);
   const otherBikes = bikes.filter(b => !b.featured).slice(0, 3);
 
@@ -132,6 +134,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Banner Khuyến Mãi */}
+      <View style={styles.promoBannerContainer}>
+        <TouchableOpacity 
+          style={styles.promoBanner}
+          onPress={() => setPromotionsVisible(true)}
+        >
+          <View style={styles.promoBannerLeft}>
+            <View style={styles.giftIconWrapper}>
+              <Feather name="gift" size={16} color={COLORS.accentDark} />
+            </View>
+            <View>
+              <Text style={styles.promoBannerTitle}>SIÊU ƯU ĐÃI THÁNG 6</Text>
+              <Text style={styles.promoBannerSub}>Nhận voucher giảm giá đến 50K!</Text>
+            </View>
+          </View>
+          <View style={styles.promoBannerRight}>
+            <Text style={styles.promoBannerAction}>XEM MÃ</Text>
+            <Feather name="chevron-right" size={14} color={COLORS.accent} />
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* Promotions Modal */}
+      <PromotionsModal
+        visible={promotionsVisible}
+        onClose={() => setPromotionsVisible(false)}
+      />
 
       {/* Featured Section */}
       <View style={styles.featuredSection}>
@@ -649,6 +679,60 @@ const styles = StyleSheet.create({
     color: COLORS.accentDark,
     fontWeight: 'bold',
     fontSize: 14,
+    letterSpacing: 0.5,
+  },
+  promoBannerContainer: {
+    paddingHorizontal: 20,
+    marginTop: 20,
+  },
+  promoBanner: {
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: 'rgba(190, 242, 100, 0.25)',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  promoBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  giftIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: COLORS.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promoBannerTitle: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  promoBannerSub: {
+    color: COLORS.textMuted,
+    fontSize: 10,
+    marginTop: 2,
+  },
+  promoBannerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  promoBannerAction: {
+    color: COLORS.accent,
+    fontSize: 11,
+    fontWeight: 'bold',
     letterSpacing: 0.5,
   },
 });

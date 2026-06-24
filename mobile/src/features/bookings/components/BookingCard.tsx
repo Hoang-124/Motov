@@ -17,6 +17,7 @@ interface BookingCardProps {
   onOpenFeedback: (id: string) => void;
   isStaff?: boolean;
   onStaffAction?: (booking: Booking, action: 'Confirmed' | 'Cancelled' | 'Ongoing' | 'Return') => void;
+  handleReturnBooking?: (id: string) => void;
 }
 
 export const BookingCard: React.FC<BookingCardProps> = ({
@@ -26,9 +27,12 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   onOpenFeedback,
   isStaff,
   onStaffAction,
+  handleReturnBooking,
 }) => {
   const isPending = booking.status === 'Pending';
-  const isOngoing = booking.status === 'Rented' || booking.status === 'Confirmed' || booking.status === 'Ongoing';
+  const isConfirmed = booking.status === 'Confirmed';
+  const isRented = booking.status === 'Rented' || booking.status === 'Ongoing';
+  const isOngoing = isConfirmed || isRented;
   const isCompleted = booking.status === 'Completed';
   const isReviewed = booking.status === 'Đã đánh giá';
   const isCancelled = booking.status === 'Cancelled';
@@ -42,7 +46,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
       <Image source={{ uri: booking.image }} style={styles.bookingImage} />
       <View style={styles.bookingDetails}>
         <View style={styles.bookingHeader}>
-          <Text style={styles.bookingCode}>Mã: #{booking.id}</Text>
+          <Text style={styles.bookingCode}>Mã: #{booking.bookingCode || booking.id}</Text>
           <View style={[
             styles.statusBadge,
             isPending && styles.statusBadgePending,
@@ -169,11 +173,19 @@ export const BookingCard: React.FC<BookingCardProps> = ({
               >
                 <Text style={styles.cancelBtnText}>Yêu cầu hủy</Text>
               </TouchableOpacity>
-            ) : isOngoing ? (
-              <View style={styles.lockedLabel}>
-                <Feather name="activity" size={12} color={COLORS.approved} style={{ marginRight: 4 }} />
-                <Text style={[styles.lockedLabelText, { color: COLORS.approved }]}>Đang thuê</Text>
+            ) : isConfirmed ? (
+              <View style={[styles.lockedLabel, { borderColor: COLORS.approvedBorder, backgroundColor: COLORS.approvedBg }]}>
+                <Feather name="clock" size={12} color={COLORS.approved} style={{ marginRight: 4 }} />
+                <Text style={[styles.lockedLabelText, { color: COLORS.approved }]}>Chờ nhận xe</Text>
               </View>
+            ) : isRented ? (
+              <TouchableOpacity 
+                style={[styles.feedbackBtn, { flex: 1.2, backgroundColor: COLORS.approved }]}
+                onPress={() => handleReturnBooking?.(booking.id)}
+              >
+                <Feather name="key" size={12} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={[styles.feedbackBtnText, { color: '#fff' }]}>Trả xe</Text>
+              </TouchableOpacity>
             ) : isCompleted ? (
               <TouchableOpacity 
                 style={styles.feedbackBtn}

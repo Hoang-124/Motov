@@ -10,12 +10,14 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Bike } from '../../../types';
 import { COLORS } from '../../../theme/colors';
 import { useAppDispatch, useAppSelector } from '../../../app/store';
 import { createBookingApi } from '../bookingsSlice';
+import { API_BASE_URL } from '../../../constants/api';
 
 interface BookingModalProps {
   visible: boolean;
@@ -47,6 +49,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const dispatch = useAppDispatch();
   const loading = useAppSelector(s => s.bookings.loading);
   const identityStatus = useAppSelector(s => s.user.identityStatus);
+  const token = useAppSelector(s => s.user.token);
   const isVerified = identityStatus === 'Verified';
 
   // Date + time fields (split so user can type them separately)
@@ -57,6 +60,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const [pickupLocation, setPickupLocation] = useState('');
   const [promoCode, setPromoCode] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Banking'>('Banking');
+  const [deliveryMethod, setDeliveryMethod] = useState<'StorePickup' | 'HomeDelivery'>('StorePickup');
 
   useEffect(() => {
     if (visible) {
@@ -64,10 +69,30 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setReturnDate(offsetDate(4));
       setPickupLocation(initialLocation || 'Sân bay Đà Nẵng');
       setPromoCode('');
+      setPaymentMethod('Banking');
+      setDeliveryMethod('StorePickup');
     }
   }, [visible, initialLocation]);
 
   if (!selectedBike) return null;
+
+  const getRentalDays = () => {
+    if (!pickupDate || !returnDate || !selectedBike) return 0;
+    try {
+      const start = new Date(`${pickupDate}T${pickupTime}:00`);
+      const end = new Date(`${returnDate}T${returnTime}:00`);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+      if (start >= end) return 0;
+      return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    } catch (e) {
+      return 0;
+    }
+  };
+
+  const rentalDays = getRentalDays();
+  const totalAmount = selectedBike ? (parseInt(selectedBike.price.replace(/\./g, ''), 10) || 0) * rentalDays : 0;
+  const depositAmount = Math.round(totalAmount * 0.3);
+  const remainingAmount = totalAmount - depositAmount;
 
   const handleConfirm = async () => {
     if (!isVerified) {
@@ -93,19 +118,65 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       vehicleId: selectedBike.id,
       pickupDateTime: toISO(pickupDate, pickupTime),
       returnDateTime: toISO(returnDate, returnTime),
-      // Schema expects embedded object { address: string, coordinates: [lon, lat] }
-      pickupLocation: { address: locationAddress, coordinates: [0, 0] },
-      returnLocation: { address: locationAddress, coordinates: [0, 0] },
+      pickupLocation: { address: deliveryMethod === 'StorePickup' ? 'Nhận tại cửa hàng Motov' : locationAddress, coordinates: [0, 0] },
+      returnLocation: { address: deliveryMethod === 'StorePickup' ? 'Trả tại cửa hàng Motov' : locationAddress, coordinates: [0, 0] },
       promoCode: promoCode.trim() || undefined,
+      paymentMethod,
+      deliveryMethod,
     };
 
 
     const result = await dispatch(createBookingApi(payload));
 
     if (createBookingApi.fulfilled.match(result)) {
-      // Reset form
       setPromoCode('');
-      onConfirmSuccess();
+      
+      if (paymentMethod === 'Banking') {
+        const createdBooking = result.payload as any;
+        Alert.alert(
+          'Thanh Toán Đặt Cọc (VNPAY)',
+          `Đơn hàng đã được tạo thành công.\nSố tiền cọc cần trả (30%): ${depositAmount.toLocaleString()} VNĐ.\n\nBạn muốn thanh toán online ngay qua VNPAY chứ?`,
+          [
+            {
+              text: 'Để sau (Không cọc)',
+              style: 'cancel',
+              onPress: () => {
+                onConfirmSuccess();
+              }
+            },
+            {
+              text: 'Thanh toán ngay',
+              style: 'default',
+              onPress: async () => {
+                try {
+                  const resUrl = await fetch(`${API_BASE_URL}/bookings/${createdBooking.id}/vnpay-url`, {
+                    method: 'POST',
+                    headers: { 
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    }
+                  });
+                  const urlData = await resUrl.json();
+                  if (urlData.success && urlData.paymentUrl) {
+                    Linking.openURL(urlData.paymentUrl);
+                  } else {
+                    Alert.alert('Lỗi', 'Không thể khởi tạo liên kết thanh toán VNPAY.');
+                  }
+                } catch (e) {
+                  Alert.alert('Lỗi', 'Không thể kết nối đến cổng thanh toán VNPAY.');
+                }
+                onConfirmSuccess();
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Đặt Xe Thành Công 🎉',
+          'Bạn đã đăng ký đặt xe bằng Tiền mặt.\nVui lòng đến trực tiếp cửa hàng Motov để nhận xe và thanh toán.'
+        );
+        onConfirmSuccess();
+      }
     } else {
       const errMsg = (result.payload as string) || 'Không thể tạo đặt xe. Vui lòng thử lại.';
       Alert.alert('Đặt xe thất bại', errMsg);
@@ -205,20 +276,84 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </View>
               </View>
 
-              {/* Pickup location */}
+              {/* Payment Method Selector */}
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalInputLabel}>Điểm nhận xe</Text>
-                <View style={styles.modalInputWithIcon}>
-                  <Feather name="map-pin" size={16} color="#888" style={styles.modalInputIcon} />
-                  <TextInput
-                    style={styles.modalTextInput}
-                    value={pickupLocation}
-                    onChangeText={setPickupLocation}
-                    placeholder="Nhập địa điểm nhận xe"
-                    placeholderTextColor="#666"
-                  />
+                <Text style={styles.modalInputLabel}>Phương thức thanh toán</Text>
+                <View style={styles.selectorGrid}>
+                  <TouchableOpacity
+                    style={[
+                      styles.selectorItem,
+                      paymentMethod === 'Banking' && styles.selectorItemSelected
+                    ]}
+                    onPress={() => setPaymentMethod('Banking')}
+                  >
+                    <Feather name="credit-card" size={14} color={paymentMethod === 'Banking' ? COLORS.accent : '#888'} style={{ marginRight: 6 }} />
+                    <Text style={[styles.selectorItemText, paymentMethod === 'Banking' && styles.selectorItemTextSelected]}>VNPAY Banking</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.selectorItem,
+                      paymentMethod === 'Cash' && styles.selectorItemSelected
+                    ]}
+                    onPress={() => {
+                      setPaymentMethod('Cash');
+                      setDeliveryMethod('StorePickup');
+                    }}
+                  >
+                    <Feather name="user" size={14} color={paymentMethod === 'Cash' ? COLORS.accent : '#888'} style={{ marginRight: 6 }} />
+                    <Text style={[styles.selectorItemText, paymentMethod === 'Cash' && styles.selectorItemTextSelected]}>Tiền mặt</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
+
+              {/* Delivery Method Selector */}
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalInputLabel}>Hình thức giao nhận xe</Text>
+                <View style={styles.selectorGrid}>
+                  <TouchableOpacity
+                    style={[
+                      styles.selectorItem,
+                      deliveryMethod === 'StorePickup' && styles.selectorItemSelected
+                    ]}
+                    onPress={() => setDeliveryMethod('StorePickup')}
+                  >
+                    <Text style={[styles.selectorItemText, deliveryMethod === 'StorePickup' && styles.selectorItemTextSelected]}>Nhận tại cửa hàng</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.selectorItem,
+                      deliveryMethod === 'HomeDelivery' && styles.selectorItemSelected,
+                      paymentMethod === 'Cash' && styles.selectorItemDisabled
+                    ]}
+                    disabled={paymentMethod === 'Cash'}
+                    onPress={() => setDeliveryMethod('HomeDelivery')}
+                  >
+                    <Text style={[styles.selectorItemText, deliveryMethod === 'HomeDelivery' && styles.selectorItemTextSelected, paymentMethod === 'Cash' && { color: '#444' }]}>Giao xe tận nơi</Text>
+                  </TouchableOpacity>
+                </View>
+                {paymentMethod === 'Cash' && (
+                  <Text style={styles.warningText}>* Thanh toán tiền mặt bắt buộc nhận tại cửa hàng.</Text>
+                )}
+              </View>
+
+              {/* Pickup location */}
+              {deliveryMethod === 'HomeDelivery' && (
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalInputLabel}>Điểm nhận xe</Text>
+                  <View style={styles.modalInputWithIcon}>
+                    <Feather name="map-pin" size={16} color="#888" style={styles.modalInputIcon} />
+                    <TextInput
+                      style={styles.modalTextInput}
+                      value={pickupLocation}
+                      onChangeText={setPickupLocation}
+                      placeholder="Nhập địa điểm nhận xe"
+                      placeholderTextColor="#666"
+                    />
+                  </View>
+                </View>
+              )}
 
               {/* Promo code */}
               <View style={styles.modalInputGroup}>
@@ -235,6 +370,43 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   />
                 </View>
               </View>
+
+              {/* Hóa đơn tóm tắt đặt cọc */}
+              {rentalDays > 0 && (
+                <View style={styles.summaryContainer}>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Số ngày thuê:</Text>
+                    <Text style={styles.summaryValue}>{rentalDays} ngày</Text>
+                  </View>
+                  <View style={[styles.summaryRow, styles.borderTop]}>
+                    <Text style={styles.summaryLabel}>Tổng cộng:</Text>
+                    <Text style={[styles.summaryValue, styles.totalText]}>{totalAmount.toLocaleString()} VNĐ</Text>
+                  </View>
+                  {paymentMethod === 'Banking' ? (
+                    <>
+                      <View style={styles.summaryRow}>
+                        <Text style={[styles.summaryLabel, styles.depositText]}>Đặt cọc giữ xe (VNPAY 30%):</Text>
+                        <Text style={[styles.summaryValue, styles.depositText]}>{depositAmount.toLocaleString()} VNĐ</Text>
+                      </View>
+                      <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Thanh toán còn lại (70%):</Text>
+                        <Text style={styles.summaryValue}>{remainingAmount.toLocaleString()} VNĐ</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <View style={styles.summaryRow}>
+                        <Text style={[styles.summaryLabel, styles.depositText]}>Đặt cọc giữ xe:</Text>
+                        <Text style={[styles.summaryValue, styles.depositText]}>0 VNĐ (Không cần cọc)</Text>
+                      </View>
+                      <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Thanh toán tại cửa hàng (100%):</Text>
+                        <Text style={styles.summaryValue}>{totalAmount.toLocaleString()} VNĐ</Text>
+                      </View>
+                    </>
+                  )}
+                </View>
+              )}
             </View>
           </ScrollView>
 
@@ -372,5 +544,80 @@ const styles = StyleSheet.create({
     color: '#f59e0b',
     fontSize: 12,
     lineHeight: 18,
+  },
+  summaryContainer: {
+    backgroundColor: COLORS.bg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 16,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+  },
+  summaryValue: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  borderTop: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  totalText: {
+    color: COLORS.accent,
+    fontSize: 14,
+  },
+  depositText: {
+    color: '#f59e0b',
+    fontWeight: 'bold',
+  },
+  selectorGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  selectorItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.bg,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 12,
+  },
+  selectorItemSelected: {
+    borderColor: COLORS.accent,
+    backgroundColor: 'rgba(204, 255, 0, 0.05)',
+  },
+  selectorItemDisabled: {
+    opacity: 0.35,
+    borderColor: COLORS.border,
+  },
+  selectorItemText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  selectorItemTextSelected: {
+    color: COLORS.accent,
+  },
+  warningText: {
+    color: '#eab308',
+    fontSize: 11,
+    marginTop: 6,
+    fontStyle: 'italic',
   },
 });

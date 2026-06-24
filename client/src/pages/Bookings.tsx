@@ -95,14 +95,16 @@ export const Bookings = () => {
     let type: 'early' | 'late' | 'normal' = 'normal';
     let hours = 0;
     let amount = 0;
+    const deposit = booking.depositAmount || Math.round(booking.totalAmount * 0.3);
+    const actualHours = Math.max(0, Math.ceil((now.getTime() - pickupTime.getTime()) / (1000 * 60 * 60)));
+    const actualRentalFee = Math.round(actualHours * hourlyRate);
 
     if (diffHours >= 2) {
       // Trả sớm trên 2 tiếng
       type = 'early';
       hours = Math.floor(diffHours);
-      // Hoàn trả 50% đơn giá cho phần thời gian trả sớm
-      amount = Math.round(hours * hourlyRate * 0.5);
-      amount = Math.min(amount, booking.totalAmount);
+      // Mất cọc, khách hàng phải thanh toán thêm số tiền bằng đúng tiền thuê thực tế
+      amount = actualRentalFee;
     } else if (diffHours < -0.25) {
       // Trả muộn trên 15 phút (0.25 giờ)
       type = 'late';
@@ -110,7 +112,7 @@ export const Bookings = () => {
       amount = Math.round(hours * hourlyRate); // Phí trễ đơn giản
     }
 
-    return { type, hours, amount, pickupTime, returnTime, now };
+    return { type, hours, amount, pickupTime, returnTime, now, deposit, actualHours, actualRentalFee };
   };
 
   // Hàm mở Modal hủy đơn
@@ -513,6 +515,8 @@ export const Bookings = () => {
                       <p className="text-xs leading-relaxed text-gray-300">
                         {t('myBookingsPage.returnModalEarlyRefundDesc', { 
                           earlyTime: `${details.hours} ${language === 'vi' ? 'giờ' : 'hours'}`, 
+                          deposit: details.deposit.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US'),
+                          hours: details.actualHours,
                           amount: details.amount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') 
                         })}
                       </p>
@@ -549,6 +553,16 @@ export const Bookings = () => {
                           amount: activeReturnBooking.totalAmount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') 
                         })}
                       </p>
+                      <div className="border-t border-white/5 pt-2 mt-2 text-xs space-y-1 text-gray-400">
+                        <div className="flex justify-between">
+                          <span>{language === 'vi' ? 'Số tiền cọc đã đóng (30%):' : 'Paid deposit (30%):'}</span>
+                          <span className="font-semibold text-white">{details.deposit.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} VNĐ</span>
+                        </div>
+                        <div className="flex justify-between text-neon font-bold">
+                          <span>{language === 'vi' ? 'Thanh toán còn lại (70%):' : 'Remaining payment (70%):'}</span>
+                          <span>{(activeReturnBooking.remainingAmount !== undefined ? activeReturnBooking.remainingAmount : (activeReturnBooking.totalAmount - details.deposit)).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} VNĐ</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

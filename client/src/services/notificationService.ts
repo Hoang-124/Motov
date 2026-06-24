@@ -27,7 +27,7 @@ export interface NotificationItem {
   userId: string;
   title: string;
   message: string;
-  type: 'BookingPending' | 'BookingConfirmed' | 'BookingCancelled' | 'System';
+  type: 'BookingPending' | 'BookingConfirmed' | 'BookingCancelled' | 'System' | 'IdentityVerified';
   relatedId?: string;
   isRead: boolean;
   createdAt: string;
@@ -66,6 +66,13 @@ export const notificationService = {
   deleteNotification: async (id: string): Promise<NotificationsResponse> => {
     const headers = getAuthHeaders();
     const res = await axios.delete(`${API_URL}/${id}`, headers);
+    return res.data;
+  },
+
+  // 5. Xóa toàn bộ thông báo
+  deleteAllNotifications: async (): Promise<NotificationsResponse> => {
+    const headers = getAuthHeaders();
+    const res = await axios.delete(API_URL, headers);
     return res.data;
   }
 };

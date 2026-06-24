@@ -9,6 +9,9 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Modal,
+  Platform,
+  Linking,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
@@ -73,6 +76,203 @@ export const ProfileScreen: React.FC = () => {
       setDob('');
     }
   }, [user]);
+
+  const fetchUserProfile = async () => {
+    if (!user.token) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        const u = data.user;
+        dispatch(updateUser({
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          phoneNumber: u.phoneNumber,
+          avatarUrl: u.avatarUrl,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          gender: u.gender,
+          dob: u.dob,
+          identityStatus: u.identityStatus,
+          identityRejectReason: u.identityRejectReason,
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching user profile on mobile:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, [user.token]);
+
+  // eKYC States
+  const [ekycModalVisible, setEkycModalVisible] = useState(false);
+  const [ekycStep, setEkycStep] = useState<'upload' | 'liveness' | 'scanning' | 'result'>('upload');
+  const [cardFront, setCardFront] = useState('');
+  const [cardBack, setCardBack] = useState('');
+  const [selfie, setSelfie] = useState('');
+  const [ekycError, setEkycError] = useState<string | null>(null);
+  const [uploadingCard, setUploadingCard] = useState<'front' | 'back' | null>(null);
+  const [livenessSubStep, setLivenessSubStep] = useState(1);
+  const [livenessLogs, setLivenessLogs] = useState<string[]>([]);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanLogs, setScanLogs] = useState<string[]>([]);
+  const [ocrResult, setOcrResult] = useState<any>(null);
+
+  const handleCardUploadWeb = async (event: any, side: 'front' | 'back') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCard(side);
+    setEkycError(null);
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        if (side === 'front') setCardFront(data.url);
+        else setCardBack(data.url);
+      } else {
+        throw new Error(data.message || 'Lỗi tải ảnh lên.');
+      }
+    } catch (err: any) {
+      setEkycError(err.message || 'Không thể tải ảnh lên.');
+    } finally {
+      setUploadingCard(null);
+    }
+  };
+
+  const handleCardSelect = async (side: 'front' | 'back') => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e) => handleCardUploadWeb(e, side);
+      input.click();
+    } else {
+      setUploadingCard(side);
+      setTimeout(() => {
+        setUploadingCard(null);
+        if (side === 'front') {
+          setCardFront('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=400');
+        } else {
+          setCardBack('https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=400');
+        }
+      }, 1000);
+    }
+  };
+
+  const startLivenessScan = () => {
+    setEkycStep('liveness');
+    setLivenessSubStep(1);
+    setLivenessLogs(['Đang kết nối camera...', 'Vui lòng giữ thẳng khuôn mặt và nhìn vào khung hình.']);
+
+    // Step 2.1: Nhìn thẳng (2s)
+    setTimeout(() => {
+      setLivenessSubStep(2);
+      setLivenessLogs(prev => [...prev, 'Đã khớp định vị khuôn mặt.', 'Yêu cầu 2: Vui lòng chớp mắt 2 lần...']);
+
+      // Step 2.2: Chớp mắt (2s)
+      setTimeout(() => {
+        setLivenessSubStep(3);
+        setLivenessLogs(prev => [...prev, 'Đã xác nhận chớp mắt thành công.', 'Yêu cầu 3: Vui lòng mỉm cười nhẹ...']);
+
+        // Step 2.3: Mỉm cười (2s)
+        setTimeout(() => {
+          setLivenessLogs(prev => [...prev, 'Đã xác thực thực thể sống thành công!', 'Đang tải ảnh chụp selfie lên...']);
+          const mockSelfie = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150';
+          setSelfie(mockSelfie);
+          
+          setTimeout(() => {
+            startOcrScan(mockSelfie);
+          }, 1000);
+        }, 2000);
+      }, 2000);
+    }, 2000);
+  };
+
+  const startOcrScan = (selfieUrl: string) => {
+    setEkycStep('scanning');
+    setScanProgress(0);
+    setScanLogs(['Đang nạp ảnh CCCD mặt trước & mặt sau...', 'Đang kiểm tra độ sáng và góc nghiêng của thẻ...']);
+
+    const logs = [
+      'Đang trích xuất OCR văn bản từ thẻ...',
+      'Tìm thấy: Số CCCD, Họ tên, Ngày sinh...',
+      'Đang nạp ảnh selfie và chạy Face Matching...',
+      'Tính toán độ trùng khớp giữa selfie và ảnh thẻ (Khớp: 94.5%)...',
+      'Đang gửi thông tin xét duyệt lên máy chủ...',
+      'Hoàn tất phân tích eKYC thành công!'
+    ];
+
+    let currentLogIndex = 0;
+    const interval = setInterval(() => {
+      setScanProgress(prev => {
+        const next = prev + 12.5;
+        if (next >= 100) {
+          clearInterval(interval);
+          submitEkycData(selfieUrl);
+          return 100;
+        }
+        if (next % 25 === 0 && currentLogIndex < logs.length) {
+          setScanLogs(prevLogs => [...prevLogs, logs[currentLogIndex]]);
+          currentLogIndex++;
+        }
+        return next;
+      });
+    }, 400);
+  };
+
+  const submitEkycData = async (selfieUrl: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-identity`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          cardFrontUrl: cardFront || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=400',
+          cardBackUrl: cardBack || 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=400',
+          selfieUrl: selfieUrl
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setOcrResult(data.data.ocrResult);
+        dispatch(updateUser({
+          identityStatus: 'Pending'
+        }));
+        setEkycStep('result');
+      } else {
+        throw new Error(data.message || 'Xác thực eKYC thất bại.');
+      }
+    } catch (err: any) {
+      setScanLogs(prev => [...prev, `Lỗi: ${err.message || 'Lỗi kết nối máy chủ'}`]);
+    }
+  };
 
 
 
@@ -311,6 +511,70 @@ export const ProfileScreen: React.FC = () => {
                 {user.memberTag}
               </Text>
             </View>
+          </View>
+
+          {/* eKYC Status Card */}
+          <View style={styles.ekycStatusCard}>
+            <View style={styles.ekycHeader}>
+              <Feather 
+                name={
+                  user.identityStatus === 'Verified' ? "shield" :
+                  user.identityStatus === 'Pending' ? "clock" :
+                  user.identityStatus === 'Rejected' ? "alert-triangle" : "shield"
+                } 
+                size={16} 
+                color={
+                  user.identityStatus === 'Verified' ? COLORS.approved :
+                  user.identityStatus === 'Pending' ? COLORS.pending :
+                  user.identityStatus === 'Rejected' ? COLORS.danger : COLORS.warning
+                } 
+              />
+              <Text style={[styles.ekycTitle, {
+                color: user.identityStatus === 'Verified' ? COLORS.approved :
+                       user.identityStatus === 'Pending' ? COLORS.pending :
+                       user.identityStatus === 'Rejected' ? COLORS.danger : COLORS.warning
+              }]}>
+                XÁC MINH DANH TÍNH (eKYC)
+              </Text>
+            </View>
+            <Text style={styles.ekycDesc}>
+              {user.identityStatus === 'Verified' && 'Tài khoản của bạn đã được xác minh danh tính thành công. Bạn có quyền đặt xe không giới hạn.'}
+              {user.identityStatus === 'Pending' && 'Hồ sơ eKYC của bạn đã được gửi lên hệ thống và đang chờ nhân viên kiểm duyệt.'}
+              {user.identityStatus === 'Rejected' && `Rất tiếc! Hồ sơ eKYC bị từ chối. Lý do: "${user.identityRejectReason || 'Ảnh mờ hoặc không hợp lệ'}".`}
+              {(!user.identityStatus || user.identityStatus === 'Unverified') && 'Bạn chưa thực hiện xác minh danh tính. Vui lòng xác thực danh tính để kích hoạt tính năng đặt xe máy.'}
+            </Text>
+            
+            {(user.identityStatus === 'Verified' && user.firstName && user.lastName) && (
+              <View style={styles.ekycInfoBox}>
+                <Text style={styles.ekycInfoText}>Họ tên: {user.lastName} {user.firstName}</Text>
+                <Text style={styles.ekycInfoText}>Trạng thái: Đã liên kết CCCD</Text>
+              </View>
+            )}
+
+            {(!user.identityStatus || user.identityStatus === 'Unverified' || user.identityStatus === 'Rejected') && (
+              <TouchableOpacity 
+                style={styles.ekycBtn}
+                onPress={() => {
+                  setCardFront('');
+                  setCardBack('');
+                  setSelfie('');
+                  setEkycError(null);
+                  setEkycStep('upload');
+                  setEkycModalVisible(true);
+                }}
+              >
+                <Text style={styles.ekycBtnText}>
+                  {user.identityStatus === 'Rejected' ? 'XÁC THỰC LẠI' : 'XÁC THỰC NGAY'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {user.identityStatus === 'Pending' && (
+              <View style={[styles.ekycPendingBadge, { backgroundColor: COLORS.pendingBg, borderColor: COLORS.pendingBorder }]}>
+                <ActivityIndicator size="small" color={COLORS.pending} style={{ marginRight: 6 }} />
+                <Text style={{ color: COLORS.pending, fontSize: 12, fontWeight: '700' }}>ĐANG CHỜ PHÊ DUYỆT</Text>
+              </View>
+            )}
           </View>
 
           {/* Become Owner Banner (Customer only) */}
@@ -606,6 +870,279 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
       )}
+
+      {/* Modal eKYC */}
+      <Modal
+        visible={ekycModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          if (ekycStep !== 'scanning') {
+            setEkycModalVisible(false);
+          }
+        }}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.ekycModalContainer}>
+            {/* Header */}
+            <View style={styles.ekycModalHeader}>
+              <Text style={styles.ekycModalTitle}>Xác thực danh tính eKYC</Text>
+              {ekycStep !== 'scanning' && (
+                <TouchableOpacity onPress={() => setEkycModalVisible(false)}>
+                  <Feather name="x" size={20} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Trạng thái Tiến trình các bước */}
+            <View style={styles.stepIndicatorRow}>
+              {[
+                { label: 'Tải ảnh', step: 'upload' },
+                { label: 'Liveness', step: 'liveness' },
+                { label: 'Phân tích', step: 'scanning' },
+                { label: 'Kết quả', step: 'result' }
+              ].map((item, idx) => {
+                const stepsOrder = ['upload', 'liveness', 'scanning', 'result'];
+                const currentIdx = stepsOrder.indexOf(ekycStep);
+                const isActive = item.step === ekycStep;
+                const isCompleted = stepsOrder.indexOf(item.step) < currentIdx;
+                
+                return (
+                  <React.Fragment key={item.step}>
+                    <View style={styles.stepItemWrapper}>
+                      <View style={[
+                        styles.stepCircle, 
+                        isActive && styles.stepCircleActive,
+                        isCompleted && styles.stepCircleCompleted
+                      ]}>
+                        {isCompleted ? (
+                          <Feather name="check" size={10} color={COLORS.accentDark} />
+                        ) : (
+                          <Text style={[
+                            styles.stepCircleText, 
+                            isActive && styles.stepCircleTextActive
+                          ]}>{idx + 1}</Text>
+                        )}
+                      </View>
+                      <Text style={[
+                        styles.stepLabelText,
+                        isActive && styles.stepLabelTextActive,
+                        isCompleted && styles.stepLabelTextCompleted
+                      ]}>{item.label}</Text>
+                    </View>
+                    {idx < 3 && (
+                      <View style={[
+                        styles.stepConnector,
+                        stepsOrder.indexOf(stepsOrder[idx + 1]) <= currentIdx && styles.stepConnectorActive
+                      ]} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </View>
+
+            {/* Nội dung các bước */}
+            <ScrollView contentContainerStyle={styles.ekycModalContent} showsVerticalScrollIndicator={false}>
+              
+              {/* BƯỚC 1: TẢI ẢNH CCCD */}
+              {ekycStep === 'upload' && (
+                <View style={styles.stepContainer}>
+                  <Text style={styles.stepInstruction}>
+                    Vui lòng cung cấp hình ảnh Căn cước công dân rõ ràng, không bị lóa sáng hay mất góc.
+                  </Text>
+
+                  <View style={styles.cardUploadGrid}>
+                    {/* Mặt trước */}
+                    <TouchableOpacity 
+                      style={[styles.cardUploadBox, cardFront ? styles.cardUploadBoxSelected : null]} 
+                      onPress={() => handleCardSelect('front')}
+                      disabled={uploadingCard !== null}
+                    >
+                      {uploadingCard === 'front' ? (
+                        <ActivityIndicator size="small" color={COLORS.accent} />
+                      ) : cardFront ? (
+                        <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+                          <Image source={{ uri: cardFront }} style={styles.cardImagePreview} />
+                          <View style={styles.imageOverlayBadge}>
+                            <Feather name="check" size={14} color="#000" />
+                          </View>
+                        </View>
+                      ) : (
+                        <View style={styles.uploadPlaceholder}>
+                          <Feather name="image" size={24} color={COLORS.textMuted} />
+                          <Text style={styles.uploadPlaceholderTitle}>Mặt trước CCCD</Text>
+                          <Text style={styles.uploadPlaceholderDesc}>Bấm để chụp/chọn ảnh</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+
+                    {/* Mặt sau */}
+                    <TouchableOpacity 
+                      style={[styles.cardUploadBox, cardBack ? styles.cardUploadBoxSelected : null]} 
+                      onPress={() => handleCardSelect('back')}
+                      disabled={uploadingCard !== null}
+                    >
+                      {uploadingCard === 'back' ? (
+                        <ActivityIndicator size="small" color={COLORS.accent} />
+                      ) : cardBack ? (
+                        <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+                          <Image source={{ uri: cardBack }} style={styles.cardImagePreview} />
+                          <View style={styles.imageOverlayBadge}>
+                            <Feather name="check" size={14} color="#000" />
+                          </View>
+                        </View>
+                      ) : (
+                        <View style={styles.uploadPlaceholder}>
+                          <Feather name="image" size={24} color={COLORS.textMuted} />
+                          <Text style={styles.uploadPlaceholderTitle}>Mặt sau CCCD</Text>
+                          <Text style={styles.uploadPlaceholderDesc}>Bấm để chụp/chọn ảnh</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  {ekycError && (
+                    <Text style={styles.errorText}>{ekycError}</Text>
+                  )}
+
+                  <TouchableOpacity
+                    style={[
+                      styles.actionBtn, 
+                      (!cardFront || !cardBack || uploadingCard !== null) && styles.disabledBtn
+                    ]}
+                    disabled={!cardFront || !cardBack || uploadingCard !== null}
+                    onPress={startLivenessScan}
+                  >
+                    <Text style={styles.actionBtnText}>TIẾP TỤC XÁC THỰC LIVENESS</Text>
+                    <Feather name="arrow-right" size={14} color={COLORS.accentDark} style={{ marginLeft: 6 }} />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* BƯỚC 2: XÁC THỰC LIVENESS (GIẢ LẬP) */}
+              {ekycStep === 'liveness' && (
+                <View style={styles.stepContainer}>
+                  <Text style={styles.stepInstruction}>
+                    Giữ điện thoại thẳng trước mặt và thực hiện theo hướng dẫn hiển thị trên màn hình.
+                  </Text>
+
+                  {/* Vòng tròn camera giả lập */}
+                  <View style={styles.cameraFrameWrapper}>
+                    <View style={[
+                      styles.cameraFrameCircle,
+                      livenessSubStep === 1 && { borderColor: COLORS.warning },
+                      livenessSubStep === 2 && { borderColor: COLORS.pending },
+                      livenessSubStep === 3 && { borderColor: COLORS.approved }
+                    ]}>
+                      <Image 
+                        source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300' }} 
+                        style={styles.mockCameraFeed} 
+                      />
+                      {/* Laser scan line */}
+                      <View style={styles.laserScanLine} />
+                      
+                      {/* Pulsing ring */}
+                      <View style={styles.pulsingRing} />
+                    </View>
+                    
+                    {/* Hướng dẫn to rõ */}
+                    <View style={styles.livenessInstructionBox}>
+                      <Text style={styles.livenessInstructionText}>
+                        {livenessSubStep === 1 && 'ℹ️ VUI LÒNG NHÌN THẲNG VÀO CAMERA'}
+                        {livenessSubStep === 2 && '👁️ CHỚP MẮT 2 LẦN LIÊN TỤC'}
+                        {livenessSubStep === 3 && '😊 HÃY MỈM CƯỜI NHẸ'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Logs phân tích trực quan */}
+                  <View style={styles.logsCard}>
+                    <Text style={styles.logsHeader}>TIẾN TRÌNH QUÉT THỰC THỂ SỐNG:</Text>
+                    {livenessLogs.map((log, index) => (
+                      <Text key={index} style={styles.logLineText}>▶ {log}</Text>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* BƯỚC 3: PHÂN TÍCH OCR & ĐỐI KHỚP */}
+              {ekycStep === 'scanning' && (
+                <View style={styles.stepContainer}>
+                  <ActivityIndicator size="large" color={COLORS.accent} style={{ marginBottom: 20 }} />
+                  <Text style={styles.stepInstruction}>
+                    Đang xử lý thông tin giấy tờ và chạy thuật toán so sánh khuôn mặt...
+                  </Text>
+
+                  {/* Progress bar */}
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressBarBg}>
+                      <View style={[styles.progressBarFill, { width: `${scanProgress}%` }]} />
+                    </View>
+                    <Text style={styles.progressText}>{Math.round(scanProgress)}%</Text>
+                  </View>
+
+                  {/* Logs quét */}
+                  <View style={styles.logsCard}>
+                    <Text style={styles.logsHeader}>LOGS HỆ THỐNG AI OCR:</Text>
+                    {scanLogs.map((log, index) => (
+                      <Text key={index} style={styles.logLineText}>⚙ {log}</Text>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* BƯỚC 4: KẾT QUẢ eKYC */}
+              {ekycStep === 'result' && (
+                <View style={styles.stepContainer}>
+                  <View style={styles.successIconWrapper}>
+                    <Feather name="check-circle" size={48} color={COLORS.approved} />
+                  </View>
+                  
+                  <Text style={styles.resultSuccessTitle}>Gửi Hồ Sơ Thành Công!</Text>
+                  <Text style={styles.resultSuccessDesc}>
+                    Thông tin eKYC của bạn đã được trích xuất và lưu trữ trên hệ thống để duyệt tự động.
+                  </Text>
+
+                  {ocrResult && (
+                    <View style={styles.ocrResultContainer}>
+                      <Text style={styles.ocrResultHeader}>THÔNG TIN TRÍCH XUẤT OCR:</Text>
+                      <View style={styles.ocrInfoRow}>
+                        <Text style={styles.ocrInfoLabel}>Họ và tên:</Text>
+                        <Text style={styles.ocrInfoVal}>{ocrResult.fullName}</Text>
+                      </View>
+                      <View style={styles.ocrInfoRow}>
+                        <Text style={styles.ocrInfoLabel}>Số định danh:</Text>
+                        <Text style={styles.ocrInfoVal}>{ocrResult.idNumber}</Text>
+                      </View>
+                      <View style={styles.ocrInfoRow}>
+                        <Text style={styles.ocrInfoLabel}>Ngày sinh:</Text>
+                        <Text style={styles.ocrInfoVal}>
+                          {ocrResult.dob ? new Date(ocrResult.dob).toLocaleDateString('vi-VN') : ''}
+                        </Text>
+                      </View>
+                      <View style={styles.ocrInfoRow}>
+                        <Text style={styles.ocrInfoLabel}>Thường trú:</Text>
+                        <Text style={styles.ocrInfoVal} numberOfLines={1}>{ocrResult.address}</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.actionBtn}
+                    onPress={() => {
+                      setEkycModalVisible(false);
+                      fetchUserProfile();
+                    }}
+                  >
+                    <Text style={styles.actionBtnText}>HOÀN TẤT & ĐÓNG</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.versionContainer}>
         <Text style={styles.versionText}>Motov App v1.2.0 (Sync Active DB • Expo • Redux)</Text>
@@ -984,5 +1521,412 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  /* eKYC Status Card styles */
+  ekycStatusCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 20,
+    marginBottom: 20,
+  },
+  ekycHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 8,
+  },
+  ekycTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  ekycDesc: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 14,
+  },
+  ekycInfoBox: {
+    backgroundColor: '#09090b',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#222',
+    padding: 12,
+    marginBottom: 14,
+    gap: 4,
+  },
+  ekycInfoText: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  ekycBtn: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ekycBtnText: {
+    color: COLORS.accentDark,
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  ekycPendingBadge: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+
+  /* Modal eKYC styles */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  ekycModalContainer: {
+    backgroundColor: COLORS.card,
+    width: '100%',
+    maxHeight: '90%',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+    paddingTop: 20,
+  },
+  ekycModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+  },
+  ekycModalTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  ekycModalContent: {
+    padding: 20,
+    paddingBottom: 30,
+  },
+
+  /* Step Indicator styles */
+  stepIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    marginVertical: 15,
+  },
+  stepItemWrapper: {
+    alignItems: 'center',
+    width: 50,
+  },
+  stepCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#09090b',
+    borderWidth: 1.5,
+    borderColor: '#3f3f46',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepCircleActive: {
+    borderColor: COLORS.accent,
+    backgroundColor: 'rgba(190, 242, 100, 0.05)',
+  },
+  stepCircleCompleted: {
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+  },
+  stepCircleText: {
+    color: '#71717a',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  stepCircleTextActive: {
+    color: COLORS.accent,
+  },
+  stepLabelText: {
+    color: '#71717a',
+    fontSize: 8,
+    marginTop: 4,
+    fontWeight: 'bold',
+  },
+  stepLabelTextActive: {
+    color: COLORS.accent,
+  },
+  stepLabelTextCompleted: {
+    color: COLORS.textSecondary,
+  },
+  stepConnector: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#3f3f46',
+    marginHorizontal: -5,
+    marginTop: -12,
+  },
+  stepConnectorActive: {
+    backgroundColor: COLORS.accent,
+  },
+
+  /* Step General styles */
+  stepContainer: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  stepInstruction: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+
+  /* Upload CCCD styles */
+  cardUploadGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+    width: '100%',
+  },
+  cardUploadBox: {
+    flex: 1,
+    aspectRatio: 1.58,
+    backgroundColor: '#09090b',
+    borderWidth: 1.5,
+    borderColor: '#222',
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  cardUploadBoxSelected: {
+    borderStyle: 'solid',
+    borderColor: COLORS.accent,
+  },
+  cardImagePreview: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  imageOverlayBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: COLORS.accent,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadPlaceholder: {
+    alignItems: 'center',
+    padding: 10,
+  },
+  uploadPlaceholderTitle: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginTop: 8,
+  },
+  uploadPlaceholderDesc: {
+    color: COLORS.textMuted,
+    fontSize: 9,
+    marginTop: 2,
+  },
+
+  /* Camera and Liveness styles */
+  cameraFrameWrapper: {
+    alignItems: 'center',
+    marginBottom: 20,
+    width: '100%',
+  },
+  cameraFrameCircle: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 3,
+    overflow: 'hidden',
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  mockCameraFeed: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  laserScanLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: COLORS.accent,
+    top: '50%',
+  },
+  pulsingRing: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 100,
+    borderWidth: 2,
+    borderColor: 'rgba(190, 242, 100, 0.2)',
+  },
+  livenessInstructionBox: {
+    backgroundColor: 'rgba(9, 9, 11, 0.8)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#222',
+    marginTop: 16,
+  },
+  livenessInstructionText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+
+  /* Logs card styles */
+  logsCard: {
+    backgroundColor: '#09090b',
+    borderWidth: 1,
+    borderColor: '#222',
+    borderRadius: 12,
+    width: '100%',
+    padding: 12,
+    gap: 4,
+  },
+  logsHeader: {
+    color: COLORS.textMuted,
+    fontSize: 9,
+    fontWeight: '900',
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+  logLineText: {
+    color: COLORS.approved,
+    fontSize: 10,
+  },
+
+  /* Progress bar styles */
+  progressContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 8,
+  },
+  progressBarBg: {
+    width: '100%',
+    height: 8,
+    backgroundColor: '#09090b',
+    borderRadius: 4,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#222',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: COLORS.accent,
+    borderRadius: 4,
+  },
+  progressText: {
+    color: COLORS.accent,
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+
+  /* Result styles */
+  successIconWrapper: {
+    marginBottom: 16,
+  },
+  resultSuccessTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  resultSuccessDesc: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginBottom: 20,
+  },
+  ocrResultContainer: {
+    backgroundColor: '#09090b',
+    borderWidth: 1,
+    borderColor: '#222',
+    borderRadius: 12,
+    width: '100%',
+    padding: 14,
+    marginBottom: 20,
+    gap: 8,
+  },
+  ocrResultHeader: {
+    color: COLORS.accent,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+    paddingBottom: 6,
+    marginBottom: 4,
+  },
+  ocrInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ocrInfoLabel: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  ocrInfoVal: {
+    color: COLORS.text,
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+
+  /* Action buttons */
+  actionBtn: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 12,
+    paddingVertical: 14,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    marginTop: 20,
+  },
+  actionBtnText: {
+    color: COLORS.accentDark,
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  errorText: {
+    color: COLORS.danger,
+    fontSize: 11,
+    marginTop: 8,
+    fontWeight: 'bold',
   },
 });

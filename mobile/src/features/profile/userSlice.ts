@@ -16,7 +16,8 @@ export interface UserState {
   lastName: string;
   gender: string;
   dob: string;
-  identityStatus: 'NotSubmitted' | 'Pending' | 'Verified' | 'Rejected' | null;
+  identityStatus: 'Unverified' | 'NotSubmitted' | 'Pending' | 'Verified' | 'Rejected' | null;
+  identityRejectReason?: string | null;
 }
 
 export const getMemberTag = (role: UserRole): string => {
