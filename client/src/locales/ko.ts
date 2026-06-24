@@ -20,6 +20,8 @@ export const ko: TranslationKeys = {
     myBookings: '내 예약',
     dashboard: '대시보드',
     manageBikes: '바이크 관리',
+    manageCategories: '카테고리 관리',
+    manageInventory: '부품 재고 관리',
     allBookings: '전체 예약',
     roles: '권한 설정',
     feedbacks: '리뷰 관리',

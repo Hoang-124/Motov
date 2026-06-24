@@ -62,7 +62,8 @@ export const MotorbikeDetail = () => {
         // Fetch related motorbikes of the same category that are Available, excluding current motorbike
         if (data.category) {
           try {
-            const allBikes = await getAllMotorbikes({ category: data.category });
+            const catId = typeof data.category === 'object' && data.category !== null ? (data.category as any)._id : data.category;
+            const allBikes = await getAllMotorbikes({ category: catId });
             const filtered = allBikes
               .filter(bike => bike._id !== data._id && bike.status === 'Available')
               .slice(0, 3);
@@ -184,7 +185,7 @@ export const MotorbikeDetail = () => {
                   {motorbike.status}
                 </div>
                 <div className="bg-dark/70 backdrop-blur-md px-4 py-1.5 rounded-full font-semibold text-xs text-neon border border-neon/30">
-                  {motorbike.category}
+                  {typeof motorbike.category === 'object' && motorbike.category !== null ? (motorbike.category as any).name : motorbike.category}
                 </div>
               </div>
 
@@ -488,7 +489,7 @@ export const MotorbikeDetail = () => {
                 <div className="bg-black/35 p-3 rounded-lg border border-white/5">
                   <div className="font-bold text-white text-sm mb-1">{motorbike.vehicleModel}</div>
                   <div className="text-xs text-gray-400 font-mono">License Plate: {motorbike.licensePlate}</div>
-                  <div className="text-xs text-gray-400 font-mono">Category: {motorbike.category}</div>
+                  <div className="text-xs text-gray-400 font-mono">Category: {typeof motorbike.category === 'object' && motorbike.category !== null ? (motorbike.category as any).name : motorbike.category}</div>
                 </div>
               </div>
 
