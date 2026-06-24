@@ -37,8 +37,8 @@ const normaliseBooking = (b: any): Booking => ({
   price: String(b.vehicleSnapshot?.rentalPrice || b.totalAmount || ''),
   date: b.pickupDateTime ? new Date(b.pickupDateTime).toLocaleDateString('vi-VN') : '',
   location: b.pickupLocation?.address || '',
-  fullName: '',
-  phone: '',
+  fullName: b.fullName || '',
+  phone: b.phone || '',
   status: b.status || 'Pending',
   statusLabel: getStatusLabel(b.status || 'Pending'),
   createdAt: b.createdAt ? new Date(b.createdAt).toLocaleDateString('vi-VN') : '',
@@ -46,6 +46,11 @@ const normaliseBooking = (b: any): Booking => ({
   returnDateTime: b.returnDateTime,
   totalAmount: b.totalAmount,
   rentalDays: b.rentalDays,
+  depositAmount: b.depositAmount,
+  remainingAmount: b.remainingAmount,
+  paymentMethod: b.paymentMethod,
+  deliveryMethod: b.deliveryMethod,
+  isPaid: b.isPaid,
   surcharges: b.surcharges || [],
 });
 

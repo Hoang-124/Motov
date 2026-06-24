@@ -63,6 +63,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Banking'>('Banking');
   const [deliveryMethod, setDeliveryMethod] = useState<'StorePickup' | 'HomeDelivery'>('StorePickup');
 
+  // Personal info fields
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [license, setLicense] = useState('');
+
   useEffect(() => {
     if (visible) {
       setPickupDate(offsetDate(1));
@@ -71,8 +76,38 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setPromoCode('');
       setPaymentMethod('Banking');
       setDeliveryMethod('StorePickup');
+      setFullName('');
+      setPhone('');
+      setLicense('');
+
+      // Fetch user profile to prefill information
+      const fetchProfile = async () => {
+        if (!token) return;
+        try {
+          const res = await fetch(`${API_BASE_URL}/auth/me`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data.success && data.user) {
+            const u = data.user;
+            let nameVal = u.citizenIdInfo?.fullName || u.name;
+            if (!nameVal) {
+              const parts = [];
+              if (u.lastName) parts.push(u.lastName);
+              if (u.firstName) parts.push(u.firstName);
+              nameVal = parts.join(' ');
+            }
+            setFullName(nameVal.trim());
+            setPhone(u.phoneNumber || '');
+            setLicense(u.citizenIdInfo?.idNumber || '');
+          }
+        } catch (e) {
+          console.error('Lỗi lấy profile trong modal:', e);
+        }
+      };
+      fetchProfile();
     }
-  }, [visible, initialLocation]);
+  }, [visible, initialLocation, token]);
 
   if (!selectedBike) return null;
 
@@ -112,6 +147,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       Alert.alert('Lỗi', 'Ngày trả xe phải sau ngày nhận xe.');
       return;
     }
+    if (!fullName.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập họ và tên khách hàng.');
+      return;
+    }
+    if (!phone.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại liên lạc.');
+      return;
+    }
+    const phoneRegex = /^(03|05|07|08|09)+([0-9]{8})$/;
+    if (!phoneRegex.test(phone.trim())) {
+      Alert.alert('Lỗi', 'Số điện thoại không đúng định dạng Việt Nam (10 chữ số, bắt đầu bằng 03, 05, 07, 08, 09).');
+      return;
+    }
+    if (!license.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số giấy phép lái xe.');
+      return;
+    }
+    if (license.trim().length < 6) {
+      Alert.alert('Lỗi', 'Số giấy phép lái xe không hợp lệ (tối thiểu 6 ký tự).');
+      return;
+    }
 
     const locationAddress = pickupLocation.trim() || 'Sân bay Đà Nẵng';
     const payload = {
@@ -123,6 +179,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       promoCode: promoCode.trim() || undefined,
       paymentMethod,
       deliveryMethod,
+      fullName: fullName.trim(),
+      phone: phone.trim(),
+      license: license.trim(),
     };
 
 
@@ -368,6 +427,57 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     value={promoCode}
                     onChangeText={setPromoCode}
                   />
+                </View>
+              </View>
+
+              {/* Thông tin cá nhân khách hàng */}
+              <View style={{ marginTop: 15, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 15 }}>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: COLORS.accent, marginBottom: 12, textTransform: 'uppercase' }}>Thông tin khách hàng</Text>
+                
+                {/* Họ tên */}
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalInputLabel}>Họ và tên khách hàng</Text>
+                  <View style={styles.modalInputWithIcon}>
+                    <Feather name="user" size={16} color="#888" style={styles.modalInputIcon} />
+                    <TextInput
+                      style={styles.modalTextInput}
+                      placeholder="Nhập họ tên nhận xe"
+                      placeholderTextColor="#666"
+                      value={fullName}
+                      onChangeText={setFullName}
+                    />
+                  </View>
+                </View>
+
+                {/* Số điện thoại */}
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalInputLabel}>Số điện thoại liên lạc</Text>
+                  <View style={styles.modalInputWithIcon}>
+                    <Feather name="phone" size={16} color="#888" style={styles.modalInputIcon} />
+                    <TextInput
+                      style={styles.modalTextInput}
+                      placeholder="Nhập số điện thoại"
+                      placeholderTextColor="#666"
+                      keyboardType="phone-pad"
+                      value={phone}
+                      onChangeText={setPhone}
+                    />
+                  </View>
+                </View>
+
+                {/* Số GPLX */}
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalInputLabel}>Số giấy phép lái xe (GPLX)</Text>
+                  <View style={styles.modalInputWithIcon}>
+                    <Feather name="credit-card" size={16} color="#888" style={styles.modalInputIcon} />
+                    <TextInput
+                      style={styles.modalTextInput}
+                      placeholder="Nhập số GPLX đối chiếu"
+                      placeholderTextColor="#666"
+                      value={license}
+                      onChangeText={setLicense}
+                    />
+                  </View>
                 </View>
               </View>
 

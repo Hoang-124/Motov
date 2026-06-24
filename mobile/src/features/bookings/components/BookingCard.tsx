@@ -85,6 +85,30 @@ export const BookingCard: React.FC<BookingCardProps> = ({
           <Text style={styles.bookingText}>Điểm nhận: {booking.location}</Text>
         </View>
 
+        <View style={styles.bookingRow}>
+          <Feather name="truck" size={13} color="#888" style={styles.bookingRowIcon} />
+          <Text style={styles.bookingText}>Giao nhận: {booking.deliveryMethod === 'HomeDelivery' ? 'Giao xe tận nơi' : 'Nhận tại cửa hàng'}</Text>
+        </View>
+
+        <View style={styles.bookingRow}>
+          <Feather name="credit-card" size={13} color="#888" style={styles.bookingRowIcon} />
+          <Text style={styles.bookingText}>Thanh toán: {booking.paymentMethod === 'Banking' ? 'VNPAY Banking' : 'Tiền mặt'}</Text>
+        </View>
+
+        {booking.paymentMethod === 'Banking' && (
+          <View style={styles.bookingRow}>
+            <Feather 
+              name={booking.isPaid ? "check-circle" : "alert-circle"} 
+              size={13} 
+              color={booking.isPaid ? COLORS.approved : COLORS.warning} 
+              style={styles.bookingRowIcon} 
+            />
+            <Text style={[styles.bookingText, { color: booking.isPaid ? COLORS.approved : COLORS.warning, fontWeight: 'bold' }]}>
+              Đặt cọc (30%): {booking.depositAmount?.toLocaleString('vi-VN')} VNĐ ({booking.isPaid ? 'Đã thanh toán' : 'Chưa thanh toán'})
+            </Text>
+          </View>
+        )}
+
         {booking.surcharges && booking.surcharges.length > 0 && (
           <View style={styles.surchargeBox}>
             <Text style={styles.surchargeTitle}>Phụ thu phạt trễ hạn:</Text>
