@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Vehicle, IVehicle } from '../models/Vehicle.js';
 import { User } from '../models/User.js';
+import { Category } from '../models/Category.js';
 import mongoose from 'mongoose';
 import { Notification } from '../models/Notification.js';
 
@@ -24,8 +25,11 @@ const validateVehicleInput = (data: any) => {
   if (!data.licensePlate || data.licensePlate.trim() === '') {
     errors.push('License plate is required');
   }
-  if (!data.category || data.category.trim() === '') {
+  const categoryStr = data.category ? data.category.toString().trim() : '';
+  if (!categoryStr) {
     errors.push('Category is required');
+  } else if (!mongoose.Types.ObjectId.isValid(categoryStr)) {
+    errors.push('Invalid Category ID');
   }
   if (!data.transmissionType) {
     errors.push('Transmission type is required');
@@ -55,6 +59,7 @@ export const getAllVehicles = async (req: AuthRequest, res: Response) => {
 
     const vehicles = await Vehicle.find(filter)
       .populate('ownerId', 'firstName lastName email phoneNumber avatarUrl')
+      .populate('category')
       .sort(sortBy as string)
       .lean();
 
@@ -87,7 +92,8 @@ export const getVehicleById = async (req: AuthRequest, res: Response) => {
     }
 
     const vehicle = await Vehicle.findById(id)
-      .populate('ownerId', 'firstName lastName email phoneNumber avatarUrl');
+      .populate('ownerId', 'firstName lastName email phoneNumber avatarUrl')
+      .populate('category');
 
     if (!vehicle) {
       return res.status(404).json({
@@ -144,6 +150,15 @@ export const createVehicle = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Check if category exists
+    const categoryExists = await Category.findById(category);
+    if (!categoryExists) {
+      return res.status(400).json({
+        success: false,
+        error: 'Selected Category does not exist'
+      });
+    }
+
     // Create new vehicle
     // If staff/admin provides ownerId, use it; otherwise set as system vehicle
     const newVehicle = new Vehicle({
@@ -164,6 +179,7 @@ export const createVehicle = async (req: AuthRequest, res: Response) => {
 
     // Populate owner info
     await newVehicle.populate('ownerId', 'firstName lastName email phoneNumber avatarUrl');
+    await newVehicle.populate('category');
 
     res.status(201).json({
       success: true,
@@ -242,6 +258,17 @@ export const updateVehicle = async (req: AuthRequest, res: Response) => {
           });
         }
       }
+
+      // Check if updated category exists
+      if (updateData.category && updateData.category !== vehicle.category.toString()) {
+        const categoryExists = await Category.findById(updateData.category);
+        if (!categoryExists) {
+          return res.status(400).json({
+            success: false,
+            error: 'Selected Category does not exist'
+          });
+        }
+      }
     }
 
     // Update allowed fields
@@ -254,6 +281,7 @@ export const updateVehicle = async (req: AuthRequest, res: Response) => {
 
     await vehicle.save();
     await vehicle.populate('ownerId', 'firstName lastName email phoneNumber avatarUrl');
+    await vehicle.populate('category');
 
     res.json({
       success: true,
@@ -334,6 +362,7 @@ export const getOwnerVehicles = async (req: AuthRequest, res: Response) => {
 
     const vehicles = await Vehicle.find({ ownerId })
       .populate('ownerId', 'firstName lastName email phoneNumber')
+      .populate('category')
       .sort('-createdAt')
       .lean();
 
@@ -414,6 +443,7 @@ export const updateVehicleStatus = async (req: AuthRequest, res: Response) => {
     vehicle.status = status;
     await vehicle.save();
     await vehicle.populate('ownerId', 'firstName lastName email phoneNumber');
+    await vehicle.populate('category');
 
     // Tạo thông báo cho Chủ xe nếu xe được phê duyệt hoặc thay đổi tình trạng hoạt động
     try {

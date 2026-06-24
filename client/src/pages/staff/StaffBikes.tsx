@@ -109,9 +109,10 @@ export const StaffBikes = () => {
   };
 
   const filteredBikes = bikes.filter(b => {
+    const categoryName = typeof b.category === 'object' && b.category !== null ? (b.category as any).name : (b.category || '');
     const matchesSearch = b.vehicleModel.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           b.licensePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          b.category.toLowerCase().includes(searchQuery.toLowerCase());
+                          categoryName.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = filterStatus === 'All' || b.status === filterStatus;
     return matchesSearch && matchesStatus;
@@ -223,7 +224,7 @@ export const StaffBikes = () => {
                       className="w-full h-full object-cover opacity-80" 
                     />
                     <div className="absolute bottom-2 left-2 bg-dark/70 backdrop-blur-md px-2.5 py-0.5 rounded text-[10px] text-neon font-bold">
-                      {bike.category}
+                      {typeof bike.category === 'object' && bike.category !== null ? (bike.category as any).name : bike.category}
                     </div>
                   </div>
 

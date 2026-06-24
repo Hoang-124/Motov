@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import mongoose from 'mongoose';
 import { Vehicle } from '../models/Vehicle.js';
 import { User } from '../models/User.js';
+import { Category } from '../models/Category.js';
 import { 
   getAllVehicles, 
   getVehicleById, 
@@ -15,6 +16,7 @@ import {
 describe('Vehicle Controller Tests', () => {
   let testVehicleId: string;
   let testUserId: string;
+  let testCategoryId: string;
   let mockRequest: any;
   let mockResponse: any;
 
@@ -24,6 +26,15 @@ describe('Vehicle Controller Tests', () => {
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(mongoUrl);
     }
+
+    // Create test category
+    const testCategory = new Category({
+      name: 'Sport',
+      slug: 'sport',
+      description: 'Sport category for test'
+    });
+    const savedCategory = await testCategory.save();
+    testCategoryId = savedCategory._id?.toString() || '';
 
     // Create test user
     const testUser = new User({
@@ -44,6 +55,7 @@ describe('Vehicle Controller Tests', () => {
     // Clean up test data
     await Vehicle.deleteMany({});
     await User.deleteMany({ email: 'testuser@motov.com' });
+    await Category.deleteMany({});
     await mongoose.connection.close();
   });
 
@@ -67,7 +79,7 @@ describe('Vehicle Controller Tests', () => {
       mockRequest.body = {
         vehicleModel: 'Honda CB300R',
         licensePlate: '29A12345',
-        category: 'Sport',
+        category: testCategoryId,
         transmissionType: 'Manual',
         rentalPrice: 150000,
         seats: 2,
@@ -106,7 +118,7 @@ describe('Vehicle Controller Tests', () => {
         ownerId: testUserId,
         vehicleModel: 'Yamaha Exciter',
         licensePlate: '30B98765',
-        category: 'Sport',
+        category: testCategoryId,
         transmissionType: 'Manual',
         rentalPrice: 120000
       });
@@ -116,7 +128,7 @@ describe('Vehicle Controller Tests', () => {
       mockRequest.body = {
         vehicleModel: 'Honda CB300R',
         licensePlate: '30B98765', // Duplicate
-        category: 'Sport',
+        category: testCategoryId,
         transmissionType: 'Manual',
         rentalPrice: 150000
       };
@@ -154,14 +166,14 @@ describe('Vehicle Controller Tests', () => {
     });
 
     it('should filter vehicles by category', async () => {
-      mockRequest.query = { category: 'Sport' };
+      mockRequest.query = { category: testCategoryId };
 
       await getAllVehicles(mockRequest, mockResponse);
 
       const callArgs = mockResponse.json.mock.calls[0][0];
       expect(callArgs.success).toBe(true);
       callArgs.data.forEach((vehicle: any) => {
-        expect(vehicle.category).toBe('Sport');
+        expect(vehicle.category._id.toString()).toBe(testCategoryId);
       });
     });
   });
@@ -174,7 +186,7 @@ describe('Vehicle Controller Tests', () => {
           ownerId: testUserId,
           vehicleModel: 'Test Vehicle',
           licensePlate: 'TEST001',
-          category: 'Sport',
+          category: testCategoryId,
           transmissionType: 'Manual',
           rentalPrice: 100000
         });
@@ -217,7 +229,7 @@ describe('Vehicle Controller Tests', () => {
           ownerId: testUserId,
           vehicleModel: 'Update Test',
           licensePlate: 'UPDATE001',
-          category: 'Sport',
+          category: testCategoryId,
           transmissionType: 'Manual',
           rentalPrice: 100000
         });
@@ -243,7 +255,7 @@ describe('Vehicle Controller Tests', () => {
         ownerId: testUserId,
         vehicleModel: 'Delete Test',
         licensePlate: 'DELETE001',
-        category: 'Sport',
+        category: testCategoryId,
         transmissionType: 'Manual',
         rentalPrice: 100000
       });
@@ -270,7 +282,7 @@ describe('Vehicle Controller Tests', () => {
         ownerId: testUserId,
         vehicleModel: 'Status Test',
         licensePlate: 'STATUS001',
-        category: 'Sport',
+        category: testCategoryId,
         transmissionType: 'Manual',
         rentalPrice: 100000,
         status: 'Available'
@@ -293,7 +305,7 @@ describe('Vehicle Controller Tests', () => {
         ownerId: testUserId,
         vehicleModel: 'Invalid Status Test',
         licensePlate: 'INVALID001',
-        category: 'Sport',
+        category: testCategoryId,
         transmissionType: 'Manual',
         rentalPrice: 100000
       });
