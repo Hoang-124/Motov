@@ -16,6 +16,7 @@ import userRoutes from './routes/userRoutes.js';
 import promotionRoutes from './routes/promotionRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
+import systemRoutes from './routes/systemRoutes.js';
 import { authMiddleware } from './middlewares/authMiddleware.js';
 import { initBookingReminderScheduler } from './utils/bookingReminderScheduler.js';
 import { Discount } from './models/Discount.js';
@@ -73,6 +74,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/feedbacks', feedbackRoutes);
+app.use('/api/system', systemRoutes);
 
 // Routes quản lý xe (Vehicle/Bike Management APIs)
 app.use('/api/vehicles', vehicleRoutes);

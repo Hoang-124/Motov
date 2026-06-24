@@ -1,11 +1,100 @@
 import { Response } from 'express';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
+import axios from 'axios';
 import { Booking, IBooking } from '../models/Booking.js';
 import { Vehicle } from '../models/Vehicle.js';
 import { User } from '../models/User.js';
 import { Discount } from '../models/Discount.js';
 import { Notification } from '../models/Notification.js';
+import { SystemSetting } from '../models/SystemSetting.js';
+
+// Helper to get system setting value by key with fallback to env
+const getSettingVal = async (key: string, fallback: string): Promise<string> => {
+  try {
+    const setting = await SystemSetting.findOne({ key });
+    return setting ? setting.value : fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+
+export const refundVNPayPayment = async (booking: IBooking, amount: number, creatorEmail: string) => {
+  try {
+    const tmnCode = await getSettingVal('vnp_TmnCode', process.env.VNP_TMNCODE || '');
+    const secretKey = await getSettingVal('vnp_HashSecret', process.env.VNP_HASHSECRET || '');
+    const vnpUrl = 'https://sandbox.vnpayment.vn/merchant_webapi/api/transaction';
+
+    if (!tmnCode || !secretKey) {
+      console.warn('[VNPAY Refund] Chưa cấu hình tmnCode hoặc secretKey, không thể hoàn tiền tự động');
+      return false;
+    }
+
+    const date = new Date();
+    const createDate = date.getFullYear().toString() +
+      (date.getMonth() + 1).toString().padStart(2, '0') +
+      date.getDate().toString().padStart(2, '0') +
+      date.getHours().toString().padStart(2, '0') +
+      date.getMinutes().toString().padStart(2, '0') +
+      date.getSeconds().toString().padStart(2, '0');
+
+    const originalDate = new Date(booking.updatedAt || booking.createdAt);
+    const originalTxnDate = originalDate.getFullYear().toString() +
+      (originalDate.getMonth() + 1).toString().padStart(2, '0') +
+      originalDate.getDate().toString().padStart(2, '0') +
+      originalDate.getHours().toString().padStart(2, '0') +
+      originalDate.getMinutes().toString().padStart(2, '0') +
+      originalDate.getSeconds().toString().padStart(2, '0');
+
+    const requestId = `${booking._id.toString()}_${Date.now()}`;
+    const txnRef = `${booking._id.toString()}`;
+
+    const vnp_Params: any = {
+      vnp_RequestId: requestId,
+      vnp_Version: '2.1.0',
+      vnp_Command: 'refund',
+      vnp_TmnCode: tmnCode,
+      vnp_TransactionType: '02',
+      vnp_TxnRef: txnRef,
+      vnp_Amount: amount * 100,
+      vnp_OrderInfo: `Hoan tien coc don hang ${booking.bookingCode}`,
+      vnp_TransactionNo: '0',
+      vnp_TransactionDate: originalTxnDate,
+      vnp_CreateBy: creatorEmail,
+      vnp_CreateDate: createDate,
+      vnp_IpAddr: '127.0.0.1',
+    };
+
+    const signData = [
+      vnp_Params.vnp_RequestId,
+      vnp_Params.vnp_Version,
+      vnp_Params.vnp_Command,
+      vnp_Params.vnp_TmnCode,
+      vnp_Params.vnp_TransactionType,
+      vnp_Params.vnp_TxnRef,
+      vnp_Params.vnp_Amount,
+      vnp_Params.vnp_TransactionNo,
+      vnp_Params.vnp_TransactionDate,
+      vnp_Params.vnp_CreateBy,
+      vnp_Params.vnp_CreateDate,
+      vnp_Params.vnp_IpAddr,
+      vnp_Params.vnp_OrderInfo
+    ].join('|');
+
+    const hmac = crypto.createHmac('sha512', secretKey);
+    const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+    vnp_Params['vnp_SecureHash'] = signed;
+
+    console.log('[VNPAY Refund] Đang gửi yêu cầu hoàn tiền tới VNPAY...', vnp_Params);
+    const response = await axios.post(vnpUrl, vnp_Params);
+    console.log('[VNPAY Refund] Kết quả từ VNPAY:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('[VNPAY Refund] Lỗi khi gọi API hoàn tiền VNPAY:', error.message);
+    return false;
+  }
+};
+
 import {
   sendBookingCreatedEmail,
   sendNewBookingAlertToOwnerEmail,
@@ -620,6 +709,14 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
             });
           }
 
+          // Tự động hoàn cọc VNPAY nếu đã thanh toán
+          if (updatedBooking.isPaid && updatedBooking.depositAmount && updatedBooking.depositAmount > 0) {
+            const creatorEmail = req.user?.email || 'staff@motov.com';
+            refundVNPayPayment(updatedBooking, updatedBooking.depositAmount, creatorEmail).catch(err => 
+              console.error('Lỗi khi gọi API VNPAY Refund từ updateBooking:', err)
+            );
+          }
+
           // Tạo thông báo in-app
           await Notification.create({
             userId: customer._id,
@@ -721,6 +818,14 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
     await Vehicle.findByIdAndUpdate(vehicleId, { status: 'Available' });
 
     const cancelledBooking = await booking.save();
+
+    // Tự động hoàn cọc VNPAY nếu khách hàng đã thanh toán
+    if (cancelledBooking.isPaid && cancelledBooking.depositAmount && cancelledBooking.depositAmount > 0) {
+      const creatorEmail = req.user?.email || 'customer@motov.com';
+      refundVNPayPayment(cancelledBooking, cancelledBooking.depositAmount, creatorEmail).catch(err =>
+        console.error('Lỗi khi gọi API VNPAY Refund từ cancelBooking:', err)
+      );
+    }
 
     // Gửi thông báo & email sau khi hủy booking (In-app & SMTP)
     try {
@@ -1380,10 +1485,10 @@ export const createVNPayUrl = async (req: AuthRequest, res: Response) => {
     // Amount to pay is the depositAmount (30%)
     const amount = booking.depositAmount || Math.round(booking.totalAmount * 0.3);
 
-    const tmnCode = process.env.VNP_TMNCODE;
-    const secretKey = process.env.VNP_HASHSECRET;
-    let vnpUrl = process.env.VNP_URL;
-    const returnUrl = process.env.VNP_RETURNURL;
+    const tmnCode = await getSettingVal('vnp_TmnCode', process.env.VNP_TMNCODE || '');
+    const secretKey = await getSettingVal('vnp_HashSecret', process.env.VNP_HASHSECRET || '');
+    let vnpUrl = await getSettingVal('vnp_Url', process.env.VNP_URL || '');
+    const returnUrl = await getSettingVal('vnp_ReturnUrl', process.env.VNP_RETURNURL || '');
 
     if (!tmnCode || !secretKey || !vnpUrl || !returnUrl) {
       return res.status(500).json({
@@ -1464,7 +1569,7 @@ export const processVNPayIPN = async (req: any, res: Response) => {
     // Sort params
     const sortedParams = sortObject(vnp_Params);
     
-    const secretKey = process.env.VNP_HASHSECRET;
+    const secretKey = await getSettingVal('vnp_HashSecret', process.env.VNP_HASHSECRET || '');
     if (!secretKey) {
       return res.status(500).json({ RspCode: '99', Message: 'Internal server error' });
     }

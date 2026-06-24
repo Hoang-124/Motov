@@ -15,6 +15,7 @@ export const Bookings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [trackingBookingId, setTrackingBookingId] = useState<string | null>(null);
+  const [trackingBooking, setTrackingBooking] = useState<Booking | null>(null);
 
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
@@ -280,7 +281,10 @@ export const Bookings = () => {
                   
                   <div className="pt-2">
                     <button
-                      onClick={() => setTrackingBookingId(booking.id)}
+                      onClick={() => {
+                        setTrackingBookingId(booking.id);
+                        setTrackingBooking(booking);
+                      }}
                       className="text-xs text-blue-400 hover:text-blue-300 underline"
                     >
                       {t('myBookingsPage.detailSchedule')}
@@ -690,8 +694,14 @@ export const Bookings = () => {
       {/* Modal Lịch trình Tracking */}
       <BookingTrackingModal
         isOpen={!!trackingBookingId}
-        onClose={() => setTrackingBookingId(null)}
+        onClose={() => {
+          setTrackingBookingId(null);
+          setTrackingBooking(null);
+        }}
         bookingId={trackingBookingId}
+        status={trackingBooking?.status}
+        pickupAddress={trackingBooking?.pickupLocation?.address}
+        returnAddress={trackingBooking?.returnLocation?.address}
       />
     </div>
   );

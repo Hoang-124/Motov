@@ -63,6 +63,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Banking'>('Banking');
   const [deliveryMethod, setDeliveryMethod] = useState<'StorePickup' | 'HomeDelivery'>('StorePickup');
 
+  // Voucher validation states
+  const [appliedPromo, setAppliedPromo] = useState<any>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
+  const [validatingPromo, setValidatingPromo] = useState(false);
+
   // Personal info fields
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -79,6 +85,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setFullName('');
       setPhone('');
       setLicense('');
+
+      // Reset promo state
+      setAppliedPromo(null);
+      setPromoError(null);
+      setPromoSuccess(null);
+      setValidatingPromo(false);
 
       // Fetch user profile to prefill information
       const fetchProfile = async () => {
@@ -125,9 +137,61 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   };
 
   const rentalDays = getRentalDays();
-  const totalAmount = selectedBike ? (parseInt(selectedBike.price.replace(/\./g, ''), 10) || 0) * rentalDays : 0;
+  const totalAmountBeforeDiscount = selectedBike ? (parseInt(selectedBike.price.replace(/\./g, ''), 10) || 0) * rentalDays : 0;
+  const discountAmount = appliedPromo ? (appliedPromo.discountAmount || 0) : 0;
+  const totalAmount = Math.max(0, totalAmountBeforeDiscount - discountAmount);
   const depositAmount = Math.round(totalAmount * 0.3);
   const remainingAmount = totalAmount - depositAmount;
+
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) {
+      setPromoError('Vui lòng nhập mã giảm giá.');
+      return;
+    }
+    if (totalAmountBeforeDiscount <= 0) {
+      setPromoError('Vui lòng chọn thời gian thuê xe hợp lệ trước.');
+      return;
+    }
+
+    setPromoError(null);
+    setPromoSuccess(null);
+    setValidatingPromo(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/promotions/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          promoCode: promoCode.trim(),
+          totalAmount: totalAmountBeforeDiscount
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setAppliedPromo(data.promotion);
+        setPromoSuccess(`Áp dụng thành công! Được giảm ${data.promotion.discountAmount.toLocaleString()} VNĐ`);
+      } else {
+        setPromoError(data.message || 'Mã giảm giá không hợp lệ hoặc đã hết hạn.');
+        setAppliedPromo(null);
+      }
+    } catch (err) {
+      setPromoError('Lỗi kết nối máy chủ khi kiểm tra mã.');
+      setAppliedPromo(null);
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoSuccess(null);
+    setPromoError(null);
+    setPromoCode('');
+  };
 
   const handleConfirm = async () => {
     if (!isVerified) {
@@ -176,7 +240,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       returnDateTime: toISO(returnDate, returnTime),
       pickupLocation: { address: deliveryMethod === 'StorePickup' ? 'Nhận tại cửa hàng Motov' : locationAddress, coordinates: [0, 0] },
       returnLocation: { address: deliveryMethod === 'StorePickup' ? 'Trả tại cửa hàng Motov' : locationAddress, coordinates: [0, 0] },
-      promoCode: promoCode.trim() || undefined,
+      promoCode: appliedPromo ? appliedPromo.voucherCode : undefined,
       paymentMethod,
       deliveryMethod,
       fullName: fullName.trim(),
@@ -417,17 +481,45 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               {/* Promo code */}
               <View style={styles.modalInputGroup}>
                 <Text style={styles.modalInputLabel}>Mã giảm giá (tuỳ chọn)</Text>
-                <View style={styles.modalInputWithIcon}>
-                  <Feather name="tag" size={16} color="#888" style={styles.modalInputIcon} />
-                  <TextInput
-                    style={styles.modalTextInput}
-                    placeholder="Nhập mã voucher"
-                    placeholderTextColor="#666"
-                    autoCapitalize="characters"
-                    value={promoCode}
-                    onChangeText={setPromoCode}
-                  />
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={[styles.modalInputWithIcon, { flex: 1 }]}>
+                    <Feather name="tag" size={16} color="#888" style={styles.modalInputIcon} />
+                    <TextInput
+                      style={styles.modalTextInput}
+                      placeholder="Nhập mã voucher"
+                      placeholderTextColor="#666"
+                      autoCapitalize="characters"
+                      value={promoCode}
+                      onChangeText={setPromoCode}
+                      editable={appliedPromo === null}
+                    />
+                    {appliedPromo !== null && (
+                      <TouchableOpacity onPress={handleRemovePromo} style={{ padding: 6 }}>
+                        <Feather name="x" size={14} color={COLORS.danger} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.promoApplyBtn,
+                      (appliedPromo !== null || validatingPromo) && styles.promoApplyBtnDisabled
+                    ]}
+                    onPress={handleApplyPromo}
+                    disabled={appliedPromo !== null || validatingPromo}
+                  >
+                    {validatingPromo ? (
+                      <ActivityIndicator size="small" color={COLORS.accentDark} />
+                    ) : (
+                      <Text style={styles.promoApplyBtnText}>Áp dụng</Text>
+                    )}
+                  </TouchableOpacity>
                 </View>
+                {promoError && (
+                  <Text style={{ color: COLORS.danger, fontSize: 10, marginTop: 4 }}>⚠️ {promoError}</Text>
+                )}
+                {promoSuccess && (
+                  <Text style={{ color: COLORS.approved, fontSize: 10, marginTop: 4 }}>✓ {promoSuccess}</Text>
+                )}
               </View>
 
               {/* Thông tin cá nhân khách hàng */}
@@ -485,9 +577,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               {rentalDays > 0 && (
                 <View style={styles.summaryContainer}>
                   <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Đơn giá xe:</Text>
+                    <Text style={styles.summaryValue}>{selectedBike.price} VNĐ/ngày</Text>
+                  </View>
+                  <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Số ngày thuê:</Text>
                     <Text style={styles.summaryValue}>{rentalDays} ngày</Text>
                   </View>
+                  <View style={[styles.summaryRow, styles.borderTop]}>
+                    <Text style={styles.summaryLabel}>Tạm tính:</Text>
+                    <Text style={styles.summaryValue}>{totalAmountBeforeDiscount.toLocaleString()} VNĐ</Text>
+                  </View>
+                  {appliedPromo && (
+                    <View style={styles.summaryRow}>
+                      <Text style={[styles.summaryLabel, { color: COLORS.approved }]}>Giảm giá ({appliedPromo.voucherCode}):</Text>
+                      <Text style={[styles.summaryValue, { color: COLORS.approved }]}>-{discountAmount.toLocaleString()} VNĐ</Text>
+                    </View>
+                  )}
                   <View style={[styles.summaryRow, styles.borderTop]}>
                     <Text style={styles.summaryLabel}>Tổng cộng:</Text>
                     <Text style={[styles.summaryValue, styles.totalText]}>{totalAmount.toLocaleString()} VNĐ</Text>
@@ -729,5 +835,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 6,
     fontStyle: 'italic',
+  },
+  promoApplyBtn: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  promoApplyBtnDisabled: {
+    backgroundColor: COLORS.border,
+    opacity: 0.5,
+  },
+  promoApplyBtnText: {
+    color: COLORS.accentDark,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
