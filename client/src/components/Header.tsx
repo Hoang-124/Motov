@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare, Globe } from 'lucide-react';
+import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare, Globe, Folder, Archive } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { notificationService, NotificationItem } from '../services/notificationService.js';
 import { useLanguage } from '../hooks/useLanguage';
@@ -216,6 +216,8 @@ export const Header = () => {
       return [
         { path: '/admin/dashboard', label: t('nav.dashboard') },
         { path: '/admin/bikes', label: t('nav.manageBikes') },
+        { path: '/admin/categories', label: t('nav.manageCategories') || 'Quản lý danh mục' },
+        { path: '/admin/inventory', label: t('nav.manageInventory') || 'Quản lý kho' },
         { path: '/admin/bookings', label: t('nav.allBookings') },
         { path: '/admin/users', label: t('nav.roles') },
         { path: '/admin/promotions', label: t('nav.promotions') },
@@ -228,6 +230,7 @@ export const Header = () => {
       return [
         { path: '/staff/bookings', label: t('nav.approveBookings') },
         { path: '/staff/bikes', label: t('nav.bikeStatus') },
+        { path: '/admin/inventory', label: t('nav.manageInventory') || 'Quản lý kho' },
       ];
     }
 
@@ -641,6 +644,10 @@ export const Header = () => {
                             <BookOpen size={15} />
                             <span>Tình trạng xe</span>
                           </Link>
+                          <Link to="/admin/inventory" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <Archive size={15} />
+                            <span>Quản lý kho</span>
+                          </Link>
                         </>
                       )}
 
@@ -654,6 +661,10 @@ export const Header = () => {
                           <Link to="/admin/bikes" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <BookOpen size={15} />
                             <span>Quản lý xe</span>
+                          </Link>
+                          <Link to="/admin/categories" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <Folder size={15} />
+                            <span>Quản lý danh mục</span>
                           </Link>
                           <Link to="/admin/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <ClipboardList size={15} />
@@ -670,6 +681,10 @@ export const Header = () => {
                           <Link to="/admin/feedbacks" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <MessageSquare size={15} />
                             <span>Quản lý đánh giá</span>
+                          </Link>
+                          <Link to="/admin/inventory" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <Archive size={15} />
+                            <span>Quản lý kho</span>
                           </Link>
                         </>
                       )}

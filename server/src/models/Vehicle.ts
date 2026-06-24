@@ -9,7 +9,7 @@ export interface IVehicle extends Document {
   rentalPrice: number;
   status: 'Available' | 'Rented' | 'Maintenance' | 'PendingApproval';
   description?: string;
-  category: string;
+  category: mongoose.Types.ObjectId | string;
   transmissionType: 'Manual' | 'Automatic' | 'Semi-Automatic';
   regCertificateUrl?: string;
   imageUrls: string[];
@@ -27,7 +27,7 @@ const VehicleSchema = new Schema<IVehicle>({
   rentalPrice: { type: Number, required: true },
   status: { type: String, enum: ['Available', 'Rented', 'Maintenance', 'PendingApproval'], default: 'PendingApproval' },
   description: { type: String },
-  category: { type: String, required: true, index: true },
+  category: { type: Schema.Types.ObjectId, ref: 'Category', required: true, index: true },
   transmissionType: { type: String, enum: ['Manual', 'Automatic', 'Semi-Automatic'], required: true },
   regCertificateUrl: { type: String },
   imageUrls: [{ type: String }],
