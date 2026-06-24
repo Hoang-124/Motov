@@ -442,26 +442,26 @@ export const AdminUsers = () => {
     switch (role) {
       case 'admin':
         return (
-          <span className="px-2 py-0.5 rounded text-[11px] font-bold border bg-neon/10 text-neon border-neon/20 flex items-center gap-1 w-fit">
+          <span className="px-2 py-0.5 rounded text-[11px] font-semibold border bg-neon/10 text-neon border-neon/20 flex items-center gap-1 w-fit whitespace-nowrap">
             <Shield size={10} /> Quản Trị Viên
           </span>
         );
       case 'staff':
         return (
-          <span className="px-2 py-0.5 rounded text-[11px] font-bold border bg-yellow-500/10 text-yellow-500 border-yellow-500/20 flex items-center gap-1 w-fit">
+          <span className="px-2 py-0.5 rounded text-[11px] font-semibold border bg-yellow-500/10 text-yellow-500 border-yellow-500/20 flex items-center gap-1 w-fit whitespace-nowrap">
             <Briefcase size={10} /> Nhân Viên
           </span>
         );
       case 'owner':
         return (
-          <span className="px-2 py-0.5 rounded text-[11px] font-bold border bg-cyan-500/10 text-cyan-400 border-cyan-500/20 flex items-center gap-1 w-fit">
+          <span className="px-2 py-0.5 rounded text-[11px] font-semibold border bg-cyan-500/10 text-cyan-400 border-cyan-500/20 flex items-center gap-1 w-fit whitespace-nowrap">
             <UserCheck size={10} /> Chủ Xe
           </span>
         );
       case 'customer':
       default:
         return (
-          <span className="px-2 py-0.5 rounded text-[11px] font-bold border bg-green-500/10 text-green-400 border-green-500/20 flex items-center gap-1 w-fit">
+          <span className="px-2 py-0.5 rounded text-[11px] font-semibold border bg-green-500/10 text-green-500 border-green-500/20 flex items-center gap-1 w-fit whitespace-nowrap">
             <Award size={10} /> Khách Hàng
           </span>
         );
@@ -472,20 +472,20 @@ export const AdminUsers = () => {
     switch (status) {
       case 'Active':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-500/10 text-green-400 border border-green-500/25">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-500/10 text-green-500 border border-green-500/20 whitespace-nowrap">
             ● Hoạt động
           </span>
         );
       case 'Suspended':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/25">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-500 border border-red-500/20 whitespace-nowrap">
             ● Đã khóa
           </span>
         );
       case 'Unverified':
       default:
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-500/10 text-gray-400 border border-gray-500/25">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/20 whitespace-nowrap">
             ● Chưa xác minh
           </span>
         );
@@ -513,8 +513,8 @@ export const AdminUsers = () => {
         {/* Header Title */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
-            <h1 className="font-display font-black text-4xl text-neon uppercase text-glow tracking-tight mb-2">
-              Quản Lý Thành Viên
+            <h1 className="font-display font-black text-3xl text-white tracking-tight mb-2">
+              Quản lý thành viên
             </h1>
             <p className="text-gray-400 text-sm">
               Tìm kiếm, xem thông tin chi tiết, chỉnh sửa thông tin hoặc thay đổi trạng thái tài khoản người dùng
@@ -522,7 +522,7 @@ export const AdminUsers = () => {
           </div>
           <button
             onClick={handleOpenCreate}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-neon text-dark font-bold rounded-xl hover:bg-[#bbf000] transition-all duration-300 shadow-[0_0_15px_rgba(204,255,0,0.25)] hover:scale-[1.02] cursor-pointer text-sm uppercase tracking-wider"
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-neon text-dark font-bold rounded-xl hover:bg-[#bbf000] transition-all duration-300 shadow-md hover:shadow-[0_0_12px_rgba(204,255,0,0.25)] hover:scale-[1.02] cursor-pointer text-sm font-semibold whitespace-nowrap"
           >
             <Plus size={16} /> Thêm thành viên
           </button>
@@ -532,13 +532,13 @@ export const AdminUsers = () => {
         <div className="flex gap-6 mb-6 border-b border-white/5 pb-px">
           <button
             onClick={() => setActiveTab('users')}
-            className={`pb-3 text-sm font-bold uppercase tracking-wider transition-colors relative cursor-pointer ${
-              activeTab === 'users' ? 'text-neon font-black' : 'text-gray-400 hover:text-white'
+            className={`pb-3 text-sm font-semibold transition-colors relative cursor-pointer ${
+              activeTab === 'users' ? 'text-neon font-bold' : 'text-gray-400 hover:text-white'
             }`}
           >
             Danh sách thành viên
             {activeTab === 'users' && (
-              <motion.div layoutId="activeTabUnderline" className="absolute bottom-0 inset-x-0 h-0.5 bg-neon shadow-[0_0_8px_rgba(204,255,0,0.8)]" />
+              <motion.div layoutId="activeTabUnderline" className="absolute bottom-0 inset-x-0 h-0.5 bg-neon shadow-none" />
             )}
           </button>
           <button
@@ -546,8 +546,8 @@ export const AdminUsers = () => {
               setActiveTab('ekyc');
               fetchEkycRequests();
             }}
-            className={`pb-3 text-sm font-bold uppercase tracking-wider transition-colors relative cursor-pointer flex items-center gap-2 ${
-              activeTab === 'ekyc' ? 'text-neon font-black' : 'text-gray-400 hover:text-white'
+            className={`pb-3 text-sm font-semibold transition-colors relative cursor-pointer flex items-center gap-2 ${
+              activeTab === 'ekyc' ? 'text-neon font-bold' : 'text-gray-400 hover:text-white'
             }`}
           >
             Yêu cầu eKYC
@@ -557,7 +557,7 @@ export const AdminUsers = () => {
               </span>
             )}
             {activeTab === 'ekyc' && (
-              <motion.div layoutId="activeTabUnderline" className="absolute bottom-0 inset-x-0 h-0.5 bg-neon shadow-[0_0_8px_rgba(204,255,0,0.8)]" />
+              <motion.div layoutId="activeTabUnderline" className="absolute bottom-0 inset-x-0 h-0.5 bg-neon shadow-none" />
             )}
           </button>
         </div>
@@ -662,7 +662,7 @@ export const AdminUsers = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-white/5 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-black/20">
+                  <tr className="border-b border-white/5 text-[11px] font-semibold text-gray-500 bg-black/20">
                     <th className="py-4 px-6">Họ & Tên / Username</th>
                     <th className="py-4 px-6">Email / SĐT</th>
                     <th className="py-4 px-6">Vai trò</th>
@@ -698,28 +698,28 @@ export const AdminUsers = () => {
                       </td>
 
                       {/* Email / Phone */}
-                      <td className="py-4 px-6 font-mono text-xs">
+                      <td className="py-4 px-6 font-mono text-xs whitespace-nowrap">
                         <div className="text-gray-300">{user.email}</div>
                         <div className="text-gray-500 text-[11px] mt-0.5">{user.phoneNumber || 'Chưa cung cấp SĐT'}</div>
                       </td>
 
                       {/* Role */}
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 whitespace-nowrap">
                         {getRoleBadge(user.role)}
                       </td>
 
                       {/* Status */}
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 whitespace-nowrap">
                         {getStatusBadge(user.status)}
                       </td>
 
                       {/* Join Date */}
-                      <td className="py-4 px-6 text-xs text-gray-500">
+                      <td className="py-4 px-6 text-xs text-gray-500 whitespace-nowrap">
                         {formatDate(user.createdAt)}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-6 text-right">
+                      <td className="py-4 px-6 text-right whitespace-nowrap">
                         <div className="flex justify-end gap-1">
                           <button
                             onClick={() => handleOpenDetail(user)}
@@ -788,7 +788,7 @@ export const AdminUsers = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-white/5 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-black/20">
+                    <tr className="border-b border-white/5 text-[11px] font-semibold text-gray-500 bg-black/20">
                       <th className="py-4 px-6">Thành viên</th>
                       <th className="py-4 px-6">Số điện thoại / Email</th>
                       <th className="py-4 px-6">Họ tên trên CCCD</th>
@@ -804,31 +804,31 @@ export const AdminUsers = () => {
                           <div className="font-bold text-white">{req.name}</div>
                           <div className="text-xs text-gray-500 font-mono">@{req.username}</div>
                         </td>
-                        <td className="py-4 px-6 font-mono text-xs">
+                        <td className="py-4 px-6 font-mono text-xs whitespace-nowrap">
                           <div>{req.phoneNumber || 'Chưa cung cấp SĐT'}</div>
                           <div className="text-gray-500 text-[11px] mt-0.5">{req.email}</div>
                         </td>
-                        <td className="py-4 px-6 font-bold text-white uppercase font-mono">
+                        <td className="py-4 px-6 font-semibold text-white font-mono whitespace-nowrap">
                           {req.citizenIdInfo?.fullName || 'N/A'}
                         </td>
-                        <td className="py-4 px-6">
-                          <span className="px-2.5 py-1 rounded-full text-xs font-black bg-neon/10 text-neon border border-neon/20 font-mono">
+                        <td className="py-4 px-6 whitespace-nowrap">
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-neon/10 text-neon border border-neon/20 font-mono">
                             {req.citizenIdInfo?.faceMatchConfidence}%
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-xs text-gray-500">
+                        <td className="py-4 px-6 text-xs text-gray-500 whitespace-nowrap">
                           {formatDate(req.identitySubmittedAt)}
                         </td>
-                        <td className="py-4 px-6 text-right">
+                        <td className="py-4 px-6 text-right whitespace-nowrap">
                           <button
                             onClick={() => {
                               setSelectedEkyc(req);
                               setRejectReason('');
                               setIsEkycDetailOpen(true);
                             }}
-                            className="px-4 py-2 bg-neon text-dark font-bold hover:bg-[#bbf000] rounded-lg text-xs uppercase tracking-wider transition-all cursor-pointer shadow-[0_0_10px_rgba(204,255,0,0.15)] hover:scale-[1.02]"
+                            className="px-4 py-2 bg-neon text-dark font-semibold hover:bg-[#bbf000] rounded-lg text-xs transition-all cursor-pointer shadow-md hover:shadow-[0_0_8px_rgba(204,255,0,0.2)] hover:scale-[1.02] whitespace-nowrap"
                           >
-                            Xem & Duyệt
+                            Xem & duyệt
                           </button>
                         </td>
                       </tr>

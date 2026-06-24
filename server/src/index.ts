@@ -16,8 +16,10 @@ import userRoutes from './routes/userRoutes.js';
 import promotionRoutes from './routes/promotionRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
+import systemRoutes from './routes/systemRoutes.js';
 import { authMiddleware } from './middlewares/authMiddleware.js';
 import { initBookingReminderScheduler } from './utils/bookingReminderScheduler.js';
+import { Discount } from './models/Discount.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -72,6 +74,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/feedbacks', feedbackRoutes);
+app.use('/api/system', systemRoutes);
 
 // Routes quản lý xe (Vehicle/Bike Management APIs)
 app.use('/api/vehicles', vehicleRoutes);
@@ -124,16 +127,7 @@ app.post('/api/upload', authMiddleware as any, upload.single('image'), (req: any
 async function seedUsers() {
   try {
     const passwordHash = await bcrypt.hash('admin123', 10);
-    const testAccounts: {
-      username: string;
-      email: string;
-      passwordHash: string;
-      firstName: string;
-      lastName: string;
-      phoneNumber: string;
-      roles: ('Admin' | 'Staff' | 'Owner' | 'Customer')[];
-      status: 'Active' | 'Suspended' | 'Unverified';
-    }[] = [
+    const testAccounts: any[] = [
       {
         username: 'admin123',
         email: 'admin@motov.com',
@@ -143,6 +137,7 @@ async function seedUsers() {
         phoneNumber: '0901234567',
         roles: ['Admin'],
         status: 'Active',
+        identityStatus: 'Verified',
       },
       {
         username: 'staff123',
@@ -153,6 +148,7 @@ async function seedUsers() {
         phoneNumber: '0901234568',
         roles: ['Staff'],
         status: 'Active',
+        identityStatus: 'Verified',
       },
       {
         username: 'owner123',
@@ -163,6 +159,7 @@ async function seedUsers() {
         phoneNumber: '0901234569',
         roles: ['Owner'],
         status: 'Active',
+        identityStatus: 'Verified',
       },
       {
         username: 'customer123',
@@ -173,6 +170,18 @@ async function seedUsers() {
         phoneNumber: '0901234570',
         roles: ['Customer'],
         status: 'Active',
+        identityStatus: 'Verified',
+        citizenIdInfo: {
+          idNumber: '048201999999',
+          fullName: 'NGUYEN VAN KHACH',
+          dob: new Date('1995-05-25'),
+          homeTown: 'Đà Nẵng',
+          address: 'Số 123 Đường Hùng Vương, Hải Châu, Đà Nẵng',
+          cardFrontUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=400',
+          cardBackUrl: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=400',
+          selfieUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
+          faceMatchConfidence: 95
+        }
       }
     ];
 
@@ -182,11 +191,15 @@ async function seedUsers() {
         await User.create(acc);
         console.log(`✅ Seeded tài khoản mẫu: ${acc.email} (${acc.username} / Mật khẩu: admin123)`);
       } else {
-        // Cập nhật username và passwordHash để đồng bộ với kiểm thử
+        // Cập nhật username, passwordHash và identityStatus để đồng bộ với kiểm thử
         exists.username = acc.username;
         exists.passwordHash = passwordHash;
+        exists.identityStatus = acc.identityStatus as any;
+        if (acc.citizenIdInfo) {
+          exists.citizenIdInfo = acc.citizenIdInfo;
+        }
         await exists.save();
-        console.log(`🔄 Đồng bộ tài khoản mẫu: ${acc.email} (Mật khẩu mới: admin123)`);
+        console.log(`🔄 Đồng bộ tài khoản mẫu: ${acc.email} (Đã xác minh eKYC - Mật khẩu mới: admin123)`);
       }
     }
   } catch (err) {
@@ -248,12 +261,56 @@ async function seedVehicles() {
   }
 }
 
+// Hàm tạo mã khuyến mãi mẫu (Seed data) để kiểm thử
+async function seedDiscounts() {
+  try {
+    const count = await Discount.countDocuments();
+    if (count > 0) {
+      return;
+    }
+
+    const testDiscounts = [
+      {
+        discountName: 'Khởi đầu rực rỡ',
+        description: 'Giảm ngay 10% giá trị đơn hàng cho khách hàng mới của Motov.',
+        discountType: 'Percentage',
+        discountValue: 10,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        isActive: true,
+        voucherCode: 'MOTOV10',
+        minOrderAmount: 100000,
+        maxDiscountAmount: 50000,
+        usedCount: 0
+      },
+      {
+        discountName: 'Đường dài yêu thương',
+        description: 'Giảm thẳng 50.000 VNĐ cho các chuyến đi từ 3 ngày trở lên.',
+        discountType: 'FixedAmount',
+        discountValue: 50000,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        isActive: true,
+        voucherCode: 'WELCOME50K',
+        minOrderAmount: 250000,
+        usedCount: 0
+      }
+    ];
+
+    await Discount.insertMany(testDiscounts);
+    console.log(`✅ Seeded ${testDiscounts.length} discounts successfully into MongoDB!`);
+  } catch (err) {
+    console.error('❌ Lỗi khi seed khuyến mãi mẫu:', err);
+  }
+}
+
 // Kết nối MongoDB
 mongoose.connect(MONGODB_URI)
   .then(async () => {
     console.log('✅ Connected to MongoDB successfully!');
     await seedUsers();
     await seedVehicles();
+    await seedDiscounts();
     initBookingReminderScheduler();
   })
   .catch((err: any) => console.error('❌ Failed to connect to MongoDB:', err));

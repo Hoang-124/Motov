@@ -11,13 +11,19 @@ import {
   confirmBookingByStaff,
   confirmBikePickupByStaff,
   getBookingTracking,
-  returnMotorbike
+  returnMotorbike,
+  createVNPayUrl,
+  processVNPayIPN
 } from '../controllers/bookingController.js';
 import { authMiddleware, restrictTo } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
-// All routes require authentication
+// VNPAY IPN webhook endpoints (No auth required for VNPAY server call)
+router.get('/vnpay-ipn', processVNPayIPN as any);
+router.post('/vnpay-ipn', processVNPayIPN as any);
+
+// All other routes require authentication
 router.use(authMiddleware as any);
 
 // ============================================
@@ -71,7 +77,13 @@ router.get('/:id/tracking', getBookingTracking as any);
  * Return motorbike and calculate late fees
  * Access: Admin, Staff
  */
-router.put('/:id/return', restrictTo('Admin', 'Staff') as any, returnMotorbike as any);
+router.put('/:id/return', restrictTo('Admin', 'Staff', 'Customer') as any, returnMotorbike as any);
+
+/**
+ * POST /api/bookings/:id/vnpay-url
+ * Generate VNPAY payment URL
+ */
+router.post('/:id/vnpay-url', createVNPayUrl as any);
 
 // ============================================
 // Owner Routes

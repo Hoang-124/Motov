@@ -71,14 +71,14 @@ export const Profile = () => {
       }
       mediaStreamRef.current = stream;
       setIsCameraActive(true);
-      setLivenessLogs(prev => [...prev, '✓ Thiết bị camera hoạt động bình thường.', 'Vui lòng giữ thẳng khuôn mặt và nhìn vào camera.']);
+      setLivenessLogs(prev => [...prev, 'Thiết bị camera hoạt động bình thường.', 'Vui lòng giữ thẳng khuôn mặt và nhìn vào camera.']);
       
       // Auto trigger step 1 chụp ảnh thẳng sau 2.5s
       setTimeout(() => {
         captureLivenessStep(1);
       }, 2500);
     } catch (err) {
-      setLivenessLogs(prev => [...prev, '❌ Lỗi: Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập camera trên trình duyệt.']);
+      setLivenessLogs(prev => [...prev, 'Lỗi: Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập camera trên trình duyệt.']);
       console.error('Camera error:', err);
     }
   };
@@ -106,14 +106,14 @@ export const Profile = () => {
       ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
       
       if (step === 1) {
-        setLivenessLogs(prev => [...prev, '📸 Đã tự động chụp ảnh chính diện.', 'Yêu cầu 2: Vui lòng chớp mắt liên tục 2 lần...']);
+        setLivenessLogs(prev => [...prev, 'Đã tự động chụp ảnh chính diện.', 'Yêu cầu 2: Vui lòng chớp mắt liên tục 2 lần...']);
         setLivenessSubStep(2);
         // Giả lập nhận diện cử chỉ chớp mắt thành công sau 2.5s
         setTimeout(() => {
           captureLivenessStep(2);
         }, 2500);
       } else if (step === 2) {
-        setLivenessLogs(prev => [...prev, '✓ Đã nhận diện cử chỉ chớp mắt thành công.', 'Yêu cầu 3: Vui lòng mỉm cười nhẹ...']);
+        setLivenessLogs(prev => [...prev, 'Đã nhận diện cử chỉ chớp mắt thành công.', 'Yêu cầu 3: Vui lòng mỉm cười nhẹ...']);
         setLivenessSubStep(3);
         // Giả lập chụp nụ cười thành công sau 2.5s
         setTimeout(() => {
@@ -121,7 +121,7 @@ export const Profile = () => {
         }, 2500);
       } else if (step === 3) {
         const selfieDataUrl = canvas.toDataURL('image/jpeg');
-        setLivenessLogs(prev => [...prev, '📸 Đã chụp ảnh selfie cười.', 'Xác thực Liveness (thực thể sống) thành công!', 'Đang tải dữ liệu selfie lên máy chủ...']);
+        setLivenessLogs(prev => [...prev, 'Đã chụp ảnh selfie cười.', 'Xác thực Liveness (thực thể sống) thành công!', 'Đang tải dữ liệu selfie lên máy chủ...']);
         
         try {
           const blob = await fetch(selfieDataUrl).then(res => res.blob());
@@ -147,7 +147,7 @@ export const Profile = () => {
           }
           
           setSelfie(uploadRes.url);
-          setLivenessLogs(prev => [...prev, '✓ Tải ảnh selfie lên thành công.']);
+          setLivenessLogs(prev => [...prev, 'Tải ảnh selfie lên thành công.']);
           
           // Dừng camera và chuyển sang bước quét OCR
           setTimeout(() => {
@@ -157,7 +157,7 @@ export const Profile = () => {
           }, 1500);
           
         } catch (err: any) {
-          setLivenessLogs(prev => [...prev, `❌ Lỗi tải ảnh selfie: ${err.message || 'Không thể upload'}`]);
+          setLivenessLogs(prev => [...prev, `Lỗi tải ảnh selfie: ${err.message || 'Không thể upload'}`]);
         }
       }
     }
@@ -230,7 +230,7 @@ export const Profile = () => {
       setEkycStep('result');
       
     } catch (err: any) {
-      setScanLogs(prev => [...prev, `❌ Lỗi: ${err.message || 'Lỗi kết nối eKYC server'}`]);
+      setScanLogs(prev => [...prev, `Lỗi: ${err.message || 'Lỗi kết nối eKYC server'}`]);
     }
   };
 
@@ -644,7 +644,7 @@ export const Profile = () => {
 
               {error && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold text-center mb-4">
-                  ⚠️ {error}
+                  {error}
                 </div>
               )}
 
@@ -851,7 +851,7 @@ export const Profile = () => {
 
                 {identityStatus === 'Pending' && (
                   <div className="text-center py-2 text-yellow-500 text-xs font-semibold">
-                    ⏳ Yêu cầu xác thực đang chờ phê duyệt. Thông thường quá trình này mất 5-15 phút.
+                    Yêu cầu xác thực đang chờ phê duyệt. Thông thường quá trình này mất 5-15 phút.
                   </div>
                 )}
               </div>
@@ -895,7 +895,7 @@ export const Profile = () => {
                     
                     {ekycError && (
                       <div className="mb-4 bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold text-center">
-                        ⚠️ {ekycError}
+                        {ekycError}
                       </div>
                     )}
 
@@ -1012,9 +1012,9 @@ export const Profile = () => {
 
                           {/* Action overlay notification */}
                           <div className="absolute bottom-6 inset-x-4 bg-black/75 px-3 py-1.5 rounded-full border border-neon/30 text-[10px] text-neon font-black text-center uppercase tracking-widest animate-bounce">
-                            {livenessSubStep === 1 && '👤 GIỮ THẲNG KHUÔN MẶT'}
-                            {livenessSubStep === 2 && '👁️ HÃY CHỚP MẮT LIÊN TỤC'}
-                            {livenessSubStep === 3 && '😊 VUI LÒNG MỈM CƯỜI NHẸ'}
+                            {livenessSubStep === 1 && 'GIỮ THẲNG KHUÔN MẶT'}
+                            {livenessSubStep === 2 && 'HÃY CHỚP MẮT LIÊN TỤC'}
+                            {livenessSubStep === 3 && 'VUI LÒNG MỈM CƯỜI NHẸ'}
                           </div>
                         </div>
 
@@ -1143,7 +1143,7 @@ export const Profile = () => {
 
               {passwordError && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold text-center mb-4">
-                  ⚠️ {passwordError}
+                  {passwordError}
                 </div>
               )}
 

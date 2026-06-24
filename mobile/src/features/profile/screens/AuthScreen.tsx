@@ -78,6 +78,9 @@ export const AuthScreen: React.FC = () => {
   // Forgot Password States
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotStage, setForgotStage] = useState<'phone' | 'otp' | 'reset'>('phone');
+  const [forgotMethod, setForgotMethod] = useState<'email' | 'phone'>('email');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotEmailPreviewUrl, setForgotEmailPreviewUrl] = useState<string | null>(null);
   const [forgotPhone, setForgotPhone] = useState('');
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
@@ -377,6 +380,45 @@ export const AuthScreen: React.FC = () => {
     }, 1000);
   };
 
+  const handleSendEmailReset = async () => {
+    if (!forgotEmail.trim()) {
+      setError('Vui lòng nhập địa chỉ email.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(forgotEmail.trim())) {
+      setError('Địa chỉ email không đúng định dạng.');
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+    setForgotEmailPreviewUrl(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Gửi yêu cầu khôi phục mật khẩu thất bại.');
+      }
+
+      Alert.alert('Thành Công 🎉', 'Hướng dẫn đặt lại mật khẩu đã được gửi đến email của bạn.');
+      if (data.previewUrl) {
+        setForgotEmailPreviewUrl(data.previewUrl);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Đã xảy ra lỗi khi gửi yêu cầu.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleVerifyOtp = () => {
     if (forgotOtp !== '123456') {
       setError('Mã OTP không chính xác. Vui lòng nhập 123456.');
@@ -466,6 +508,7 @@ export const AuthScreen: React.FC = () => {
             lastName: u.lastName || '',
             gender: u.gender || '',
             dob: u.dob || '',
+            identityStatus: u.identityStatus || null,
           })
         );
 
@@ -750,15 +793,39 @@ export const AuthScreen: React.FC = () => {
                 <View style={styles.neonBar} />
                 
                 <Text style={styles.title}>
-                  {forgotStage === 'phone' && 'Khôi phục mật khẩu'}
+                  {forgotStage === 'phone' && (forgotMethod === 'email' ? 'Khôi phục tài khoản' : 'Khôi phục mật khẩu')}
                   {forgotStage === 'otp' && 'Xác minh OTP'}
                   {forgotStage === 'reset' && 'Đặt lại mật khẩu'}
                 </Text>
                 <Text style={styles.subtitle}>
-                  {forgotStage === 'phone' && 'Nhập số điện thoại của bạn để nhận mã OTP'}
+                  {forgotStage === 'phone' && (forgotMethod === 'email' ? 'Nhập địa chỉ email của bạn để nhận liên kết khôi phục' : 'Nhập số điện thoại của bạn để nhận mã OTP')}
                   {forgotStage === 'otp' && 'Nhập mã OTP 6 số đã được gửi tới số điện thoại'}
                   {forgotStage === 'reset' && 'Thiết lập mật khẩu mới cho tài khoản của bạn'}
                 </Text>
+
+                {/* Method selector for stage 'phone' */}
+                {forgotStage === 'phone' && (
+                  <View style={styles.forgotToggleContainer}>
+                    <TouchableOpacity
+                      style={[styles.forgotToggleTab, forgotMethod === 'email' && styles.forgotToggleTabActive]}
+                      onPress={() => {
+                        setForgotMethod('email');
+                        setError(null);
+                      }}
+                    >
+                      <Text style={[styles.forgotToggleTabText, forgotMethod === 'email' && styles.forgotToggleTabTextActive]}>Qua Email</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.forgotToggleTab, forgotMethod === 'phone' && styles.forgotToggleTabActive]}
+                      onPress={() => {
+                        setForgotMethod('phone');
+                        setError(null);
+                      }}
+                    >
+                      <Text style={[styles.forgotToggleTabText, forgotMethod === 'phone' && styles.forgotToggleTabTextActive]}>Qua Điện thoại</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
                 {error && (
                   <View style={styles.errorCard}>
@@ -768,7 +835,7 @@ export const AuthScreen: React.FC = () => {
                 )}
 
                 <View style={styles.inputsContainer}>
-                  {forgotStage === 'phone' && (
+                  {forgotStage === 'phone' && forgotMethod === 'phone' && (
                     <View style={styles.inputWrapper}>
                       <Text style={styles.label}>Số điện thoại</Text>
                       <View style={styles.inputContainer}>
@@ -785,6 +852,37 @@ export const AuthScreen: React.FC = () => {
                       <Text style={styles.helperText}>
                         💡 Hệ thống sẽ chạy ở chế độ giả lập (Mock Mode).
                       </Text>
+                    </View>
+                  )}
+
+                  {forgotStage === 'phone' && forgotMethod === 'email' && (
+                    <View style={styles.inputWrapper}>
+                      <Text style={styles.label}>Địa chỉ Email</Text>
+                      <View style={styles.inputContainer}>
+                        <Feather name="mail" size={16} color={COLORS.accent} style={styles.inputIcon} />
+                        <TextInput
+                          style={[styles.input, styles.monoText]}
+                          placeholder="name@example.com"
+                          placeholderTextColor="#555"
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          value={forgotEmail}
+                          onChangeText={setForgotEmail}
+                        />
+                      </View>
+                      {forgotEmailPreviewUrl && (
+                        <View style={styles.testMailboxContainer}>
+                          <Text style={styles.testMailboxText}>
+                            Bạn đang ở môi trường thử nghiệm (Local). Hãy nhấp nút bên dưới để nhận link đặt lại mật khẩu:
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.testMailboxButton}
+                            onPress={() => Linking.openURL(forgotEmailPreviewUrl)}
+                          >
+                            <Text style={styles.testMailboxButtonText}>Mở Hòm Thư Thử Nghiệm</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
                   )}
 
@@ -845,7 +943,10 @@ export const AuthScreen: React.FC = () => {
                   <TouchableOpacity
                     style={[styles.submitButton, loading && styles.disabledButton]}
                     onPress={() => {
-                      if (forgotStage === 'phone') handleSendOtp();
+                      if (forgotStage === 'phone') {
+                        if (forgotMethod === 'email') handleSendEmailReset();
+                        else handleSendOtp();
+                      }
                       else if (forgotStage === 'otp') handleVerifyOtp();
                       else if (forgotStage === 'reset') handleResetPassword();
                     }}
@@ -858,7 +959,7 @@ export const AuthScreen: React.FC = () => {
                       </View>
                     ) : (
                       <Text style={styles.submitButtonText}>
-                        {forgotStage === 'phone' && 'GỬI MÃ OTP XÁC NHẬN'}
+                        {forgotStage === 'phone' && (forgotMethod === 'email' ? 'GỬI YÊU CẦU KHÔI PHỤC' : 'GỬI MÃ OTP XÁC NHẬN')}
                         {forgotStage === 'otp' && 'XÁC NHẬN OTP'}
                         {forgotStage === 'reset' && 'THIẾT LẬP MẬT KHẨU MỚI'}
                       </Text>
@@ -938,7 +1039,7 @@ export const AuthScreen: React.FC = () => {
                         />
                       </View>
                       {touched.name && errors.name && (
-                        <Text style={styles.fieldErrorText}>⚠️ {errors.name}</Text>
+                        <Text style={styles.fieldErrorText}>{errors.name}</Text>
                       )}
                     </View>
                   )}
@@ -963,7 +1064,7 @@ export const AuthScreen: React.FC = () => {
                         />
                       </View>
                       {touched.username && errors.username && (
-                        <Text style={styles.fieldErrorText}>⚠️ {errors.username}</Text>
+                        <Text style={styles.fieldErrorText}>{errors.username}</Text>
                       )}
                     </View>
                   )}
@@ -990,7 +1091,7 @@ export const AuthScreen: React.FC = () => {
                       />
                     </View>
                     {touched.email && errors.email && (
-                      <Text style={styles.fieldErrorText}>⚠️ {errors.email}</Text>
+                      <Text style={styles.fieldErrorText}>{errors.email}</Text>
                     )}
                     {!isLogin && (
                       <Text style={styles.helperText}>
@@ -1040,7 +1141,7 @@ export const AuthScreen: React.FC = () => {
                       </TouchableOpacity>
                     </View>
                     {touched.password && errors.password && (
-                      <Text style={styles.fieldErrorText}>⚠️ {errors.password}</Text>
+                      <Text style={styles.fieldErrorText}>{errors.password}</Text>
                     )}
 
                     {/* Password Strength Meter (Sign Up only) */}
@@ -1108,7 +1209,7 @@ export const AuthScreen: React.FC = () => {
                         </TouchableOpacity>
                       </View>
                       {touched.confirmPassword && errors.confirmPassword && (
-                        <Text style={styles.fieldErrorText}>⚠️ {errors.confirmPassword}</Text>
+                        <Text style={styles.fieldErrorText}>{errors.confirmPassword}</Text>
                       )}
                     </View>
                   )}
@@ -1514,5 +1615,32 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: 11,
     fontWeight: 'bold',
+  },
+  forgotToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#000',
+    borderWidth: 1,
+    borderColor: '#222',
+    borderRadius: 8,
+    padding: 3,
+    marginBottom: 20,
+  },
+  forgotToggleTab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  forgotToggleTabActive: {
+    backgroundColor: COLORS.accent,
+  },
+  forgotToggleTabText: {
+    color: '#888',
+    fontSize: 11,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  forgotToggleTabTextActive: {
+    color: COLORS.accentDark,
   },
 });

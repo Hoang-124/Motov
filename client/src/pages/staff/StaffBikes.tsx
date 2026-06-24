@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, ShieldAlert, Wrench, RefreshCw, Layers, Check, X, Search, User } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Wrench, RefreshCw, Layers, Check, X, Search, User, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getAllMotorbikes, updateMotorbikeStatus, deleteMotorbike, Motorbike } from '../../services/vehicleService.js';
 
@@ -156,8 +156,9 @@ export const StaffBikes = () => {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-center text-sm">
-            ❌ {error}
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-center text-sm flex items-center justify-center gap-2">
+            <AlertCircle size={16} className="text-red-500" />
+            <span>{error}</span>
           </div>
         )}
 
@@ -165,10 +166,10 @@ export const StaffBikes = () => {
         <div className="flex gap-2 overflow-x-auto pb-4 mb-6 border-b border-gray-900/60">
           {[
             { key: 'All', label: 'Tất cả xe' },
-            { key: 'PendingApproval', label: '⏳ Chờ phê duyệt' },
-            { key: 'Available', label: '✓ Sẵn sàng' },
-            { key: 'Rented', label: '🚴 Đang cho thuê' },
-            { key: 'Maintenance', label: '🔧 Đang bảo trì' }
+            { key: 'PendingApproval', label: 'Chờ phê duyệt' },
+            { key: 'Available', label: 'Sẵn sàng' },
+            { key: 'Rented', label: 'Đang cho thuê' },
+            { key: 'Maintenance', label: 'Đang bảo trì' }
           ].map((status) => (
             <button
               key={status.key}

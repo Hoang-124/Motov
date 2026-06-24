@@ -139,7 +139,7 @@ export const AdminFeedbacks = () => {
         <Star 
           key={i} 
           size={14} 
-          className={i <= rating ? 'fill-neon text-neon text-glow' : 'text-gray-700'} 
+          className={i <= rating ? 'fill-neon text-neon' : 'text-gray-700'} 
         />
       );
     }
@@ -167,9 +167,9 @@ export const AdminFeedbacks = () => {
         {/* Header Title */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
-            <h1 className="font-display font-black text-4xl text-neon uppercase text-glow tracking-tight mb-2 flex items-center gap-3">
+            <h1 className="font-display font-black text-3xl text-white tracking-tight mb-2 flex items-center gap-3">
               <MessageSquare size={36} />
-              Kiểm Duyệt Đánh Giá
+              Kiểm duyệt đánh giá
             </h1>
             <p className="text-gray-400 text-sm">
               Xem danh sách phản hồi, phát hiện các nội dung vi phạm ngôn từ và xử lý kỷ luật cảnh cáo/khóa thành viên
@@ -256,7 +256,7 @@ export const AdminFeedbacks = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-white/5 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-black/20">
+                  <tr className="border-b border-white/5 text-[11px] font-semibold text-gray-500 bg-black/20">
                     <th className="py-4 px-6">Thành viên / Cảnh cáo</th>
                     <th className="py-4 px-6">Dòng Xe</th>
                     <th className="py-4 px-6">Đánh giá</th>
@@ -272,7 +272,7 @@ export const AdminFeedbacks = () => {
                     }`}>
                       
                       {/* User Info / Strikes */}
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full overflow-hidden border border-white/10 bg-black flex items-center justify-center">
                             {fb.userId?.avatarUrl ? (
@@ -288,7 +288,7 @@ export const AdminFeedbacks = () => {
                             <div className="text-xs text-gray-500 flex items-center gap-2">
                               <span>@{fb.userId?.username || 'unknown'}</span>
                               {fb.userId && (fb.userId.strikes || 0) > 0 && (
-                                <span className={`px-1.5 py-0.2 text-[9px] font-bold rounded ${
+                                <span className={`px-1.5 py-0.2 text-[9px] font-semibold rounded ${
                                   fb.userId.strikes >= 3 ? 'bg-red-500 text-white animate-pulse' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30'
                                 }`}>
                                   ⚠️ Cảnh cáo: {fb.userId.strikes}/3
@@ -300,13 +300,13 @@ export const AdminFeedbacks = () => {
                       </td>
 
                       {/* Vehicle Info */}
-                      <td className="py-4 px-6 text-xs">
+                      <td className="py-4 px-6 text-xs whitespace-nowrap">
                         <div className="font-bold text-gray-200">{fb.vehicleId?.vehicleModel || 'Xe mẫu'}</div>
                         <div className="text-gray-500 mt-0.5 font-mono">{fb.vehicleId?.licensePlate || 'N/A'}</div>
                       </td>
 
                       {/* Stars Rating */}
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 whitespace-nowrap">
                         {renderStars(fb.rating)}
                       </td>
 
@@ -331,20 +331,20 @@ export const AdminFeedbacks = () => {
                       </td>
 
                       {/* Status */}
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 whitespace-nowrap">
                         {fb.isBlocked ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/25">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-500 border border-red-500/20 whitespace-nowrap">
                             Bị ẩn
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-500/10 text-green-400 border border-green-500/25">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-500/10 text-green-500 border border-green-500/20 whitespace-nowrap">
                             Hoạt động
                           </span>
                         )}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-6 text-right">
+                      <td className="py-4 px-6 text-right whitespace-nowrap">
                         <div className="flex justify-end gap-1.5">
                           <button
                             onClick={() => handleOpenDetail(fb)}

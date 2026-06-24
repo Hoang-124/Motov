@@ -487,7 +487,7 @@ export const checkLowAvailabilityAlert = async (vehicleModel: string, ownerId: a
       for (const u of adminsAndStaff) {
         await Notification.create({
           userId: u._id,
-          title: '⚠️ Cảnh báo: Lượng xe sẵn sàng thấp',
+          title: 'Cảnh báo: Lượng xe sẵn sàng thấp',
           message,
           type: 'System'
         });
@@ -499,7 +499,7 @@ export const checkLowAvailabilityAlert = async (vehicleModel: string, ownerId: a
         if (owner && !owner.roles.includes('Admin') && !owner.roles.includes('Staff')) {
           await Notification.create({
             userId: owner._id,
-            title: '⚠️ Cảnh báo: Xe sẵn sàng còn lại rất ít',
+            title: 'Cảnh báo: Xe sẵn sàng còn lại rất ít',
             message: `Dòng xe "${vehicleModel}" của bạn hiện chỉ còn ${availableCount} xe sẵn sàng hoạt động. Hãy kết thúc bảo trì hoặc đăng tải xe mới để tối ưu doanh thu.`,
             type: 'System'
           });

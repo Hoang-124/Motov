@@ -5,10 +5,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getMotorbikeById, Motorbike, deleteMotorbike, getAllMotorbikes } from '../services/vehicleService';
 import { feedbackService, FeedbackItem } from '../services/feedbackService';
 import { BikeCard } from '../components/BikeCard';
+import { useLanguage } from '../hooks/useLanguage';
 
 export const MotorbikeDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { language, t } = useLanguage();
   const [motorbike, setMotorbike] = useState<Motorbike | null>(null);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [relatedBikes, setRelatedBikes] = useState<Motorbike[]>([]);
@@ -16,6 +18,25 @@ export const MotorbikeDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeImage, setActiveImage] = useState<string>('');
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        setCurrentUser(JSON.parse(userStr));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  const canEditOrDelete = currentUser && (
+    currentUser.role === 'admin' || 
+    currentUser.role === 'staff' || 
+    (currentUser.role === 'owner' && motorbike && typeof motorbike.ownerId !== 'string' && motorbike.ownerId?.email === currentUser.email)
+  );
 
   useEffect(() => {
     const fetchMotorbike = async () => {
@@ -30,6 +51,9 @@ export const MotorbikeDetail = () => {
         setError(null);
         const data = await getMotorbikeById(id);
         setMotorbike(data);
+        if (data.imageUrls && data.imageUrls.length > 0) {
+          setActiveImage(data.imageUrls[0]);
+        }
         
         // Fetch feedbacks
         const fbData = await feedbackService.getVehicleFeedbacks(id);
@@ -126,7 +150,7 @@ export const MotorbikeDetail = () => {
 
   return (
     <div className="pt-28 pb-20 min-h-screen bg-dark">
-      <div className="max-w-4xl mx-auto px-4 lg:px-8">
+      <div className="w-full max-w-[95%] xl:max-w-[1400px] 2xl:max-w-[1600px] mx-auto px-4 lg:px-8 2xl:px-12">
         {/* Back Button */}
         <button
           onClick={() => navigate('/bikes')}
@@ -136,121 +160,174 @@ export const MotorbikeDetail = () => {
           Back to Bikes
         </button>
 
-        {/* Main Content */}
-        <div className="bg-surface border border-gray-800 rounded-2xl overflow-hidden">
-          {/* Image Gallery */}
-          <div className="relative aspect-video bg-black overflow-hidden">
-            <img
-              src={imageUrl}
-              alt={motorbike.vehicleModel}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute top-4 right-4 flex gap-2">
-              <div className={`px-4 py-2 rounded-full font-semibold text-sm backdrop-blur-md border ${
-                motorbike.status === 'Available'
-                  ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                  : motorbike.status === 'Rented'
-                  ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-                  : 'bg-red-500/20 text-red-400 border-red-500/30'
-              }`}>
-                {motorbike.status}
+        {/* Main Content (2-Column Grid Layout) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start mb-12">
+          
+          {/* Left Column: Image and Thumbnails Overlay */}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="relative aspect-square md:aspect-[4/3] lg:aspect-[16/10] bg-black border border-gray-800 rounded-2xl overflow-hidden group">
+              <img
+                src={activeImage || imageUrl}
+                alt={motorbike.vehicleModel}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+              
+              {/* Status and Category Badges */}
+              <div className="absolute top-4 left-4 flex gap-2">
+                <div className={`px-4 py-1.5 rounded-full font-semibold text-xs backdrop-blur-md border ${
+                  motorbike.status === 'Available'
+                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                    : motorbike.status === 'Rented'
+                    ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+                    : 'bg-red-500/20 text-red-400 border-red-500/30'
+                }`}>
+                  {motorbike.status}
+                </div>
+                <div className="bg-dark/70 backdrop-blur-md px-4 py-1.5 rounded-full font-semibold text-xs text-neon border border-neon/30">
+                  {motorbike.category}
+                </div>
               </div>
-              <div className="bg-dark/70 backdrop-blur-md px-4 py-2 rounded-full font-semibold text-sm text-neon border border-neon/30">
-                {motorbike.category}
-              </div>
+
+              {/* Thumbnails overlay in the bottom right corner */}
+              {motorbike.imageUrls && motorbike.imageUrls.length > 0 && (
+                <div className="absolute bottom-4 right-4 flex gap-2 bg-black/60 backdrop-blur-md p-2 rounded-xl border border-white/10">
+                  {motorbike.imageUrls.slice(0, 4).map((url, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImage(url)}
+                      className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                        (activeImage || imageUrl) === url ? 'border-neon scale-105' : 'border-transparent opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={url} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Details */}
-          <div className="p-8">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h1 className="font-display font-black text-4xl text-neon mb-2">
-                  {motorbike.vehicleModel}
-                </h1>
-                <p className="text-gray-400">License Plate: {motorbike.licensePlate}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-4xl font-bold text-neon">
-                  {motorbike.rentalPrice.toLocaleString()} VNĐ
-                </p>
-                <p className="text-gray-400 text-sm">per day</p>
-              </div>
-            </div>
-
-            {/* Owner Info */}
-            <div className="bg-black/50 border border-gray-800 rounded-xl p-4 mb-6">
-              <p className="text-gray-400 text-sm">OWNER</p>
-              <p className="text-white font-semibold">{ownerName}</p>
-              {typeof motorbike.ownerId !== 'string' && motorbike.ownerId.phoneNumber && (
-                <p className="text-gray-400 text-sm">{motorbike.ownerId.phoneNumber}</p>
-              )}
-            </div>
-
-            {/* Description */}
-            {motorbike.description && (
-              <div className="mb-8">
-                <h2 className="text-xl font-bold text-white mb-3">Description</h2>
-                <p className="text-gray-400 leading-relaxed">{motorbike.description}</p>
-              </div>
-            )}
-
-            {/* Specifications */}
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              <div>
-                <h2 className="text-xl font-bold text-white mb-4">Specifications</h2>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 text-gray-300">
-                    <Users size={18} className="text-neon" />
-                    <span>Seats: {motorbike.seats}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-gray-300">
-                    <Zap size={18} className="text-neon" />
-                    <span>Transmission: {motorbike.transmissionType}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-gray-300">
-                    <MapPin size={18} className="text-neon" />
-                    <span>Odometer: {motorbike.odometer.toLocaleString()} km</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Features */}
-              {motorbike.features && motorbike.features.length > 0 && (
+          {/* Right Column: Motorbike Details & Action Buttons */}
+          <div className="lg:col-span-5 bg-surface border border-gray-800 rounded-2xl p-6 md:p-8 flex flex-col justify-between min-h-[400px]">
+            <div>
+              {/* Header Title & Pricing */}
+              <div className="flex justify-between items-start gap-4 mb-6">
                 <div>
-                  <h2 className="text-xl font-bold text-white mb-4">Features</h2>
-                  <div className="space-y-2">
-                    {motorbike.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-center gap-3 text-gray-300">
-                        <span className="w-2 h-2 rounded-full bg-neon"></span>
-                        {feature}
-                      </div>
-                    ))}
-                  </div>
+                  <h1 className="font-display font-black text-3xl text-white mb-2 leading-tight">
+                    {motorbike.vehicleModel}
+                  </h1>
+                  <p className="text-gray-400 text-xs font-mono">License Plate: {motorbike.licensePlate}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-2xl font-black text-neon">
+                    {motorbike.rentalPrice.toLocaleString()} VNĐ
+                  </p>
+                  <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">per day</p>
+                </div>
+              </div>
+
+              {/* Owner Info Card */}
+              <div className="bg-black/40 border border-gray-800/80 rounded-xl p-4 mb-6 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">CHỦ XE</p>
+                  <p className="text-white font-bold text-sm">{ownerName}</p>
+                  {typeof motorbike.ownerId !== 'string' && motorbike.ownerId.phoneNumber && (
+                    <p className="text-gray-400 text-xs mt-0.5">{motorbike.ownerId.phoneNumber}</p>
+                  )}
+                </div>
+                <div className="w-10 h-10 rounded-full bg-neon/10 border border-neon/20 flex items-center justify-center text-neon">
+                  <Users size={18} />
+                </div>
+              </div>
+
+              {/* Description */}
+              {motorbike.description && (
+                <div className="mb-6">
+                  <h2 className="text-xs text-neon uppercase font-black tracking-wider mb-2">Mô tả xe</h2>
+                  <p className="text-gray-400 text-xs leading-relaxed">{motorbike.description}</p>
                 </div>
               )}
+
+              {/* Specifications and Features */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                {/* Specifications */}
+                <div className="space-y-2.5 bg-black/25 p-4 rounded-xl border border-gray-800/40">
+                  <h3 className="text-[10px] text-white font-bold uppercase tracking-wider mb-1">Thông số</h3>
+                  <div className="flex items-center gap-2.5 text-xs text-gray-300">
+                    <Users size={14} className="text-neon" />
+                    <span>{motorbike.seats} chỗ ngồi</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-xs text-gray-300">
+                    <Zap size={14} className="text-neon" />
+                    <span>{motorbike.transmissionType}</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-xs text-gray-300">
+                    <MapPin size={14} className="text-neon" />
+                    <span>{motorbike.odometer.toLocaleString()} km</span>
+                  </div>
+                </div>
+
+                {/* Features */}
+                {motorbike.features && motorbike.features.length > 0 && (
+                  <div className="space-y-2 bg-black/25 p-4 rounded-xl border border-gray-800/40">
+                    <h3 className="text-[10px] text-white font-bold uppercase tracking-wider mb-2">Đặc tính</h3>
+                    <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
+                      {motorbike.features.map((feature, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-xs text-gray-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-neon shrink-0"></span>
+                          <span className="truncate">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-4 flex-wrap">
-              <button
-                onClick={() => navigate(`/motorbike/${motorbike._id}/edit`)}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-lg transition-colors"
-              >
-                <Edit2 size={18} />
-                Edit Motorbike
-              </button>
-              <button
-                onClick={handleOpenDeleteModal}
-                disabled={deleting}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-lg transition-colors"
-              >
-                <Trash2 size={18} />
-                {deleting ? 'Deleting...' : 'Delete Motorbike'}
-              </button>
+            <div className="flex gap-3 flex-wrap border-t border-gray-800/80 pt-6 mt-6">
+              {canEditOrDelete && (
+                <>
+                  <button
+                    onClick={() => navigate(`/motorbike/${motorbike._id}/edit`)}
+                    className="flex items-center justify-center gap-2 bg-blue-600/95 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Edit2 size={14} />
+                    Sửa
+                  </button>
+                  <button
+                    onClick={handleOpenDeleteModal}
+                    disabled={deleting}
+                    className="flex items-center justify-center gap-2 bg-red-600/95 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Trash2 size={14} />
+                    {deleting ? 'Đang xóa...' : 'Xóa'}
+                  </button>
+                </>
+              )}
+
+              {/* Show Book Now button for customer/guest when motorbike is available */}
+              {(!currentUser || currentUser.role === 'customer') && (
+                <button
+                  onClick={() => {
+                    if (motorbike.status === 'Available') {
+                      navigate(`/booking/${motorbike._id}`);
+                    }
+                  }}
+                  disabled={motorbike.status !== 'Available'}
+                  className={`flex-grow flex items-center justify-center gap-2 text-xs font-black px-6 py-3 rounded-lg transition-all duration-300 cursor-pointer ${
+                    motorbike.status === 'Available'
+                      ? 'bg-neon text-dark hover:bg-[#bbf000] shadow-[0_0_12px_rgba(204,255,0,0.25)] hover:shadow-[0_0_20px_rgba(204,255,0,0.5)]'
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  {motorbike.status === 'Available' ? t('bikesPage.bookNowBtn') : t('bikesPage.notAvailable')}
+                </button>
+              )}
+
               <button
                 onClick={() => navigate('/bikes')}
-                className="flex items-center gap-2 bg-neon text-dark hover:bg-[#bbf000] font-bold px-6 py-3 rounded-lg transition-colors"
+                className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors cursor-pointer"
               >
                 Back to Listing
               </button>
@@ -285,7 +362,6 @@ export const MotorbikeDetail = () => {
             </div>
           </div>
         )}
-
         {/* Customer Feedbacks Section */}
         <div className="mt-12 bg-surface border border-gray-800 rounded-2xl p-6 md:p-8">
           <h2 className="font-display font-black text-2xl text-neon uppercase mb-6 tracking-tight flex items-center gap-2">

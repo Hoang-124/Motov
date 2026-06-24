@@ -8,6 +8,7 @@ export interface Bike {
   images?: string[];
   featured: boolean;
   ownerEmail?: string;
+  ownerId?: string;
 }
 
 export interface Surcharge {
@@ -49,6 +50,11 @@ export interface Booking {
   };
   rentalDays?: number;
   totalAmount?: number;
+  depositAmount?: number;
+  remainingAmount?: number;
+  paymentMethod?: 'Cash' | 'Banking';
+  deliveryMethod?: 'StorePickup' | 'HomeDelivery';
+  isPaid?: boolean;
   cancelReason?: string;
   surcharges?: Surcharge[];
   timeline?: TrackingEvent[];

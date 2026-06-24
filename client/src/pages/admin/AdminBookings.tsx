@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { bookingService, Booking } from '../../services/bookingService';
 import axios from 'axios';
 import { ReturnMotorbikeModal } from '../../components/ReturnMotorbikeModal';
+import { useToast } from '../../hooks/useToast';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -35,6 +36,7 @@ interface OwnerRequest {
 }
 
 export const AdminBookings = () => {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'bookings' | 'ownerRequests'>('bookings');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [ownerRequests, setOwnerRequests] = useState<OwnerRequest[]>([]);
@@ -104,7 +106,7 @@ export const AdminBookings = () => {
       const promptReason = window.prompt('Vui lòng nhập lý do hủy/từ chối đơn đặt xe:');
       if (promptReason === null) return;
       if (!promptReason.trim()) {
-        window.alert('Bạn phải nhập lý do!');
+        showToast('Bạn phải nhập lý do!', 'warning');
         return;
       }
       reason = promptReason;
@@ -113,10 +115,10 @@ export const AdminBookings = () => {
     try {
       setLoading(true);
       await bookingService.updateStatus(id, newStatus, reason);
-      window.alert('Cập nhật trạng thái đơn thành công!');
+      showToast('Cập nhật trạng thái đơn thành công!', 'success');
       await loadBookings();
     } catch (err: any) {
-      window.alert(err.response?.data?.message || err.message || 'Không thể cập nhật trạng thái đơn!');
+      showToast(err.response?.data?.message || err.message || 'Không thể cập nhật trạng thái đơn!', 'error');
       setLoading(false);
     }
   };
@@ -126,10 +128,10 @@ export const AdminBookings = () => {
       try {
         setLoading(true);
         await bookingService.deleteBooking(id);
-        window.alert('Xóa đơn đặt xe thành công!');
+        showToast('Xóa đơn đặt xe thành công!', 'success');
         await loadBookings();
       } catch (err: any) {
-        window.alert(err.response?.data?.message || err.message || 'Không thể xóa đơn đặt xe!');
+        showToast(err.response?.data?.message || err.message || 'Không thể xóa đơn đặt xe!', 'error');
         setLoading(false);
       }
     }
@@ -144,11 +146,11 @@ export const AdminBookings = () => {
       const headers = getAuthHeaders();
       const res = await axios.put(`${API_BASE_URL}/auth/owner-requests/${id}/approve`, {}, headers);
       if (res.data.success) {
-        window.alert(res.data.message || 'Phê duyệt chủ xe thành công!');
+        showToast(res.data.message || 'Phê duyệt chủ xe thành công!', 'success');
         await loadOwnerRequests();
       }
     } catch (err: any) {
-      window.alert(err.response?.data?.message || err.message || 'Lỗi khi phê duyệt chủ xe!');
+      showToast(err.response?.data?.message || err.message || 'Lỗi khi phê duyệt chủ xe!', 'error');
       setLoading(false);
     }
   };
@@ -162,11 +164,11 @@ export const AdminBookings = () => {
       const headers = getAuthHeaders();
       const res = await axios.put(`${API_BASE_URL}/auth/owner-requests/${id}/reject`, {}, headers);
       if (res.data.success) {
-        window.alert(res.data.message || 'Đã từ chối yêu cầu thành công.');
+        showToast(res.data.message || 'Đã từ chối yêu cầu thành công.', 'success');
         await loadOwnerRequests();
       }
     } catch (err: any) {
-      window.alert(err.response?.data?.message || err.message || 'Lỗi khi từ chối yêu cầu!');
+      showToast(err.response?.data?.message || err.message || 'Lỗi khi từ chối yêu cầu!', 'error');
       setLoading(false);
     }
   };
@@ -217,9 +219,9 @@ export const AdminBookings = () => {
         {/* Top Header Actions */}
         <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-display font-black text-neon uppercase tracking-tight text-glow flex items-center gap-3">
-              <ClipboardList size={32} />
-              Hệ thống Quản lý Đơn hàng & Đối tác (Admin)
+            <h1 className="text-2xl font-display font-black text-white tracking-tight flex items-center gap-3">
+              <ClipboardList size={28} className="text-gray-400" />
+              Hệ thống quản lý đơn hàng & đối tác
             </h1>
             <p className="text-gray-400 text-sm mt-1">
               Phê duyệt đối tác chủ xe mới, phê duyệt đơn đặt xe và điều phối quy trình thuê xe
@@ -241,32 +243,33 @@ export const AdminBookings = () => {
               setActiveTab('bookings');
               setSearchQuery('');
             }}
-            className={`pb-3 font-bold text-sm tracking-wide transition-all uppercase cursor-pointer ${
+            className={`pb-3 font-bold text-sm tracking-wide transition-all uppercase cursor-pointer flex items-center ${
               activeTab === 'bookings'
                 ? 'text-neon border-b-2 border-neon'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            📋 Điều phối đơn xe ({bookings.length})
+            <ClipboardList className="inline mr-2" size={16} /> Điều phối đơn xe ({bookings.length})
           </button>
           <button
             onClick={() => {
               setActiveTab('ownerRequests');
               setSearchQuery('');
             }}
-            className={`pb-3 font-bold text-sm tracking-wide transition-all uppercase cursor-pointer ${
+            className={`pb-3 font-bold text-sm tracking-wide transition-all uppercase cursor-pointer flex items-center ${
               activeTab === 'ownerRequests'
                 ? 'text-neon border-b-2 border-neon'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            🤝 Duyệt chủ xe mới ({ownerRequests.length})
+            <UserCheck className="inline mr-2" size={16} /> Duyệt chủ xe mới ({ownerRequests.length})
           </button>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-center text-sm">
-            ❌ {error}
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-center text-sm flex items-center justify-center gap-2">
+            <AlertCircle size={16} className="text-red-500" />
+            <span>{error}</span>
           </div>
         )}
 
@@ -287,11 +290,11 @@ export const AdminBookings = () => {
             <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0 md:col-span-2">
               {[
                 { key: 'All', label: 'Tất cả đơn' },
-                { key: 'Pending', label: '⏳ Chờ duyệt' },
-                { key: 'Confirmed', label: '✓ Đã xác nhận' },
-                { key: 'Ongoing', label: '🚴 Đang thuê' },
-                { key: 'Completed', label: '✓ Hoàn thành' },
-                { key: 'Cancelled', label: '❌ Đã hủy' }
+                { key: 'Pending', label: 'Chờ duyệt' },
+                { key: 'Confirmed', label: 'Đã xác nhận' },
+                { key: 'Ongoing', label: 'Đang thuê' },
+                { key: 'Completed', label: 'Hoàn thành' },
+                { key: 'Cancelled', label: 'Đã hủy' }
               ].map((status) => (
                 <button
                   key={status.key}
@@ -328,7 +331,7 @@ export const AdminBookings = () => {
                 <tbody>
                   {filteredBookings.map((booking) => (
                     <tr key={booking.id} className="border-b border-gray-800/60 hover:bg-surface/20 transition-colors">
-                      <td className="py-4 px-6 font-mono text-neon text-xs font-semibold">
+                      <td className="py-4 px-6 font-mono text-neon text-xs font-semibold whitespace-nowrap">
                         {booking.bookingCode}
                       </td>
                       <td className="py-4 px-6">
@@ -345,16 +348,16 @@ export const AdminBookings = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-xs text-gray-300">
+                      <td className="py-4 px-6 text-xs text-gray-300 whitespace-nowrap">
                         <div className="flex items-center gap-1"><CalendarDays size={12} className="text-gray-500" /> Nhận: {formatDate(booking.pickupDateTime)}</div>
                         <div className="flex items-center gap-1 mt-1"><CalendarDays size={12} className="text-gray-500" /> Trả: {formatDate(booking.returnDateTime)}</div>
-                        <div className="text-gray-500 mt-1">Số ngày: <span className="text-white font-semibold">{booking.rentalDays} ngày</span></div>
+                        <div className="text-gray-500 mt-1">Số ngày: <span className="text-white font-semibold whitespace-nowrap">{booking.rentalDays} ngày</span></div>
                       </td>
-                      <td className="py-4 px-6 font-semibold text-white">
+                      <td className="py-4 px-6 font-semibold text-white whitespace-nowrap">
                         {booking.totalAmount.toLocaleString('vi-VN')} VNĐ
                       </td>
                       <td className="py-4 px-6">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusColorClass(booking.status)}`}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${getStatusColorClass(booking.status)}`}>
                           {booking.statusLabel}
                         </span>
                       </td>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -14,25 +14,34 @@ import {
   updateBookingStatus,
   returnBookingWithFees,
   approveOwnerRequest,
-  rejectOwnerRequest
+  rejectOwnerRequest,
+  fetchBookings
 } from '../../bookings/bookingsSlice';
 import { Booking } from '../../../types';
 import { ReturnMotorbikeModal } from '../../../components/ReturnMotorbikeModal';
+import { useLanguage } from '../../../hooks/useLanguage';
+
+import { BookingCard } from '../../bookings/components/BookingCard';
 
 export const StaffBookingsScreen: React.FC = () => {
+  const { language, setLanguage, t } = useLanguage();
   const dispatch = useAppDispatch();
   const bookingsState = useAppSelector(state => state.bookings.bookings);
   const ownerRequests = useAppSelector(state => state.bookings.ownerRequests);
 
   const [activeTab, setActiveTab] = useState<'bookings' | 'ownerRequests'>('bookings');
-  
+
+  useEffect(() => {
+    dispatch(fetchBookings());
+  }, [dispatch]);
+
   // Return Motorbike Modal States
   const [returnModalVisible, setReturnModalVisible] = useState(false);
   const [selectedReturnBooking, setSelectedReturnBooking] = useState<Booking | null>(null);
 
   const handleAction = (id: string, newStatus: string, label: string) => {
     dispatch(updateBookingStatus({ id, status: newStatus, statusLabel: label }));
-    Alert.alert('Thành Công', `Đã cập nhật trạng thái đơn hàng sang: ${newStatus}!`);
+    Alert.alert(t('common.success'), `${language === 'vi' ? 'Đã cập nhật trạng thái đơn hàng sang' : 'Updated booking status to'}: ${newStatus}!`);
   };
 
   const handleReturnConfirm = (bookingId: string, lateFee: number, returnTime: string) => {
@@ -41,42 +50,65 @@ export const StaffBookingsScreen: React.FC = () => {
   };
 
   const handleApproveOwner = (id: string, name: string) => {
-    Alert.alert('Duyệt Chủ Xe', `Xác nhận phê duyệt đối tác ${name} thành chủ xe?`, [
-      { text: 'Hủy', style: 'cancel' },
+    Alert.alert(language === 'vi' ? 'Duyệt Chủ Xe' : 'Approve Owner', `${language === 'vi' ? `Xác nhận phê duyệt đối tác ${name} thành chủ xe?` : `Confirm approve partner ${name} as owner?`}`, [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Duyệt',
+        text: t('staff.approve'),
         onPress: () => {
           dispatch(approveOwnerRequest(id));
-          Alert.alert('Thành Công', `Đã phê duyệt chủ xe ${name} đối tác!`);
+          Alert.alert(t('common.success'), `${language === 'vi' ? `Đã phê duyệt chủ xe ${name} đối tác!` : `Approved owner partner ${name}!`}`);
         }
       }
     ]);
   };
 
   const handleRejectOwner = (id: string, name: string) => {
-    Alert.alert('Từ Chối', `Xác nhận từ chối yêu cầu của đối tác ${name}?`, [
-      { text: 'Hủy', style: 'cancel' },
+    Alert.alert(language === 'vi' ? 'Từ Chối' : 'Reject Request', `${language === 'vi' ? `Xác nhận từ chối yêu cầu của đối tác ${name}?` : `Confirm reject request from partner ${name}?`}`, [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Từ chối',
+        text: t('staff.reject'),
         style: 'destructive',
         onPress: () => {
           dispatch(rejectOwnerRequest(id));
-          Alert.alert('Đã xử lý', `Đã từ chối yêu cầu đăng ký của ${name}.`);
+          Alert.alert(t('common.success'), `${language === 'vi' ? `Đã từ chối yêu cầu đăng ký của ${name}.` : `Rejected registration request from ${name}.`}`);
         }
       }
     ]);
   };
 
-  const pendingBookings = bookingsState.filter(b => b.status === 'Chờ duyệt');
-  const ongoingBookings = bookingsState.filter(b => b.status === 'Đang thuê');
-  const otherBookings = bookingsState.filter(b => b.status !== 'Chờ duyệt' && b.status !== 'Đang thuê');
+  const pendingBookings = bookingsState.filter(b => b.status === 'Chờ duyệt' || b.status === 'Pending');
+  const ongoingBookings = bookingsState.filter(b => b.status === 'Đang thuê' || b.status === 'Ongoing' || b.status === 'Confirmed' || b.status === 'Rented');
+  const otherBookings = bookingsState.filter(b =>
+    !['Chờ duyệt', 'Pending', 'Đang thuê', 'Ongoing', 'Confirmed', 'Rented'].includes(b.status)
+  );
+
+  const handleStaffAction = (booking: Booking, action: 'Confirmed' | 'Cancelled' | 'Ongoing' | 'Return') => {
+    if (action === 'Confirmed') handleAction(booking.id, 'Confirmed', 'Chờ nhận xe');
+    if (action === 'Cancelled') handleAction(booking.id, 'Cancelled', 'Đã hủy');
+    if (action === 'Ongoing') handleAction(booking.id, 'Ongoing', 'Đang thuê');
+    if (action === 'Return') {
+      setSelectedReturnBooking(booking);
+      setReturnModalVisible(true);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      {/* Title */}
-      <View style={styles.header}>
-        <Text style={styles.pageTitle}>Điều Phối & Phê Duyệt</Text>
-        <Text style={styles.pageSubtitle}>Duyệt đối tác chủ xe mới và quản lý quy trình giao nhận xe máy</Text>
+      {/* Title & Language Switcher */}
+      <View style={styles.headerContainer}>
+        <View style={styles.header}>
+          <Text style={styles.pageTitle}>{t('staff.bookingsTitle')}</Text>
+          <Text style={styles.pageSubtitle}>
+            {language === 'vi' ? 'Duyệt đối tác chủ xe mới và quản lý quy trình giao nhận xe máy' : 'Approve new owner partners and manage bike pick-up/drop-off processes'}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.langSelector}
+          onPress={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
+        >
+          <Feather name="globe" size={14} color={COLORS.accent} />
+          <Text style={styles.langSelectorText}>{language.toUpperCase()}</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tabs Layout */}
@@ -86,7 +118,7 @@ export const StaffBookingsScreen: React.FC = () => {
           onPress={() => setActiveTab('bookings')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'bookings' && styles.tabBtnTextActive]}>
-            📋 Đơn đặt xe ({bookingsState.length})
+            Đơn đặt xe ({bookingsState.length})
           </Text>
         </TouchableOpacity>
 
@@ -95,7 +127,7 @@ export const StaffBookingsScreen: React.FC = () => {
           onPress={() => setActiveTab('ownerRequests')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'ownerRequests' && styles.tabBtnTextActive]}>
-            🤝 Duyệt chủ xe ({ownerRequests.length})
+            Duyệt chủ xe ({ownerRequests.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -109,38 +141,15 @@ export const StaffBookingsScreen: React.FC = () => {
             <View style={styles.listContainer}>
               {pendingBookings.length > 0 ? (
                 pendingBookings.map(b => (
-                  <View key={b.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                      <Text style={styles.bikeName}>{b.bikeName}</Text>
-                      <View style={[styles.statusBadge, styles.badgePending]}>
-                        <Text style={[styles.statusBadgeText, { color: COLORS.warning }]}>
-                          {b.statusLabel || b.status}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.cardBody}>
-                      <Text style={styles.infoText}>Khách thuê: <Text style={styles.whiteText}>{b.fullName}</Text></Text>
-                      <Text style={styles.infoText}>SĐT: <Text style={styles.whiteText}>{b.phone}</Text></Text>
-                      <Text style={styles.infoText}>Hạn thuê: <Text style={styles.whiteText}>{b.date}</Text></Text>
-                      <Text style={styles.infoText}>Điểm giao xe: <Text style={styles.whiteText}>{b.location}</Text></Text>
-                    </View>
-
-                    <View style={styles.cardActions}>
-                      <TouchableOpacity 
-                        style={styles.btnReject} 
-                        onPress={() => handleAction(b.id, 'Đã hủy', '❌ Đã hủy')}
-                      >
-                        <Text style={styles.btnRejectText}>Từ chối</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={styles.btnApprove} 
-                        onPress={() => handleAction(b.id, 'Đang thuê', '🚴 Đang thuê')}
-                      >
-                        <Text style={styles.btnApproveText}>Phê duyệt</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    isStaff={true}
+                    onStaffAction={handleStaffAction}
+                    handleCancelBooking={() => { }}
+                    onOpenFeedback={() => { }}
+                    onOpenTracking={() => { }}
+                  />
                 ))
               ) : (
                 <View style={styles.emptyCard}>
@@ -154,34 +163,15 @@ export const StaffBookingsScreen: React.FC = () => {
             <View style={styles.listContainer}>
               {ongoingBookings.length > 0 ? (
                 ongoingBookings.map(b => (
-                  <View key={b.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                      <Text style={styles.bikeName}>{b.bikeName}</Text>
-                      <View style={[styles.statusBadge, styles.badgeOngoing]}>
-                        <Text style={[styles.statusBadgeText, { color: COLORS.approved }]}>
-                          {b.statusLabel || b.status}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    <View style={styles.cardBody}>
-                      <Text style={styles.infoText}>Khách: <Text style={styles.whiteText}>{b.fullName}</Text></Text>
-                      <Text style={styles.infoText}>Hạn trả: <Text style={styles.whiteText}>{b.date.split(' - ')[1] || b.date}</Text></Text>
-                    </View>
-
-                    <View style={styles.cardActions}>
-                      <TouchableOpacity 
-                        style={styles.btnReturn} 
-                        onPress={() => {
-                          setSelectedReturnBooking(b);
-                          setReturnModalVisible(true);
-                        }}
-                      >
-                        <Feather name="key" size={12} color={COLORS.accentDark} style={{ marginRight: 6 }} />
-                        <Text style={styles.btnReturnText}>Thu hồi xe</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    isStaff={true}
+                    onStaffAction={handleStaffAction}
+                    handleCancelBooking={() => { }}
+                    onOpenFeedback={() => { }}
+                    onOpenTracking={() => { }}
+                  />
                 ))
               ) : (
                 <View style={styles.emptyCard}>
@@ -195,28 +185,15 @@ export const StaffBookingsScreen: React.FC = () => {
             <View style={styles.listContainer}>
               {otherBookings.length > 0 ? (
                 otherBookings.slice(0, 5).map(b => (
-                  <View key={b.id} style={[styles.card, { opacity: 0.85 }]}>
-                    <View style={styles.cardHeader}>
-                      <Text style={styles.bikeName}>{b.bikeName}</Text>
-                      <View style={[
-                        styles.statusBadge,
-                        (b.status === 'Đã trả' || b.status === 'Completed' || b.status === 'Đã đánh giá') && styles.badgeCompleted,
-                        (b.status === 'Đã hủy' || b.status === 'Cancelled') && styles.badgeCancelled,
-                      ]}>
-                        <Text style={[
-                          styles.statusBadgeText,
-                          (b.status === 'Đã trả' || b.status === 'Completed' || b.status === 'Đã đánh giá') && { color: '#3b82f6' },
-                          (b.status === 'Đã hủy' || b.status === 'Cancelled') && { color: COLORS.danger },
-                        ]}>
-                          {b.statusLabel || b.status}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.cardBody}>
-                      <Text style={styles.infoText}>Khách: <Text style={styles.whiteText}>{b.fullName}</Text></Text>
-                      <Text style={styles.infoText}>Hạn thuê: <Text style={styles.whiteText}>{b.date}</Text></Text>
-                    </View>
-                  </View>
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    isStaff={true}
+                    onStaffAction={handleStaffAction}
+                    handleCancelBooking={() => { }}
+                    onOpenFeedback={() => { }}
+                    onOpenTracking={() => { }}
+                  />
                 ))
               ) : (
                 <View style={styles.emptyCard}>
@@ -251,14 +228,14 @@ export const StaffBookingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.cardActions}>
-                      <TouchableOpacity 
-                        style={styles.btnReject} 
+                      <TouchableOpacity
+                        style={styles.btnReject}
                         onPress={() => handleRejectOwner(r.id, r.name)}
                       >
                         <Text style={styles.btnRejectText}>Từ chối</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={styles.btnApprove} 
+                      <TouchableOpacity
+                        style={styles.btnApprove}
                         onPress={() => handleApproveOwner(r.id, r.name)}
                       >
                         <Text style={styles.btnApproveText}>Duyệt đối tác</Text>
@@ -299,10 +276,33 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingRight: 20,
+  },
   header: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 10,
+  },
+  langSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  langSelectorText: {
+    color: COLORS.text,
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   pageTitle: {
     color: COLORS.text,

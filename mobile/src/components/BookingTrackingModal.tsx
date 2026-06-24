@@ -1,15 +1,10 @@
 import React from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Modal, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useBookingTracking, TrackingEvent } from '../hooks/useBookingTracking';
 import { Booking } from '../types';
 import { COLORS } from '../theme/colors';
+import { InteractiveMap } from './InteractiveMap';
 
 interface BookingTrackingModalProps {
   visible: boolean;
@@ -17,140 +12,117 @@ interface BookingTrackingModalProps {
   booking: Booking | null;
 }
 
-export const BookingTrackingModal: React.FC<BookingTrackingModalProps> = ({
-  visible,
-  onClose,
-  booking,
-}) => {
+const getStatusIcon = (status: string, completed: boolean) => {
+  if (!completed) return 'time-outline';
+  switch (status) {
+    case 'Pending': return 'hourglass-outline';
+    case 'Confirmed': return 'checkmark-circle-outline';
+    case 'Rented': return 'bicycle-outline';
+    case 'Completed': return 'checkmark-done-circle-outline';
+    case 'Cancelled': return 'close-circle-outline';
+    default: return 'ellipse-outline';
+  }
+};
+
+const getStatusColorHex = (status: string, completed: boolean) => {
+  if (!completed) return '#9CA3AF'; // text-gray-400
+  switch (status) {
+    case 'Pending': return '#F97316'; // text-orange-500
+    case 'Confirmed': return '#3B82F6'; // text-blue-500
+    case 'Rented': return '#6366F1'; // text-indigo-500
+    case 'Completed': return '#10B981'; // text-green-500
+    case 'Cancelled': return '#EF4444'; // text-red-500
+    default: return '#6B7280'; // text-gray-500
+  }
+};
+
+export const BookingTrackingModal: React.FC<BookingTrackingModalProps> = ({ booking, visible, onClose }) => {
+  const bookingId = booking ? booking.id : null;
+  const { timeline: rawTimeline, isLoading, error } = useBookingTracking(bookingId);
+  // Guard: ensure timeline is always an array even if the API returns unexpected shape
+  const timeline: TrackingEvent[] = Array.isArray(rawTimeline) ? rawTimeline : [];
+
   if (!booking) return null;
-
-  const getTimelineData = () => {
-    const isCancelled = booking.status === 'Cancelled' || booking.status === 'Đã hủy';
-    const isOngoing = booking.status === 'Ongoing' || booking.status === 'Đang thuê';
-    const isCompleted = booking.status === 'Completed' || booking.status === 'Đã trả';
-
-    const events = [
-      {
-        title: 'Đơn hàng đã được tạo',
-        time: booking.createdAt ? new Date(booking.createdAt).toLocaleString('vi-VN') : booking.date.split(' - ')[0],
-        description: `Mã đơn ${booking.id} đang chờ phê duyệt.`,
-        completed: true,
-        icon: 'file-text' as const,
-      },
-      {
-        title: 'Bàn giao xe (Bắt đầu thuê)',
-        time: booking.pickupDateTime ? new Date(booking.pickupDateTime).toLocaleString('vi-VN') : booking.date.split(' - ')[0],
-        description: isCancelled ? 'Đơn hàng đã bị hủy bỏ' : 'Nhân viên bàn giao xe máy thực tế cho khách.',
-        completed: isOngoing || isCompleted,
-        isCancelled: isCancelled,
-        icon: isCancelled ? ('x-circle' as const) : ('key' as const),
-      },
-      {
-        title: 'Hoàn trả xe (Kết thúc thuê)',
-        time: booking.returnDateTime ? new Date(booking.returnDateTime).toLocaleString('vi-VN') : booking.date.split(' - ')[1],
-        description: 'Khách hoàn trả xe, thanh toán các phụ phí trễ hạn (nếu có).',
-        completed: isCompleted,
-        icon: 'check-circle' as const,
-      },
-    ];
-
-    return events;
-  };
-
-  const timeline = getTimelineData();
 
   return (
     <Modal
       visible={visible}
-      transparent
-      animationType="fade"
+      animationType="slide"
+      transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          {/* Header */}
-          <View style={styles.modalHeader}>
-            <View style={styles.headerTitleContainer}>
-              <Feather name="map" size={18} color={COLORS.accent} style={{ marginRight: 8 }} />
-              <Text style={styles.modalTitle}>Lịch Trình Chi Tiết</Text>
-            </View>
+      <View style={styles.overlay}>
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Booking Timeline</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Feather name="x" size={20} color={COLORS.textSecondary} />
+              <Ionicons name="close" size={24} color={COLORS.textSecondary || '#374151'} />
             </TouchableOpacity>
           </View>
 
-          {/* Body */}
-          <ScrollView contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={false}>
-            <View style={styles.bookingSummary}>
-              <Text style={styles.summaryLabel}>Mã đơn hàng</Text>
-              <Text style={styles.summaryValue}>#{booking.id}</Text>
-              <Text style={styles.summarySubText}>Xe: {booking.bikeName}</Text>
-              <Text style={styles.summarySubText}>Trạng thái: <Text style={styles.accentText}>{booking.statusLabel || booking.status}</Text></Text>
-            </View>
+          <View style={styles.bookingSummary}>
+            <Text style={styles.summaryLabel}>Mã đơn hàng</Text>
+            <Text style={styles.summaryValue}>#{booking.id}</Text>
+            <Text style={styles.summarySubText}>Xe: {booking.bikeName}</Text>
+            <Text style={styles.summarySubText}>Trạng thái: <Text style={styles.accentText}>{booking.statusLabel || booking.status}</Text></Text>
+          </View>
 
-            {/* Timeline */}
-            <View style={styles.timelineContainer}>
-              {timeline.map((event, idx) => {
-                const isLast = idx === timeline.length - 1;
-                return (
-                  <View key={idx} style={styles.timelineItem}>
-                    {/* Left Line */}
-                    <View style={styles.lineCol}>
-                      <View
-                        style={[
-                          styles.dot,
-                          event.completed && styles.dotCompleted,
-                          event.isCancelled && styles.dotCancelled,
-                        ]}
-                      >
-                        <Feather
-                          name={event.icon}
-                          size={12}
-                          color={
-                            event.isCancelled
-                              ? COLORS.danger
-                              : event.completed
-                              ? COLORS.accentDark
-                              : COLORS.textMuted
-                          }
+          <InteractiveMap 
+            status={booking.status as any} 
+            pickupAddress={booking.pickupLocation?.address}
+            returnAddress={booking.returnLocation?.address}
+          />
+
+          {isLoading ? (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color="#4F46E5" />
+              <Text style={styles.loadingText}>Loading tracking data...</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.centerContainer}>
+              <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
+              {timeline.length === 0 ? (
+                <Text style={styles.emptyText}>No tracking events found.</Text>
+              ) : (
+                timeline.map((event: TrackingEvent, index: number) => {
+                  const isLast = index === timeline.length - 1;
+                  const colorHex = getStatusColorHex(event.status, event.completed);
+                  return (
+                    <View key={index} style={styles.item}>
+                      <View style={styles.leftCol}>
+                        <Ionicons 
+                          name={getStatusIcon(event.status, event.completed)} 
+                          size={28} 
+                          color={colorHex}
                         />
+                        {!isLast && (
+                          <View style={[
+                            styles.line, 
+                            event.completed ? styles.lineCompleted : styles.linePending
+                          ]} />
+                        )}
                       </View>
-                      {!isLast && (
-                        <View
-                          style={[
-                            styles.line,
-                            event.completed && styles.lineCompleted,
-                          ]}
-                        />
-                      )}
+                      <View style={styles.rightCol}>
+                        <Text style={[
+                          styles.eventDesc, 
+                          event.completed ? styles.textActive : styles.textInactive
+                        ]}>
+                          {event.description}
+                        </Text>
+                        <Text style={styles.eventTime}>
+                          {event.time ? new Date(event.time).toLocaleString() : 'Pending'}
+                        </Text>
+                      </View>
                     </View>
-
-                    {/* Right Content */}
-                    <View style={styles.contentCol}>
-                      <Text
-                        style={[
-                          styles.eventTitle,
-                          event.completed && styles.eventTitleCompleted,
-                          event.isCancelled && styles.eventTitleCancelled,
-                        ]}
-                      >
-                        {event.title}
-                      </Text>
-                      <Text style={styles.eventTime}>{event.time}</Text>
-                      {event.description && (
-                        <Text style={styles.eventDesc}>{event.description}</Text>
-                      )}
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </ScrollView>
-
-          {/* Footer Action */}
-          <TouchableOpacity style={styles.btnOk} onPress={onClose}>
-            <Text style={styles.btnOkText}>Đóng</Text>
-          </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+          )}
         </View>
       </View>
     </Modal>
@@ -158,149 +130,119 @@ export const BookingTrackingModal: React.FC<BookingTrackingModalProps> = ({
 };
 
 const styles = StyleSheet.create({
-  modalOverlay: {
+  overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  modalContent: {
+  content: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
     width: '100%',
-    maxWidth: 360,
-    backgroundColor: COLORS.card,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    overflow: 'hidden',
+    maxHeight: '80%',
   },
-  modalHeader: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    marginBottom: 24,
   },
-  headerTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    color: COLORS.text,
-    fontSize: 16,
+  title: {
+    fontSize: 20,
     fontWeight: 'bold',
-    textTransform: 'uppercase',
+    color: '#1F2937',
   },
   closeBtn: {
-    padding: 4,
-  },
-  modalBody: {
-    padding: 16,
+    padding: 8,
   },
   bookingSummary: {
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#E5E7EB',
     borderRadius: 12,
     padding: 12,
     marginBottom: 20,
   },
   summaryLabel: {
-    color: COLORS.textMuted,
+    color: '#6B7280',
     fontSize: 11,
     textTransform: 'uppercase',
   },
   summaryValue: {
-    color: COLORS.accent,
+    color: '#4F46E5',
     fontSize: 18,
     fontWeight: 'bold',
     marginVertical: 2,
   },
   summarySubText: {
-    color: COLORS.textSecondary,
+    color: '#4B5563',
     fontSize: 12,
     marginTop: 2,
   },
   accentText: {
-    color: COLORS.accent,
+    color: '#4F46E5',
     fontWeight: 'bold',
   },
-  timelineContainer: {
-    paddingLeft: 4,
-  },
-  timelineItem: {
-    flexDirection: 'row',
-    minHeight: 80,
-  },
-  lineCol: {
-    alignItems: 'center',
-    marginRight: 16,
-    width: 24,
-  },
-  dot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
+  centerContainer: {
+    paddingVertical: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dotCompleted: {
-    backgroundColor: COLORS.accent,
-    borderColor: COLORS.accent,
+  loadingText: {
+    marginTop: 16,
+    color: '#6B7280',
   },
-  dotCancelled: {
-    backgroundColor: COLORS.dangerBg,
-    borderColor: COLORS.danger,
+  errorText: {
+    marginTop: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+  },
+  scroll: {
+    marginBottom: 16,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#6B7280',
+    paddingVertical: 16,
+  },
+  item: {
+    flexDirection: 'row',
+    marginBottom: 24,
+  },
+  leftCol: {
+    alignItems: 'center',
+    marginRight: 16,
   },
   line: {
-    width: 1.5,
+    width: 2,
     flex: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 4,
+    marginTop: 4,
   },
   lineCompleted: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: '#C7D2FE', // bg-indigo-200
   },
-  contentCol: {
+  linePending: {
+    backgroundColor: '#E5E7EB', // bg-gray-200
+  },
+  rightCol: {
     flex: 1,
-    paddingBottom: 20,
-  },
-  eventTitle: {
-    color: COLORS.textMuted,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  eventTitleCompleted: {
-    color: COLORS.text,
-  },
-  eventTitleCancelled: {
-    color: COLORS.danger,
-  },
-  eventTime: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-    marginTop: 2,
+    paddingBottom: 8,
   },
   eventDesc: {
-    color: COLORS.textMuted,
-    fontSize: 11,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  textActive: {
+    color: '#1F2937', // text-gray-800
+  },
+  textInactive: {
+    color: '#9CA3AF', // text-gray-400
+  },
+  eventTime: {
+    fontSize: 12,
+    color: '#6B7280',
     marginTop: 4,
-    lineHeight: 15,
-  },
-  btnOk: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  btnOkText: {
-    color: COLORS.text,
-    fontWeight: 'bold',
-    fontSize: 14,
   },
 });

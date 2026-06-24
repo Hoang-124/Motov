@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Lock, ChevronRight, Shield, Briefcase, Award, UserCheck, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useLanguage } from '../hooks/useLanguage';
 
 type UserRole = 'customer' | 'owner' | 'staff' | 'admin';
 
 export const Auth = () => {
+  const { language, t } = useLanguage();
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   // Form states
@@ -570,7 +572,7 @@ export const Auth = () => {
             }}
             className={`flex-grow pb-3 text-sm font-semibold uppercase tracking-wider transition-colors cursor-pointer ${isLogin ? 'text-neon border-b-2 border-neon' : 'text-gray-500 hover:text-gray-300'}`}
           >
-            Đăng Nhập
+            {t('common.login')}
           </button>
           <button 
             onClick={() => { 
@@ -585,7 +587,7 @@ export const Auth = () => {
             }}
             className={`flex-grow pb-3 text-sm font-semibold uppercase tracking-wider transition-colors cursor-pointer ${!isLogin ? 'text-neon border-b-2 border-neon' : 'text-gray-500 hover:text-gray-300'}`}
           >
-            Đăng Ký
+            {t('common.register')}
           </button>
         </div>
 
@@ -664,12 +666,12 @@ export const Auth = () => {
             <>
               <div className="text-center mb-6">
                 <h2 className="font-display font-black text-2xl text-white uppercase mb-2">
-                  {isLogin ? 'Cổng Đăng Nhập' : 'Đăng Ký Thành Viên'}
+                  {isLogin ? t('auth.signInTitle') : t('auth.signUpTitle')}
                 </h2>
                 <p className="text-gray-500 text-xs">
                   {isLogin 
-                    ? 'Đăng nhập vào hệ thống để tiếp tục' 
-                    : 'Tạo tài khoản mới để trải nghiệm dịch vụ hoặc chia sẻ xe'}
+                    ? (language === 'vi' ? 'Đăng nhập vào hệ thống để tiếp tục' : 'Sign in to the system to continue') 
+                    : (language === 'vi' ? 'Tạo tài khoản mới để trải nghiệm dịch vụ hoặc chia sẻ xe' : 'Create a new account to experience services or share bikes')}
                 </p>
               </div>
 
@@ -679,7 +681,7 @@ export const Auth = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold text-center mb-4 flex items-center justify-center gap-2"
                 >
-                  <span>⚠️ {error}</span>
+                  <span>{error}</span>
                 </motion.div>
               )}
 
@@ -689,7 +691,7 @@ export const Auth = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-lg text-xs font-semibold text-center mb-4 flex items-center justify-center gap-2"
                 >
-                  <span>✅ {success}</span>
+                  <span>{success}</span>
                 </motion.div>
               )}
 
@@ -701,7 +703,7 @@ export const Auth = () => {
             {/* Full Name (Sign Up only) */}
             {!isLogin && (
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Họ và tên</label>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('auth.fullName')}</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <User size={16} className="text-neon" />
@@ -709,7 +711,7 @@ export const Auth = () => {
                   <input 
                     type="text" 
                     required
-                    placeholder="Nhập họ và tên"
+                    placeholder={language === 'vi' ? "Nhập họ và tên" : "Enter your full name"}
                     value={name}
                     onChange={(e) => handleFieldChange('name', e.target.value)}
                     onBlur={() => handleBlur('name')}
@@ -717,7 +719,7 @@ export const Auth = () => {
                   />
                 </div>
                 {touched.name && errors.name && (
-                  <p className="text-red-400 text-[11px] font-semibold mt-1">⚠️ {errors.name}</p>
+                  <p className="text-red-400 text-[11px] font-semibold mt-1">{errors.name}</p>
                 )}
               </div>
             )}
@@ -725,7 +727,7 @@ export const Auth = () => {
             {/* Tên đăng nhập (Sign Up only) */}
             {!isLogin && (
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Tên đăng nhập</label>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{language === 'vi' ? 'Tên đăng nhập' : 'Username'}</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <KeyRound size={16} className="text-neon" />
@@ -733,7 +735,7 @@ export const Auth = () => {
                   <input 
                     type="text" 
                     required
-                    placeholder="Nhập tên đăng nhập"
+                    placeholder={language === 'vi' ? "Nhập tên đăng nhập" : "Enter username"}
                     value={username}
                     onChange={(e) => handleFieldChange('username', e.target.value)}
                     onBlur={() => handleBlur('username')}
@@ -741,7 +743,7 @@ export const Auth = () => {
                   />
                 </div>
                 {touched.username && errors.username && (
-                  <p className="text-red-400 text-[11px] font-semibold mt-1">⚠️ {errors.username}</p>
+                  <p className="text-red-400 text-[11px] font-semibold mt-1">{errors.username}</p>
                 )}
               </div>
             )}
@@ -749,7 +751,7 @@ export const Auth = () => {
             {/* Username or Email */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                {isLogin ? 'Tên đăng nhập hoặc Email' : 'Địa chỉ Email'}
+                {isLogin ? (language === 'vi' ? 'Tên đăng nhập hoặc Email' : 'Username or Email') : t('auth.email')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -758,7 +760,7 @@ export const Auth = () => {
                 <input 
                   type={isLogin ? 'text' : 'email'} 
                   required
-                  placeholder={isLogin ? 'Nhập tên đăng nhập hoặc email' : 'name@example.com'}
+                  placeholder={isLogin ? (language === 'vi' ? 'Nhập tên đăng nhập hoặc email' : 'Enter username or email') : 'name@example.com'}
                   value={email}
                   onChange={(e) => handleFieldChange('email', e.target.value)}
                   onBlur={() => handleBlur('email')}
@@ -766,7 +768,7 @@ export const Auth = () => {
                 />
               </div>
               {touched.email && errors.email && (
-                <p className="text-red-400 text-[11px] font-semibold mt-1">⚠️ {errors.email}</p>
+                <p className="text-red-400 text-[11px] font-semibold mt-1">{errors.email}</p>
               )}
               {!isLogin && (
                 <p className="text-[10px] text-gray-500 mt-1 italic leading-normal">
@@ -778,9 +780,9 @@ export const Auth = () => {
             {/* Password */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Mật khẩu</label>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('auth.password')}</label>
                 {isLogin && (
-                  <Link to="/forgot-password" className="text-xs text-neon hover:underline">Quên mật khẩu?</Link>
+                  <Link to="/forgot-password" className="text-xs text-neon hover:underline">{language === 'vi' ? 'Quên mật khẩu?' : 'Forgot password?'}</Link>
                 )}
               </div>
               <div className="relative">
@@ -805,7 +807,7 @@ export const Auth = () => {
                 </button>
               </div>
               {touched.password && errors.password && (
-                <p className="text-red-400 text-[11px] font-semibold mt-1">⚠️ {errors.password}</p>
+                <p className="text-red-400 text-[11px] font-semibold mt-1">{errors.password}</p>
               )}
 
               {/* Password Strength Meter (Sign Up only) */}
@@ -847,7 +849,7 @@ export const Auth = () => {
             {/* Confirm Password (Sign Up only) */}
             {!isLogin && (
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Xác nhận mật khẩu</label>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{language === 'vi' ? 'Xác nhận mật khẩu' : 'Confirm password'}</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Lock size={16} className="text-neon" />
@@ -870,7 +872,7 @@ export const Auth = () => {
                   </button>
                 </div>
                 {touched.confirmPassword && errors.confirmPassword && (
-                  <p className="text-red-400 text-[11px] font-semibold mt-1">⚠️ {errors.confirmPassword}</p>
+                  <p className="text-red-400 text-[11px] font-semibold mt-1">{errors.confirmPassword}</p>
                 )}
               </div>
             )}
@@ -888,11 +890,11 @@ export const Auth = () => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Đang xử lý...
+                  {t('common.saving')}
                 </>
               ) : (
                 <>
-                  {isLogin ? 'Xác Nhận Đăng Nhập' : 'Tạo Tài Khoản'}
+                  {isLogin ? t('auth.signInBtn') : t('auth.signUpBtn')}
                   <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
                 </>
               )}
@@ -903,7 +905,7 @@ export const Auth = () => {
               <>
                 <div className="relative flex py-3 items-center">
                   <div className="flex-grow border-t border-gray-800"></div>
-                  <span className="flex-shrink mx-4 text-gray-500 text-xs font-semibold uppercase tracking-wider">Hoặc</span>
+                  <span className="flex-shrink mx-4 text-gray-500 text-xs font-semibold uppercase tracking-wider">{t('auth.or')}</span>
                   <div className="flex-grow border-t border-gray-800"></div>
                 </div>
 
@@ -920,7 +922,7 @@ export const Auth = () => {
                       d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.137 4.114-3.466 0-6.277-2.81-6.277-6.277 0-3.466 2.81-6.277 6.277-6.277 1.503 0 2.873.53 3.96 1.402l3.07-3.07C18.847 1.836 15.753 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.262 0 11.36-4.996 11.36-11.24 0-.713-.082-1.393-.227-1.955H12.24z"
                     />
                   </svg>
-                  Đăng nhập với Google
+                  {t('auth.googleSignIn')}
                 </button>
               </>
             )}

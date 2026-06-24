@@ -146,3 +146,31 @@ export const deleteNotification = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+// Delete all notifications for current user
+export const deleteAllNotifications = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized: Missing user information'
+      });
+    }
+
+    const userId = req.user.id;
+
+    await Notification.deleteMany({ userId });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã xóa toàn bộ thông báo thành công',
+      unreadCount: 0
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi khi xóa toàn bộ thông báo',
+      error: error.message
+    });
+  }
+};

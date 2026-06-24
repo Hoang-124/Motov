@@ -28,10 +28,16 @@ export interface IBooking extends Document {
   pickupLocation?: ILocationDetails;
   returnLocation?: ILocationDetails;
   totalAmount: number;
+  depositAmount?: number;
+  remainingAmount?: number;
   status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled';
   bookingCode: string;
   surcharges: ISurcharge[];
   cancelReason?: string;
+  returnReason?: string;
+  paymentMethod?: 'Cash' | 'Banking';
+  deliveryMethod?: 'StorePickup' | 'HomeDelivery';
+  isPaid?: boolean;
   discountId?: mongoose.Types.ObjectId;
   discountAmount?: number;
   promoCodeUsed?: string;
@@ -69,10 +75,16 @@ const BookingSchema = new Schema<IBooking>({
   pickupLocation: LocationDetailsSchema,
   returnLocation: LocationDetailsSchema,
   totalAmount: { type: Number, required: true },
+  depositAmount: { type: Number, default: 0 },
+  remainingAmount: { type: Number, default: 0 },
   status: { type: String, enum: ['Pending', 'Confirmed', 'Ongoing', 'Completed', 'Cancelled'], default: 'Pending', index: true },
   bookingCode: { type: String, required: true, unique: true, index: true },
   surcharges: [SurchargeSchema],
   cancelReason: { type: String },
+  returnReason: { type: String },
+  paymentMethod: { type: String, enum: ['Cash', 'Banking'], default: 'Banking' },
+  deliveryMethod: { type: String, enum: ['StorePickup', 'HomeDelivery'], default: 'StorePickup' },
+  isPaid: { type: Boolean, default: false },
   discountId: { type: Schema.Types.ObjectId, ref: 'Discount' },
   discountAmount: { type: Number, default: 0 },
   promoCodeUsed: { type: String },

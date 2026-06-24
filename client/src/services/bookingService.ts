@@ -46,9 +46,12 @@ export interface Booking {
   };
   rentalDays: number;
   totalAmount: number;
+  depositAmount?: number;
+  remainingAmount?: number;
   status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled'; // Đúng Enum viết hoa chữ cái đầu của bạn
   statusLabel: string;   // Nhãn tiếng Việt có icon do BE tạo sẵn (ví dụ: "⏳ Chờ xác nhận")
   cancelReason?: string;
+  returnReason?: string;
   createdAt: string;
 }
 
@@ -73,6 +76,8 @@ export const bookingService = {
     pickupLocation: { address: string };
     returnLocation: { address: string };
     promoCode?: string;
+    paymentMethod?: 'Cash' | 'Banking';
+    deliveryMethod?: 'StorePickup' | 'HomeDelivery';
   }) => {
     const res = await axios.post(API_URL, data);
     return res.data;
@@ -101,14 +106,26 @@ export const bookingService = {
   },
 
   // 7. Hoàn trả xe -> PUT /api/bookings/:id/return
-  returnMotorbike: async (id: string, actualReturnTime: string) => {
-    const res = await axios.put(`${API_URL}/${id}/return`, { actualReturnTime });
+  returnMotorbike: async (id: string, actualReturnTime: string, returnReason?: string) => {
+    const res = await axios.put(`${API_URL}/${id}/return`, { actualReturnTime, returnReason });
     return res.data;
   },
 
   // 8. Xóa đơn đặt xe -> DELETE /api/bookings/:id
   deleteBooking: async (id: string) => {
     const res = await axios.delete(`${API_URL}/${id}`);
+    return res.data;
+  },
+
+  // 9. Lấy link thanh toán VNPAY -> POST /api/bookings/:id/vnpay-url
+  getVNPayUrl: async (id: string) => {
+    const res = await axios.post(`${API_URL}/${id}/vnpay-url`);
+    return res.data;
+  },
+
+  // 10. Gửi IPN VNPAY thật -> GET /api/bookings/vnpay-ipn
+  verifyVNPayPayment: async (queryParams: string) => {
+    const res = await axios.get(`${API_URL}/vnpay-ipn${queryParams}`);
     return res.data;
   }
 };

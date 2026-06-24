@@ -9,12 +9,15 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { Bike, Booking } from '../../../types';
+import { Bike } from '../../../types';
 import { COLORS } from '../../../theme/colors';
-import { useAppDispatch } from '../../../app/store';
-import { addBooking } from '../bookingsSlice';
+import { useAppDispatch, useAppSelector } from '../../../app/store';
+import { createBookingApi } from '../bookingsSlice';
+import { API_BASE_URL } from '../../../constants/api';
 
 interface BookingModalProps {
   visible: boolean;
@@ -25,6 +28,16 @@ interface BookingModalProps {
   onConfirmSuccess: () => void;
 }
 
+/** Return today + N days as "YYYY-MM-DD" for default date values. */
+const offsetDate = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
+/** Build an ISO-8601 string from separate date ("YYYY-MM-DD") and time ("HH:MM"). */
+const toISO = (date: string, time: string) => `${date}T${time}:00.000Z`;
+
 export const BookingModal: React.FC<BookingModalProps> = ({
   visible,
   onClose,
@@ -34,53 +47,263 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   onConfirmSuccess,
 }) => {
   const dispatch = useAppDispatch();
-  
-  // Local state for form input values
+  const loading = useAppSelector(s => s.bookings.loading);
+  const identityStatus = useAppSelector(s => s.user.identityStatus);
+  const token = useAppSelector(s => s.user.token);
+  const isVerified = identityStatus === 'Verified';
+
+  // Date + time fields (split so user can type them separately)
+  const [pickupDate, setPickupDate] = useState('');
+  const [pickupTime, setPickupTime] = useState('08:00');
+  const [returnDate, setReturnDate] = useState('');
+  const [returnTime, setReturnTime] = useState('08:00');
+
+  const [pickupLocation, setPickupLocation] = useState('');
+  const [promoCode, setPromoCode] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Banking'>('Banking');
+  const [deliveryMethod, setDeliveryMethod] = useState<'StorePickup' | 'HomeDelivery'>('StorePickup');
+
+  // Voucher validation states
+  const [appliedPromo, setAppliedPromo] = useState<any>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
+  const [validatingPromo, setValidatingPromo] = useState(false);
+
+  // Personal info fields
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [license, setLicense] = useState('');
-  const [bookDate, setBookDate] = useState('');
-  const [bookLocation, setBookLocation] = useState('');
 
-  // Set initial form values when modal opens
   useEffect(() => {
     if (visible) {
-      setBookDate(initialDate || '25/05 - 28/05');
-      setBookLocation(initialLocation || 'Sân bay Đà Nẵng');
+      setPickupDate(offsetDate(1));
+      setReturnDate(offsetDate(4));
+      setPickupLocation(initialLocation || 'Sân bay Đà Nẵng');
+      setPromoCode('');
+      setPaymentMethod('Banking');
+      setDeliveryMethod('StorePickup');
+      setFullName('');
+      setPhone('');
+      setLicense('');
+
+      // Reset promo state
+      setAppliedPromo(null);
+      setPromoError(null);
+      setPromoSuccess(null);
+      setValidatingPromo(false);
+
+      // Fetch user profile to prefill information
+      const fetchProfile = async () => {
+        if (!token) return;
+        try {
+          const res = await fetch(`${API_BASE_URL}/auth/me`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data.success && data.user) {
+            const u = data.user;
+            let nameVal = u.citizenIdInfo?.fullName || u.name;
+            if (!nameVal) {
+              const parts = [];
+              if (u.lastName) parts.push(u.lastName);
+              if (u.firstName) parts.push(u.firstName);
+              nameVal = parts.join(' ');
+            }
+            setFullName(nameVal.trim());
+            setPhone(u.phoneNumber || '');
+            setLicense(u.citizenIdInfo?.idNumber || '');
+          }
+        } catch (e) {
+          console.error('Lỗi lấy profile trong modal:', e);
+        }
+      };
+      fetchProfile();
     }
-  }, [visible, initialDate, initialLocation]);
+  }, [visible, initialLocation, token]);
 
   if (!selectedBike) return null;
 
-  const handleConfirm = () => {
-    if (!fullName || !phone || !license) {
-      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin cá nhân.');
+  const getRentalDays = () => {
+    if (!pickupDate || !returnDate || !selectedBike) return 0;
+    try {
+      const start = new Date(`${pickupDate}T${pickupTime}:00`);
+      const end = new Date(`${returnDate}T${returnTime}:00`);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+      if (start >= end) return 0;
+      return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    } catch (e) {
+      return 0;
+    }
+  };
+
+  const rentalDays = getRentalDays();
+  const totalAmountBeforeDiscount = selectedBike ? (parseInt(selectedBike.price.replace(/\./g, ''), 10) || 0) * rentalDays : 0;
+  const discountAmount = appliedPromo ? (appliedPromo.discountAmount || 0) : 0;
+  const totalAmount = Math.max(0, totalAmountBeforeDiscount - discountAmount);
+  const depositAmount = Math.round(totalAmount * 0.3);
+  const remainingAmount = totalAmount - depositAmount;
+
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) {
+      setPromoError('Vui lòng nhập mã giảm giá.');
+      return;
+    }
+    if (totalAmountBeforeDiscount <= 0) {
+      setPromoError('Vui lòng chọn thời gian thuê xe hợp lệ trước.');
       return;
     }
 
-    const newBooking: Booking = {
-      id: 'BK-' + Math.floor(100000 + Math.random() * 900000),
-      bikeId: selectedBike.id,
-      bikeName: selectedBike.name,
-      image: selectedBike.image,
-      price: selectedBike.price,
-      date: bookDate,
-      location: bookLocation,
-      fullName,
-      phone,
-      status: 'Chờ duyệt',
-      createdAt: new Date().toLocaleDateString('vi-VN'),
+    setPromoError(null);
+    setPromoSuccess(null);
+    setValidatingPromo(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/promotions/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          promoCode: promoCode.trim(),
+          totalAmount: totalAmountBeforeDiscount
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setAppliedPromo(data.promotion);
+        setPromoSuccess(`Áp dụng thành công! Được giảm ${data.promotion.discountAmount.toLocaleString()} VNĐ`);
+      } else {
+        setPromoError(data.message || 'Mã giảm giá không hợp lệ hoặc đã hết hạn.');
+        setAppliedPromo(null);
+      }
+    } catch (err) {
+      setPromoError('Lỗi kết nối máy chủ khi kiểm tra mã.');
+      setAppliedPromo(null);
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoSuccess(null);
+    setPromoError(null);
+    setPromoCode('');
+  };
+
+  const handleConfirm = async () => {
+    if (!isVerified) {
+      Alert.alert(
+        'Chưa xác minh danh tính',
+        'Tài khoản của bạn chưa được xác minh eKYC. Vui lòng xác thực danh tính tại trang cá nhân.',
+        [{ text: 'Đồng ý', style: 'default' }]
+      );
+      return;
+    }
+    // Basic validation
+    if (!pickupDate || !returnDate) {
+      Alert.alert('Lỗi', 'Vui lòng chọn ngày nhận xe và ngày trả xe.');
+      return;
+    }
+    if (new Date(toISO(returnDate, returnTime)) <= new Date(toISO(pickupDate, pickupTime))) {
+      Alert.alert('Lỗi', 'Ngày trả xe phải sau ngày nhận xe.');
+      return;
+    }
+    if (!fullName.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập họ và tên khách hàng.');
+      return;
+    }
+    if (!phone.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại liên lạc.');
+      return;
+    }
+    const phoneRegex = /^(03|05|07|08|09)+([0-9]{8})$/;
+    if (!phoneRegex.test(phone.trim())) {
+      Alert.alert('Lỗi', 'Số điện thoại không đúng định dạng Việt Nam (10 chữ số, bắt đầu bằng 03, 05, 07, 08, 09).');
+      return;
+    }
+    if (!license.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số giấy phép lái xe.');
+      return;
+    }
+    if (license.trim().length < 6) {
+      Alert.alert('Lỗi', 'Số giấy phép lái xe không hợp lệ (tối thiểu 6 ký tự).');
+      return;
+    }
+
+    const locationAddress = pickupLocation.trim() || 'Sân bay Đà Nẵng';
+    const payload = {
+      vehicleId: selectedBike.id,
+      pickupDateTime: toISO(pickupDate, pickupTime),
+      returnDateTime: toISO(returnDate, returnTime),
+      pickupLocation: { address: deliveryMethod === 'StorePickup' ? 'Nhận tại cửa hàng Motov' : locationAddress, coordinates: [0, 0] },
+      returnLocation: { address: deliveryMethod === 'StorePickup' ? 'Trả tại cửa hàng Motov' : locationAddress, coordinates: [0, 0] },
+      promoCode: appliedPromo ? appliedPromo.voucherCode : undefined,
+      paymentMethod,
+      deliveryMethod,
+      fullName: fullName.trim(),
+      phone: phone.trim(),
+      license: license.trim(),
     };
 
-    dispatch(addBooking(newBooking));
-    
-    // Reset Form
-    setFullName('');
-    setPhone('');
-    setLicense('');
 
-    // Trigger success callback
-    onConfirmSuccess();
+    const result = await dispatch(createBookingApi(payload));
+
+    if (createBookingApi.fulfilled.match(result)) {
+      setPromoCode('');
+      
+      if (paymentMethod === 'Banking') {
+        const createdBooking = result.payload as any;
+        Alert.alert(
+          'Thanh Toán Đặt Cọc (VNPAY)',
+          `Đơn hàng đã được tạo thành công.\nSố tiền cọc cần trả (30%): ${depositAmount.toLocaleString()} VNĐ.\n\nBạn muốn thanh toán online ngay qua VNPAY chứ?`,
+          [
+            {
+              text: 'Để sau (Không cọc)',
+              style: 'cancel',
+              onPress: () => {
+                onConfirmSuccess();
+              }
+            },
+            {
+              text: 'Thanh toán ngay',
+              style: 'default',
+              onPress: async () => {
+                try {
+                  const resUrl = await fetch(`${API_BASE_URL}/bookings/${createdBooking.id}/vnpay-url`, {
+                    method: 'POST',
+                    headers: { 
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    }
+                  });
+                  const urlData = await resUrl.json();
+                  if (urlData.success && urlData.paymentUrl) {
+                    Linking.openURL(urlData.paymentUrl);
+                  } else {
+                    Alert.alert('Lỗi', 'Không thể khởi tạo liên kết thanh toán VNPAY.');
+                  }
+                } catch (e) {
+                  Alert.alert('Lỗi', 'Không thể kết nối đến cổng thanh toán VNPAY.');
+                }
+                onConfirmSuccess();
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Đặt Xe Thành Công 🎉',
+          'Bạn đã đăng ký đặt xe bằng Tiền mặt.\nVui lòng đến trực tiếp cửa hàng Motov để nhận xe và thanh toán.'
+        );
+        onConfirmSuccess();
+      }
+    } else {
+      const errMsg = (result.payload as string) || 'Không thể tạo đặt xe. Vui lòng thử lại.';
+      Alert.alert('Đặt xe thất bại', errMsg);
+    }
   };
 
   return (
@@ -106,80 +329,313 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               <Text style={styles.modalBikePrice}>{selectedBike.price} VNĐ/ngày</Text>
             </View>
 
+            {/* eKYC banner */}
+            {!isVerified && (
+              <View style={styles.kycBanner}>
+                <Feather name="alert-triangle" size={16} color="#f59e0b" />
+                <Text style={styles.kycBannerText}>
+                  Tài khoản chưa xác minh danh tính (eKYC). Vui lòng hoàn thành xác thực tại trang Cá nhân trước khi đặt xe.
+                </Text>
+              </View>
+            )}
             <View style={styles.modalForm}>
+              {/* Pickup date */}
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalInputLabel}>Họ và tên</Text>
-                <View style={styles.modalInputWithIcon}>
-                  <Feather name="user" size={16} color="#888" style={styles.modalInputIcon} />
-                  <TextInput
-                    style={styles.modalTextInput}
-                    placeholder="Nhập đầy đủ họ tên"
-                    placeholderTextColor="#666"
-                    value={fullName}
-                    onChangeText={setFullName}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={styles.modalInputLabel}>Số điện thoại</Text>
-                <View style={styles.modalInputWithIcon}>
-                  <Feather name="phone" size={16} color="#888" style={styles.modalInputIcon} />
-                  <TextInput
-                    style={styles.modalTextInput}
-                    placeholder="Nhập số điện thoại liên lạc"
-                    placeholderTextColor="#666"
-                    keyboardType="phone-pad"
-                    value={phone}
-                    onChangeText={setPhone}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={styles.modalInputLabel}>Số GPLX (Bằng lái)</Text>
-                <View style={styles.modalInputWithIcon}>
-                  <Feather name="credit-card" size={16} color="#888" style={styles.modalInputIcon} />
-                  <TextInput
-                    style={styles.modalTextInput}
-                    placeholder="Nhập số bằng lái xe máy"
-                    placeholderTextColor="#666"
-                    value={license}
-                    onChangeText={setLicense}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={styles.modalInputLabel}>Ngày thuê</Text>
+                <Text style={styles.modalInputLabel}>Ngày nhận xe (YYYY-MM-DD)</Text>
                 <View style={styles.modalInputWithIcon}>
                   <Feather name="calendar" size={16} color="#888" style={styles.modalInputIcon} />
                   <TextInput
                     style={styles.modalTextInput}
-                    placeholder="Ví dụ: 25/05 - 28/05"
+                    placeholder="2026-06-25"
                     placeholderTextColor="#666"
-                    value={bookDate}
-                    onChangeText={setBookDate}
+                    value={pickupDate}
+                    onChangeText={setPickupDate}
                   />
                 </View>
               </View>
 
+              {/* Pickup time */}
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalInputLabel}>Điểm nhận xe</Text>
+                <Text style={styles.modalInputLabel}>Giờ nhận xe (HH:MM)</Text>
                 <View style={styles.modalInputWithIcon}>
-                  <Feather name="map-pin" size={16} color="#888" style={styles.modalInputIcon} />
+                  <Feather name="clock" size={16} color="#888" style={styles.modalInputIcon} />
                   <TextInput
                     style={styles.modalTextInput}
-                    value={bookLocation}
-                    onChangeText={setBookLocation}
+                    placeholder="08:00"
+                    placeholderTextColor="#666"
+                    value={pickupTime}
+                    onChangeText={setPickupTime}
                   />
                 </View>
               </View>
+
+              {/* Return date */}
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalInputLabel}>Ngày trả xe (YYYY-MM-DD)</Text>
+                <View style={styles.modalInputWithIcon}>
+                  <Feather name="calendar" size={16} color="#888" style={styles.modalInputIcon} />
+                  <TextInput
+                    style={styles.modalTextInput}
+                    placeholder="2026-06-28"
+                    placeholderTextColor="#666"
+                    value={returnDate}
+                    onChangeText={setReturnDate}
+                  />
+                </View>
+              </View>
+
+              {/* Return time */}
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalInputLabel}>Giờ trả xe (HH:MM)</Text>
+                <View style={styles.modalInputWithIcon}>
+                  <Feather name="clock" size={16} color="#888" style={styles.modalInputIcon} />
+                  <TextInput
+                    style={styles.modalTextInput}
+                    placeholder="08:00"
+                    placeholderTextColor="#666"
+                    value={returnTime}
+                    onChangeText={setReturnTime}
+                  />
+                </View>
+              </View>
+
+              {/* Payment Method Selector */}
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalInputLabel}>Phương thức thanh toán</Text>
+                <View style={styles.selectorGrid}>
+                  <TouchableOpacity
+                    style={[
+                      styles.selectorItem,
+                      paymentMethod === 'Banking' && styles.selectorItemSelected
+                    ]}
+                    onPress={() => setPaymentMethod('Banking')}
+                  >
+                    <Feather name="credit-card" size={14} color={paymentMethod === 'Banking' ? COLORS.accent : '#888'} style={{ marginRight: 6 }} />
+                    <Text style={[styles.selectorItemText, paymentMethod === 'Banking' && styles.selectorItemTextSelected]}>VNPAY Banking</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.selectorItem,
+                      paymentMethod === 'Cash' && styles.selectorItemSelected
+                    ]}
+                    onPress={() => {
+                      setPaymentMethod('Cash');
+                      setDeliveryMethod('StorePickup');
+                    }}
+                  >
+                    <Feather name="user" size={14} color={paymentMethod === 'Cash' ? COLORS.accent : '#888'} style={{ marginRight: 6 }} />
+                    <Text style={[styles.selectorItemText, paymentMethod === 'Cash' && styles.selectorItemTextSelected]}>Tiền mặt</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Delivery Method Selector */}
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalInputLabel}>Hình thức giao nhận xe</Text>
+                <View style={styles.selectorGrid}>
+                  <TouchableOpacity
+                    style={[
+                      styles.selectorItem,
+                      deliveryMethod === 'StorePickup' && styles.selectorItemSelected
+                    ]}
+                    onPress={() => setDeliveryMethod('StorePickup')}
+                  >
+                    <Text style={[styles.selectorItemText, deliveryMethod === 'StorePickup' && styles.selectorItemTextSelected]}>Nhận tại cửa hàng</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.selectorItem,
+                      deliveryMethod === 'HomeDelivery' && styles.selectorItemSelected,
+                      paymentMethod === 'Cash' && styles.selectorItemDisabled
+                    ]}
+                    disabled={paymentMethod === 'Cash'}
+                    onPress={() => setDeliveryMethod('HomeDelivery')}
+                  >
+                    <Text style={[styles.selectorItemText, deliveryMethod === 'HomeDelivery' && styles.selectorItemTextSelected, paymentMethod === 'Cash' && { color: '#444' }]}>Giao xe tận nơi</Text>
+                  </TouchableOpacity>
+                </View>
+                {paymentMethod === 'Cash' && (
+                  <Text style={styles.warningText}>* Thanh toán tiền mặt bắt buộc nhận tại cửa hàng.</Text>
+                )}
+              </View>
+
+              {/* Pickup location */}
+              {deliveryMethod === 'HomeDelivery' && (
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalInputLabel}>Điểm nhận xe</Text>
+                  <View style={styles.modalInputWithIcon}>
+                    <Feather name="map-pin" size={16} color="#888" style={styles.modalInputIcon} />
+                    <TextInput
+                      style={styles.modalTextInput}
+                      value={pickupLocation}
+                      onChangeText={setPickupLocation}
+                      placeholder="Nhập địa điểm nhận xe"
+                      placeholderTextColor="#666"
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* Promo code */}
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalInputLabel}>Mã giảm giá (tuỳ chọn)</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={[styles.modalInputWithIcon, { flex: 1 }]}>
+                    <Feather name="tag" size={16} color="#888" style={styles.modalInputIcon} />
+                    <TextInput
+                      style={styles.modalTextInput}
+                      placeholder="Nhập mã voucher"
+                      placeholderTextColor="#666"
+                      autoCapitalize="characters"
+                      value={promoCode}
+                      onChangeText={setPromoCode}
+                      editable={appliedPromo === null}
+                    />
+                    {appliedPromo !== null && (
+                      <TouchableOpacity onPress={handleRemovePromo} style={{ padding: 6 }}>
+                        <Feather name="x" size={14} color={COLORS.danger} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.promoApplyBtn,
+                      (appliedPromo !== null || validatingPromo) && styles.promoApplyBtnDisabled
+                    ]}
+                    onPress={handleApplyPromo}
+                    disabled={appliedPromo !== null || validatingPromo}
+                  >
+                    {validatingPromo ? (
+                      <ActivityIndicator size="small" color={COLORS.accentDark} />
+                    ) : (
+                      <Text style={styles.promoApplyBtnText}>Áp dụng</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+                {promoError && (
+                  <Text style={{ color: COLORS.danger, fontSize: 10, marginTop: 4 }}>⚠️ {promoError}</Text>
+                )}
+                {promoSuccess && (
+                  <Text style={{ color: COLORS.approved, fontSize: 10, marginTop: 4 }}>✓ {promoSuccess}</Text>
+                )}
+              </View>
+
+              {/* Thông tin cá nhân khách hàng */}
+              <View style={{ marginTop: 15, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 15 }}>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: COLORS.accent, marginBottom: 12, textTransform: 'uppercase' }}>Thông tin khách hàng</Text>
+                
+                {/* Họ tên */}
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalInputLabel}>Họ và tên khách hàng</Text>
+                  <View style={styles.modalInputWithIcon}>
+                    <Feather name="user" size={16} color="#888" style={styles.modalInputIcon} />
+                    <TextInput
+                      style={styles.modalTextInput}
+                      placeholder="Nhập họ tên nhận xe"
+                      placeholderTextColor="#666"
+                      value={fullName}
+                      onChangeText={setFullName}
+                    />
+                  </View>
+                </View>
+
+                {/* Số điện thoại */}
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalInputLabel}>Số điện thoại liên lạc</Text>
+                  <View style={styles.modalInputWithIcon}>
+                    <Feather name="phone" size={16} color="#888" style={styles.modalInputIcon} />
+                    <TextInput
+                      style={styles.modalTextInput}
+                      placeholder="Nhập số điện thoại"
+                      placeholderTextColor="#666"
+                      keyboardType="phone-pad"
+                      value={phone}
+                      onChangeText={setPhone}
+                    />
+                  </View>
+                </View>
+
+                {/* Số GPLX */}
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalInputLabel}>Số giấy phép lái xe (GPLX)</Text>
+                  <View style={styles.modalInputWithIcon}>
+                    <Feather name="credit-card" size={16} color="#888" style={styles.modalInputIcon} />
+                    <TextInput
+                      style={styles.modalTextInput}
+                      placeholder="Nhập số GPLX đối chiếu"
+                      placeholderTextColor="#666"
+                      value={license}
+                      onChangeText={setLicense}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Hóa đơn tóm tắt đặt cọc */}
+              {rentalDays > 0 && (
+                <View style={styles.summaryContainer}>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Đơn giá xe:</Text>
+                    <Text style={styles.summaryValue}>{selectedBike.price} VNĐ/ngày</Text>
+                  </View>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Số ngày thuê:</Text>
+                    <Text style={styles.summaryValue}>{rentalDays} ngày</Text>
+                  </View>
+                  <View style={[styles.summaryRow, styles.borderTop]}>
+                    <Text style={styles.summaryLabel}>Tạm tính:</Text>
+                    <Text style={styles.summaryValue}>{totalAmountBeforeDiscount.toLocaleString()} VNĐ</Text>
+                  </View>
+                  {appliedPromo && (
+                    <View style={styles.summaryRow}>
+                      <Text style={[styles.summaryLabel, { color: COLORS.approved }]}>Giảm giá ({appliedPromo.voucherCode}):</Text>
+                      <Text style={[styles.summaryValue, { color: COLORS.approved }]}>-{discountAmount.toLocaleString()} VNĐ</Text>
+                    </View>
+                  )}
+                  <View style={[styles.summaryRow, styles.borderTop]}>
+                    <Text style={styles.summaryLabel}>Tổng cộng:</Text>
+                    <Text style={[styles.summaryValue, styles.totalText]}>{totalAmount.toLocaleString()} VNĐ</Text>
+                  </View>
+                  {paymentMethod === 'Banking' ? (
+                    <>
+                      <View style={styles.summaryRow}>
+                        <Text style={[styles.summaryLabel, styles.depositText]}>Đặt cọc giữ xe (VNPAY 30%):</Text>
+                        <Text style={[styles.summaryValue, styles.depositText]}>{depositAmount.toLocaleString()} VNĐ</Text>
+                      </View>
+                      <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Thanh toán còn lại (70%):</Text>
+                        <Text style={styles.summaryValue}>{remainingAmount.toLocaleString()} VNĐ</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <View style={styles.summaryRow}>
+                        <Text style={[styles.summaryLabel, styles.depositText]}>Đặt cọc giữ xe:</Text>
+                        <Text style={[styles.summaryValue, styles.depositText]}>0 VNĐ (Không cần cọc)</Text>
+                      </View>
+                      <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Thanh toán tại cửa hàng (100%):</Text>
+                        <Text style={styles.summaryValue}>{totalAmount.toLocaleString()} VNĐ</Text>
+                      </View>
+                    </>
+                  )}
+                </View>
+              )}
             </View>
           </ScrollView>
 
-          <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
-            <Text style={styles.confirmBtnText}>XÁC NHẬN ĐẶT XE</Text>
+          <TouchableOpacity
+            style={[styles.confirmBtn, (loading || !isVerified) && styles.confirmBtnDisabled]}
+            onPress={handleConfirm}
+            disabled={loading || !isVerified}
+          >
+            {loading ? (
+              <ActivityIndicator color={COLORS.accentDark} />
+            ) : (
+              <Text style={styles.confirmBtnText}>XÁC NHẬN ĐẶT XE</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -200,7 +656,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingHorizontal: 20,
     paddingBottom: 34,
-    maxHeight: '85%',
+    maxHeight: '92%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -280,9 +736,120 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
+  confirmBtnDisabled: {
+    opacity: 0.6,
+  },
   confirmBtnText: {
     color: COLORS.accentDark,
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  kycBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  kycBannerText: {
+    flex: 1,
+    color: '#f59e0b',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  summaryContainer: {
+    backgroundColor: COLORS.bg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 16,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+  },
+  summaryValue: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  borderTop: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  totalText: {
+    color: COLORS.accent,
+    fontSize: 14,
+  },
+  depositText: {
+    color: '#f59e0b',
+    fontWeight: 'bold',
+  },
+  selectorGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  selectorItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.bg,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 12,
+  },
+  selectorItemSelected: {
+    borderColor: COLORS.accent,
+    backgroundColor: 'rgba(204, 255, 0, 0.05)',
+  },
+  selectorItemDisabled: {
+    opacity: 0.35,
+    borderColor: COLORS.border,
+  },
+  selectorItemText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  selectorItemTextSelected: {
+    color: COLORS.accent,
+  },
+  warningText: {
+    color: '#eab308',
+    fontSize: 11,
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
+  promoApplyBtn: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  promoApplyBtnDisabled: {
+    backgroundColor: COLORS.border,
+    opacity: 0.5,
+  },
+  promoApplyBtnText: {
+    color: COLORS.accentDark,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

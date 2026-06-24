@@ -126,13 +126,13 @@ export const ResetPassword = () => {
 
           {!token && !firebaseToken && (
             <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold text-center mb-6">
-              ⚠️ Không tìm thấy Token xác minh mật khẩu trong liên kết của bạn. Vui lòng kiểm tra lại quy trình khôi phục.
+              Không tìm thấy Token xác minh mật khẩu trong liên kết của bạn. Vui lòng kiểm tra lại quy trình khôi phục.
             </div>
           )}
 
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold text-center mb-6">
-              ⚠️ {error}
+              {error}
             </div>
           )}
 

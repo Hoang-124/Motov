@@ -19,6 +19,7 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
   onSuccess 
 }) => {
   const [actualReturnTime, setActualReturnTime] = useState('');
+  const [returnReason, setReturnReason] = useState('');
   const { executeReturn, isSubmitting, error, success, setError, setSuccess } = useReturnMotorbike();
 
   // Reset states when opened
@@ -28,6 +29,7 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
       const now = new Date();
       const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
       setActualReturnTime(localDateTime);
+      setReturnReason('');
       setError(null);
       setSuccess(null);
     }
@@ -42,8 +44,13 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
       return;
     }
 
+    if (!returnReason.trim()) {
+      setError('Vui lòng nhập lý do thu hồi xe.');
+      return;
+    }
+
     try {
-      await executeReturn(bookingId, new Date(actualReturnTime).toISOString());
+      await executeReturn(bookingId, new Date(actualReturnTime).toISOString(), returnReason.trim());
       if (onSuccess) {
         onSuccess();
       }
@@ -58,67 +65,83 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
+            className="w-full max-w-md bg-surface border border-white/10 rounded-2xl shadow-2xl relative overflow-hidden text-gray-300"
           >
-            <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Thu hồi xe</h2>
-              <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                <X className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+            <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+            
+            <div className="flex justify-between items-center p-4 border-b border-gray-800">
+              <h2 className="text-lg font-display font-black text-white uppercase tracking-wider">Thu hồi xe</h2>
+              <button onClick={onClose} className="p-1 rounded-full hover:bg-white/5 transition-colors cursor-pointer text-gray-400 hover:text-white bg-transparent border-none">
+                <X className="w-5 h-5" />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {error && (
-                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-xs">
                   {error}
                 </div>
               )}
               {success && (
-                <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm">
+                <div className="p-3 bg-green-500/10 border border-green-500/20 text-green-500 rounded-lg text-xs">
                   {success}
                 </div>
               )}
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
                   Thời gian trả xe thực tế
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Calendar className="h-5 w-5 text-gray-400" />
+                    <Calendar className="h-5 w-5 text-neon" />
                   </div>
                   <input
                     type="datetime-local"
                     value={actualReturnTime}
                     onChange={(e) => setActualReturnTime(e.target.value)}
-                    className="pl-10 w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm"
+                    className="pl-10 w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-2.5 outline-none transition-all cursor-pointer"
                     required
                   />
                 </div>
                 {pickupDateTime && (
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  <p className="mt-1 text-[10px] text-gray-500">
                     Nhận xe lúc: {new Date(pickupDateTime).toLocaleString('vi-VN')}
                   </p>
                 )}
               </div>
 
-              <div className="mt-6 flex justify-end gap-3">
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
+                  Lý do thu hồi xe
+                </label>
+                <textarea
+                  rows={3}
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  placeholder="Nhập lý do thu hồi xe (ví dụ: Trả xe đúng hẹn, Trả xe sớm, Hỏng hóc cần sửa chữa...)"
+                  className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-2.5 outline-none transition-all resize-none"
+                  required
+                />
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3 border-t border-gray-800 pt-4">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-4 py-2.5 bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 rounded-xl transition-all text-xs font-bold uppercase cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
+                  className="px-5 py-2.5 bg-neon text-dark hover:bg-[#bbf000] font-bold rounded-xl transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(204,255,0,0.3)] cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? 'Đang xử lý...' : 'Xác nhận thu hồi'}
                 </button>

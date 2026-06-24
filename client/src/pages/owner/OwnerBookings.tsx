@@ -97,8 +97,9 @@ export const OwnerBookings = () => {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-center text-sm">
-          ❌ {error}
+        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-center text-sm flex items-center justify-center gap-2">
+          <AlertCircle size={16} className="text-red-500" />
+          <span>{error}</span>
         </div>
       )}
 
@@ -106,11 +107,11 @@ export const OwnerBookings = () => {
       <div className="flex gap-2 overflow-x-auto pb-4 mb-6 border-b border-gray-900/60">
         {[
           { key: 'All', label: 'Tất cả' },
-          { key: 'Pending', label: '⏳ Chờ duyệt' },
-          { key: 'Confirmed', label: '✓ Đã xác nhận' },
-          { key: 'Ongoing', label: '🚴 Đang thuê' },
-          { key: 'Completed', label: '✓ Hoàn thành' },
-          { key: 'Cancelled', label: '❌ Đã hủy' }
+          { key: 'Pending', label: 'Chờ duyệt' },
+          { key: 'Confirmed', label: 'Đã xác nhận' },
+          { key: 'Ongoing', label: 'Đang thuê' },
+          { key: 'Completed', label: 'Hoàn thành' },
+          { key: 'Cancelled', label: 'Đã hủy' }
         ].map((status) => (
           <button
             key={status.key}
