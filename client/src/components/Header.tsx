@@ -26,6 +26,13 @@ export const Header = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotiOpen, setIsNotiOpen] = useState(false);
   const [notiFilter, setNotiFilter] = useState<'all' | 'unread'>('all');
+  const [showLangMenu, setShowLangMenu] = useState(false);
+
+  const languagesList = [
+    { code: 'vi' as const, label: 'Tiếng Việt', flag: '🇻🇳' },
+    { code: 'en' as const, label: 'English', flag: '🇺🇸' },
+    { code: 'ko' as const, label: '한국어', flag: '🇰🇷' },
+  ];
 
   // Lấy thông báo định kỳ
   const fetchNotifications = async () => {
@@ -213,6 +220,7 @@ export const Header = () => {
         { path: '/admin/users', label: t('nav.roles') },
         { path: '/admin/promotions', label: t('nav.promotions') },
         { path: '/admin/feedbacks', label: t('nav.feedbacks') },
+        { path: '/admin/settings', label: 'Cấu hình hệ thống' },
       ];
     }
 
@@ -265,20 +273,52 @@ export const Header = () => {
 
         {/* User profile / Login button */}
         <div className="hidden md:flex items-center gap-4">
-          {/* Language Switcher */}
-          <div className="relative flex items-center bg-surface/50 border border-gray-800 rounded-full p-0.5 select-none">
+          {/* Language Switcher Dropdown */}
+          <div 
+            className="relative"
+            onMouseEnter={() => setShowLangMenu(true)}
+            onMouseLeave={() => setShowLangMenu(false)}
+          >
             <button
-              onClick={() => setLanguage('vi')}
-              className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${language === 'vi' ? 'bg-neon text-dark shadow-[0_0_10px_rgba(204,255,0,0.3)]' : 'text-gray-400 hover:text-white'}`}
+              onClick={() => setShowLangMenu(!showLangMenu)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface border border-gray-800 hover:border-neon text-xs font-semibold text-gray-300 hover:text-white transition-all duration-300 cursor-pointer"
             >
-              VI
+              <Globe size={14} className="text-neon" />
+              <span className="uppercase">
+                {language === 'vi' ? 'VI 🇻🇳' : language === 'en' ? 'EN 🇺🇸' : 'KO 🇰🇷'}
+              </span>
             </button>
-            <button
-              onClick={() => setLanguage('en')}
-              className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${language === 'en' ? 'bg-neon text-dark shadow-[0_0_10px_rgba(204,255,0,0.3)]' : 'text-gray-400 hover:text-white'}`}
-            >
-              EN
-            </button>
+
+            <AnimatePresence>
+              {showLangMenu && (
+                <>
+                  <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowLangMenu(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl w-[150px] overflow-hidden py-1"
+                  >
+                    {languagesList.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => {
+                          setLanguage(lang.code);
+                          setShowLangMenu(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-4 py-2 text-xs transition-all hover:bg-white/5 border-none bg-transparent cursor-pointer ${
+                          language === lang.code ? 'text-neon font-bold' : 'text-gray-300'
+                        }`}
+                      >
+                        <span>{lang.flag} {lang.label}</span>
+                        {language === lang.code && <Check size={12} className="text-neon" />}
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
 
           {user ? (
@@ -687,21 +727,24 @@ export const Header = () => {
           ))}
 
           {/* Language Switcher for Mobile */}
-          <div className="flex items-center justify-between border-t border-white/5 pt-4 mt-2">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ngôn ngữ / Language</span>
-            <div className="flex items-center bg-surface/50 border border-gray-800 rounded-full p-0.5 select-none">
-              <button
-                onClick={() => setLanguage('vi')}
-                className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${language === 'vi' ? 'bg-neon text-dark shadow-[0_0_10px_rgba(204,255,0,0.2)]' : 'text-gray-400 hover:text-white'}`}
-              >
-                VI
-              </button>
-              <button
-                onClick={() => setLanguage('en')}
-                className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${language === 'en' ? 'bg-neon text-dark shadow-[0_0_10px_rgba(204,255,0,0.2)]' : 'text-gray-400 hover:text-white'}`}
-              >
-                EN
-              </button>
+          <div className="flex flex-col gap-2 border-t border-white/5 pt-4 mt-2">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Globe size={14} className="text-neon" /> Ngôn ngữ / Language
+            </span>
+            <div className="grid grid-cols-3 gap-2 bg-surface/50 border border-gray-800 rounded-xl p-1 select-none">
+              {languagesList.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => setLanguage(lang.code)}
+                  className={`py-2 rounded-lg text-xs font-bold transition-all duration-300 cursor-pointer text-center border-none ${
+                    language === lang.code 
+                      ? 'bg-neon text-dark shadow-[0_0_10px_rgba(204,255,0,0.2)]' 
+                      : 'bg-transparent text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {lang.flag} {lang.code.toUpperCase()}
+                </button>
+              ))}
             </div>
           </div>
           

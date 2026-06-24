@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,12 +9,15 @@ import {
   TouchableOpacity,
   Dimensions,
   ImageBackground,
+  Alert,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { Bike } from '../../../types';
 import { COLORS } from '../../../theme/colors';
 import { useAppSelector } from '../../../app/store';
 import { PromotionsModal } from '../components/PromotionsModal';
+import { NotificationModal } from '../components/NotificationModal';
+import { API_BASE_URL } from '../../../constants/api';
 
 const { width } = Dimensions.get('window');
 
@@ -42,9 +45,38 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   setActiveTab,
 }) => {
   const bikes = useAppSelector(state => state.bikes.bikes);
+  const token = useAppSelector(state => state.user.token);
+  const role = useAppSelector(state => state.user.role);
+
   const [promotionsVisible, setPromotionsVisible] = useState(false);
+  const [notiVisible, setNotiVisible] = useState(false);
+  const [unreadNotiCount, setUnreadNotiCount] = useState(0);
+
   const featuredBikes = bikes.filter(b => b.featured);
   const otherBikes = bikes.filter(b => !b.featured).slice(0, 3);
+
+  // Poll for unread notification count
+  useEffect(() => {
+    if (!token || role === 'guest') return;
+
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/notifications`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+          setUnreadNotiCount(data.unreadCount);
+        }
+      } catch (e) {
+        console.error('Lỗi khi fetch count notifications:', e);
+      }
+    };
+
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [token, role]);
 
   return (
     <View style={styles.tabContent}>
@@ -61,8 +93,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <Text style={styles.logo}>MOTOV</Text>
               <Text style={styles.subtitle}>THUÊ XE MÁY ĐÀ NẴNG</Text>
             </View>
-            <TouchableOpacity style={styles.headerIconBtn}>
+            <TouchableOpacity 
+              style={styles.headerIconBtn}
+              onPress={() => {
+                if (role === 'guest') {
+                  Alert.alert('Đăng Nhập', 'Vui lòng đăng nhập để xem thông báo.');
+                } else {
+                  setNotiVisible(true);
+                }
+              }}
+            >
               <Feather name="bell" size={18} color={COLORS.accent} />
+              {unreadNotiCount > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>{unreadNotiCount > 99 ? '99+' : unreadNotiCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -161,6 +207,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <PromotionsModal
         visible={promotionsVisible}
         onClose={() => setPromotionsVisible(false)}
+      />
+
+      {/* Notification Modal */}
+      <NotificationModal
+        visible={notiVisible}
+        onClose={() => setNotiVisible(false)}
+        token={token}
+        onUpdateCount={setUnreadNotiCount}
       />
 
       {/* Featured Section */}
@@ -734,5 +788,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
     letterSpacing: 0.5,
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: COLORS.danger,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  bellBadgeText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: 'bold',
   },
 });

@@ -24,6 +24,13 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
 
   const translateCategory = (cat: string) => {
     if (language === 'vi') return cat;
+    if (language === 'ko') {
+      if (cat === 'Xe Côn Tay') return '수동 바이크 (매뉴얼)';
+      if (cat === 'Xe Máy Điện') return '전기 스쿠터';
+      if (cat === 'Xe Ga') return '자동 스쿠터 (오토)';
+      if (cat === 'Xe Số') return '세미오토';
+      return cat;
+    }
     if (cat === 'Xe Côn Tay') return 'Clutch Bike';
     if (cat === 'Xe Máy Điện') return 'Electric Bike';
     if (cat === 'Xe Ga') return 'Scooter';
@@ -33,13 +40,42 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
 
   const translateFeature = (feat: string) => {
     if (language === 'vi') return feat;
+    if (language === 'ko') {
+      if (feat === 'Động Cơ DOHC 150cc' || feat === '150cc DOHC Engine') return '150cc DOHC 엔진';
+      if (feat === 'Tư Thế Ngồi Thoải Mái' || feat === 'Comfortable Position') return '편안한 승차감';
+      if (feat === 'Động Cơ Điện 3000W' || feat === '3000W Electric Motor') return '3000W 전기 모터';
+      if (feat === 'Quãng Đường 198km' || feat === '198km Range') return '198km 주행 가능';
+      if (feat === 'Quãng Đường 203km/Sạc' || feat === '203km/Charge') return '100% 충전 시 203km';
+      if (feat === 'Pin LFP Tiên Tiến' || feat === 'Advanced LFP Battery') return '고성능 LFP 배터리';
+      if (feat === 'Thiết Kế Ý Thanh Lịch' || feat === 'Elegant Italian Design') return '우아한 이탈리아 디자인';
+      if (feat === 'Động Cơ Bosch Cao Cấp' || feat === 'Premium Bosch Motor') return '프리미엄 보쉬 모터';
+      return feat;
+    }
     if (feat === 'Động Cơ DOHC 150cc') return '150cc DOHC Engine';
     if (feat === 'Tư Thế Ngồi Thoải Mái') return 'Comfortable Position';
     if (feat === 'Động Cơ Điện 3000W') return '3000W Electric Motor';
     if (feat === 'Quãng Đường 198km') return '198km Range';
     if (feat === 'Quãng Đường 203km/Sạc') return '203km/Charge';
     if (feat === 'Pin LFP Tiên Tiến') return 'Advanced LFP Battery';
+    if (feat === 'Thiết Kế Ý Thanh Lịch') return 'Elegant Italian Design';
+    if (feat === 'Động Cơ Bosch Cao Cấp') return 'Premium Bosch Motor';
     return feat;
+  };
+
+  const translateTransmission = (type: string) => {
+    if (language === 'vi') {
+      if (type === 'Manual') return 'Xe Côn Tay / Số Sàn';
+      if (type === 'Automatic') return 'Xe Ga / Tự Động';
+      if (type === 'Semi-Automatic') return 'Xe Số / Bán Tự Động';
+      return type;
+    }
+    if (language === 'ko') {
+      if (type === 'Manual') return '수동 (매뉴얼)';
+      if (type === 'Automatic') return '자동 (오토)';
+      if (type === 'Semi-Automatic') return '세미오토';
+      return type;
+    }
+    return type; // English: Manual, Automatic, Semi-Automatic
   };
 
   return (
@@ -86,7 +122,7 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
         <p className="text-neon font-semibold text-lg mb-1">
           {bike.rentalPrice ? bike.rentalPrice.toLocaleString() : '0'} VNĐ{' '}
           <span className="text-gray-400 text-xs font-normal">
-            / {language === 'vi' ? 'Ngày' : 'Day'}
+            / {language === 'vi' ? 'Ngày' : language === 'ko' ? '일' : 'Day'}
           </span>
         </p>
         
@@ -96,7 +132,7 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
         <div className={`grid gap-2 mb-8 ${large ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-2'}`}>
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <span className="w-1.5 h-1.5 rounded-full bg-neon"></span>
-            {language === 'vi' ? bike.transmissionType : (bike.transmissionType === 'Manual' ? 'Manual' : bike.transmissionType === 'Automatic' ? 'Automatic' : bike.transmissionType)}
+            {translateTransmission(bike.transmissionType)}
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <span className="w-1.5 h-1.5 rounded-full bg-neon"></span>

@@ -13,7 +13,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Load default language from localStorage or fallback to 'vi'
   const [language, setLanguageState] = useState<Language>(() => {
     const savedLang = localStorage.getItem('language');
-    return (savedLang === 'vi' || savedLang === 'en') ? savedLang as Language : 'vi';
+    return (savedLang === 'vi' || savedLang === 'en' || savedLang === 'ko') ? savedLang as Language : 'vi';
   });
 
   const setLanguage = (lang: Language) => {
@@ -21,43 +21,57 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('language', lang);
   };
 
-  // Translation helper function
-  const t = (keyPath: string, replacements?: Record<string, string | number>): string => {
-    const keys = keyPath.split('.');
-    let current: any = translations[language];
+  // Cache for resolved key paths to optimize CPU performance
+  const translationCache = React.useRef<Record<string, Record<string, string>>>({
+    vi: {},
+    en: {},
+    ko: {},
+  });
 
-    for (const key of keys) {
-      if (current && typeof current === 'object' && key in current) {
-        current = current[key];
-      } else {
-        // Fallback to vi if not found in current language
-        let fallback: any = translations['vi'];
-        for (const fallbackKey of keys) {
-          if (fallback && typeof fallback === 'object' && fallbackKey in fallback) {
-            fallback = fallback[fallbackKey];
-          } else {
-            fallback = null;
-            break;
+  // Translation helper function with memoization
+  const t = React.useCallback((keyPath: string, replacements?: Record<string, string | number>): string => {
+    const langCache = translationCache.current[language] || (translationCache.current[language] = {});
+    
+    let template = langCache[keyPath];
+    if (template === undefined) {
+      const keys = keyPath.split('.');
+      let current: any = translations[language];
+
+      for (const key of keys) {
+        if (current && typeof current === 'object' && key in current) {
+          current = current[key];
+        } else {
+          // Fallback to vi if not found in current language
+          let fallback: any = translations['vi'];
+          for (const fallbackKey of keys) {
+            if (fallback && typeof fallback === 'object' && fallbackKey in fallback) {
+              fallback = fallback[fallbackKey];
+            } else {
+              fallback = null;
+              break;
+            }
           }
+          current = fallback || keyPath;
+          break;
         }
-        return fallback || keyPath;
       }
+
+      template = typeof current === 'string' ? current : keyPath;
+      langCache[keyPath] = template;
     }
 
-    if (typeof current !== 'string') {
-      return keyPath;
+    if (!replacements) {
+      return template;
     }
 
     // Replace dynamic placeholders if replacements are provided (e.g. {count})
-    let result = current;
-    if (replacements) {
-      Object.entries(replacements).forEach(([key, value]) => {
-        result = result.replace(new RegExp(`{${key}}`, 'g'), String(value));
-      });
-    }
+    let result = template;
+    Object.entries(replacements).forEach(([key, value]) => {
+      result = result.replace(new RegExp(`{${key}}`, 'g'), String(value));
+    });
 
     return result;
-  };
+  }, [language]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

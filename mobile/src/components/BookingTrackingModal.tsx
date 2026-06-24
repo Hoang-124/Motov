@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBookingTracking, TrackingEvent } from '../hooks/useBookingTracking';
 import { Booking } from '../types';
 import { COLORS } from '../theme/colors';
+import { InteractiveMap } from './InteractiveMap';
 
 interface BookingTrackingModalProps {
   visible: boolean;
@@ -65,6 +66,12 @@ export const BookingTrackingModal: React.FC<BookingTrackingModalProps> = ({ book
             <Text style={styles.summarySubText}>Xe: {booking.bikeName}</Text>
             <Text style={styles.summarySubText}>Trạng thái: <Text style={styles.accentText}>{booking.statusLabel || booking.status}</Text></Text>
           </View>
+
+          <InteractiveMap 
+            status={booking.status as any} 
+            pickupAddress={booking.pickupLocation?.address}
+            returnAddress={booking.returnLocation?.address}
+          />
 
           {isLoading ? (
             <View style={styles.centerContainer}>

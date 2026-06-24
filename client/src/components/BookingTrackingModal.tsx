@@ -2,14 +2,18 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, CheckCircle, MapPin, X, AlertCircle } from 'lucide-react';
 import { useBookingTracking } from '../hooks/useBookingTracking';
+import { InteractiveMap } from './InteractiveMap';
 
 interface BookingTrackingModalProps {
   isOpen: boolean;
   onClose: () => void;
   bookingId: string | null;
+  status?: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled';
+  pickupAddress?: string;
+  returnAddress?: string;
 }
 
-export const BookingTrackingModal: React.FC<BookingTrackingModalProps> = ({ isOpen, onClose, bookingId }) => {
+export const BookingTrackingModal: React.FC<BookingTrackingModalProps> = ({ isOpen, onClose, bookingId, status, pickupAddress, returnAddress }) => {
   const { timeline, loading, error } = useBookingTracking(isOpen ? bookingId : null);
 
   const getIcon = (status: string) => {
@@ -40,7 +44,13 @@ export const BookingTrackingModal: React.FC<BookingTrackingModalProps> = ({ isOp
               </button>
             </div>
             
-            <div className="p-6 max-h-[70vh] overflow-y-auto">
+            <div className="p-6 max-h-[75vh] overflow-y-auto">
+              {status && (
+                <div className="mb-4">
+                  <InteractiveMap status={status} pickupAddress={pickupAddress} returnAddress={returnAddress} />
+                </div>
+              )}
+
               {loading && <p className="text-center text-gray-500">Đang tải...</p>}
               {error && <p className="text-center text-red-500">{error}</p>}
               

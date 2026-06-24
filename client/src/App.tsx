@@ -36,6 +36,7 @@ import { AdminBookings } from './pages/admin/AdminBookings';
 import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminPromotions } from './pages/admin/AdminPromotions';
 import { AdminFeedbacks } from './pages/admin/AdminFeedbacks';
+import { AdminSettings } from './pages/admin/AdminSettings';
 
 // Route Guard component
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: ('customer' | 'staff' | 'admin' | 'owner')[] }) => {
@@ -176,6 +177,11 @@ export default function App() {
               <Route path="/admin/feedbacks" element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminFeedbacks />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/settings" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminSettings />
                 </ProtectedRoute>
               } />
               <Route path="/promotions" element={<Promotions />} />
