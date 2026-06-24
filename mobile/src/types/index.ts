@@ -50,6 +50,11 @@ export interface Booking {
   };
   rentalDays?: number;
   totalAmount?: number;
+  depositAmount?: number;
+  remainingAmount?: number;
+  paymentMethod?: 'Cash' | 'Banking';
+  deliveryMethod?: 'StorePickup' | 'HomeDelivery';
+  isPaid?: boolean;
   cancelReason?: string;
   surcharges?: Surcharge[];
   timeline?: TrackingEvent[];

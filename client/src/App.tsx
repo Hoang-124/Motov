@@ -27,6 +27,7 @@ import { OwnerBikes } from './pages/owner/OwnerBikes';
 import { OwnerBookings } from './pages/owner/OwnerBookings';
 
 import { Promotions } from './pages/Promotions';
+import { VNPayReturn } from './pages/VNPayReturn';
 
 // Admin pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -178,6 +179,7 @@ export default function App() {
                 </ProtectedRoute>
               } />
               <Route path="/promotions" element={<Promotions />} />
+              <Route path="/vnpay-return" element={<VNPayReturn />} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

@@ -20,12 +20,12 @@ export const Header = () => {
   }, []);
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showConfirmDeleteAll, setShowConfirmDeleteAll] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotiOpen, setIsNotiOpen] = useState(false);
   const [notiFilter, setNotiFilter] = useState<'all' | 'unread'>('all');
-  const [showNotiMenu, setShowNotiMenu] = useState(false);
 
   // Lấy thông báo định kỳ
   const fetchNotifications = async () => {
@@ -109,6 +109,22 @@ export const Header = () => {
       if (res.success) {
         setNotifications(prev => prev.filter(n => n._id !== id));
         setUnreadCount(res.unreadCount);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteAllNotifications = () => {
+    setShowConfirmDeleteAll(true);
+  };
+
+  const executeDeleteAllNotifications = async () => {
+    try {
+      const res = await notificationService.deleteAllNotifications();
+      if (res.success) {
+        setNotifications([]);
+        setUnreadCount(0);
       }
     } catch (err) {
       console.error(err);
@@ -276,7 +292,6 @@ export const Header = () => {
                 }}
                 onMouseLeave={() => {
                   setIsNotiOpen(false);
-                  setShowNotiMenu(false);
                 }}
               >
                 <button
@@ -298,7 +313,7 @@ export const Header = () => {
                 <AnimatePresence>
                   {isNotiOpen && (
                     <>
-                      <div className="fixed inset-0 z-40 bg-transparent md:hidden" onClick={() => { setIsNotiOpen(false); setShowNotiMenu(false); }} />
+                      <div className="fixed inset-0 z-40 bg-transparent md:hidden" onClick={() => setIsNotiOpen(false)} />
                       <motion.div
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -312,30 +327,23 @@ export const Header = () => {
                         {/* Header */}
                         <div className="p-4 flex items-center justify-between pb-2">
                           <span className="font-bold text-white text-base">Thông báo</span>
-                          <div className="relative">
+                          <div className="flex items-center gap-1">
+                            {/* Đánh dấu tất cả đã đọc */}
                             <button 
-                              onClick={() => setShowNotiMenu(!showNotiMenu)}
-                              className="w-8 h-8 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
+                              onClick={handleMarkAllAsRead}
+                              title="Đánh dấu tất cả đã đọc"
+                              className="w-8 h-8 rounded-full hover:bg-white/10 text-gray-400 hover:text-neon transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
                             >
-                              <span className="text-sm font-bold tracking-widest leading-none">•••</span>
+                              <Check size={16} />
                             </button>
-                            {/* Submenu for Mark all as read */}
-                            {showNotiMenu && (
-                              <>
-                                <div className="fixed inset-0 z-10" onClick={() => setShowNotiMenu(false)} />
-                                <div className="absolute right-0 mt-1 w-48 bg-surface border border-white/10 rounded-lg shadow-xl z-20 py-1 text-xs">
-                                  <button
-                                    onClick={() => {
-                                      handleMarkAllAsRead();
-                                      setShowNotiMenu(false);
-                                    }}
-                                    className="w-full px-4 py-2.5 hover:bg-white/5 text-left text-gray-300 hover:text-white flex items-center gap-2 cursor-pointer border-none bg-transparent"
-                                  >
-                                    <Check size={14} className="text-neon" /> Đánh dấu tất cả đã đọc
-                                  </button>
-                                </div>
-                              </>
-                            )}
+                            {/* Xóa tất cả thông báo */}
+                            <button 
+                              onClick={handleDeleteAllNotifications}
+                              title="Xóa tất cả thông báo"
+                              className="w-8 h-8 rounded-full hover:bg-white/10 text-gray-400 hover:text-red-500 transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
                         </div>
 
@@ -799,6 +807,61 @@ export const Header = () => {
                   className="px-4 py-2 rounded-lg bg-neon text-dark hover:bg-[#bbf000] font-bold text-xs uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-[0_0_10px_rgba(204,255,0,0.2)] text-center"
                 >
                   {t('common.confirm')}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+
+    {/* Custom Sliding Delete All Notifications Popover */}
+    <AnimatePresence>
+      {showConfirmDeleteAll && (
+        <>
+          {/* Click-Outside Dismiss Area */}
+          <div
+            onClick={() => setShowConfirmDeleteAll(false)}
+            className="fixed inset-0 z-[90]"
+          />
+
+          {/* Small Popover on the top-right */}
+          <motion.div
+            initial={{ y: -10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -10, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-24 right-4 z-[100] bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl p-5 shadow-2xl w-[320px] overflow-hidden text-gray-300 font-sans"
+          >
+            {/* Top red indicator bar */}
+            <div className="absolute top-0 inset-x-0 h-[3px] bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]"></div>
+
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-red-500/10 rounded-lg text-red-500 shrink-0 border border-red-500/20 mt-0.5 animate-pulse">
+                  <Trash2 size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">Xóa thông báo</h4>
+                  <p className="text-gray-400 text-xs mt-1 leading-relaxed">Bạn có chắc chắn muốn xóa toàn bộ thông báo không? Hành động này không thể hoàn tác.</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <button
+                  onClick={() => setShowConfirmDeleteAll(false)}
+                  className="px-4 py-2 rounded-lg border border-gray-800 text-gray-400 hover:text-white hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-wider cursor-pointer text-center bg-transparent"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConfirmDeleteAll(false);
+                    executeDeleteAllNotifications();
+                  }}
+                  className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-bold text-xs uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-[0_0_10px_rgba(239,68,68,0.2)] text-center border-none"
+                >
+                  Đồng ý
                 </button>
               </div>
             </div>
