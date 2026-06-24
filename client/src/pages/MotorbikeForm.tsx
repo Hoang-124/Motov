@@ -482,7 +482,7 @@ export const MotorbikeForm = () => {
                 disabled={submitting}
                 className="flex-1 bg-neon text-dark font-bold px-6 py-3 rounded-lg hover:bg-[#bbf000] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_10px_rgba(204,255,0,0.2)]"
               >
-                {submitting ? '⏳ Saving...' : isEditMode ? 'Update Motorbike' : 'Create Motorbike'}
+                {submitting ? 'Saving...' : isEditMode ? 'Update Motorbike' : 'Create Motorbike'}
               </button>
               <button
                 type="button"

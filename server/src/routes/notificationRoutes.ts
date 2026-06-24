@@ -3,7 +3,8 @@ import {
   getMyNotifications,
   markAsRead,
   markAllAsRead,
-  deleteNotification
+  deleteNotification,
+  deleteAllNotifications
 } from '../controllers/notificationController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
@@ -14,6 +15,7 @@ router.use(authMiddleware as any);
 
 router.get('/', getMyNotifications as any);
 router.put('/read-all', markAllAsRead as any);
+router.delete('/', deleteAllNotifications as any);
 router.put('/:id/read', markAsRead as any);
 router.delete('/:id', deleteNotification as any);
 

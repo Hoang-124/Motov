@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare } from 'lucide-react';
+import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { notificationService, NotificationItem } from '../services/notificationService.js';
+import { useLanguage } from '../hooks/useLanguage';
 
 export const Header = () => {
+  const { language, setLanguage, t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const location = useLocation();
@@ -18,10 +20,19 @@ export const Header = () => {
   }, []);
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showConfirmDeleteAll, setShowConfirmDeleteAll] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotiOpen, setIsNotiOpen] = useState(false);
+  const [notiFilter, setNotiFilter] = useState<'all' | 'unread'>('all');
+  const [showLangMenu, setShowLangMenu] = useState(false);
+
+  const languagesList = [
+    { code: 'vi' as const, label: 'Tiếng Việt', flag: '🇻🇳' },
+    { code: 'en' as const, label: 'English', flag: '🇺🇸' },
+    { code: 'ko' as const, label: '한국어', flag: '🇰🇷' },
+  ];
 
   // Lấy thông báo định kỳ
   const fetchNotifications = async () => {
@@ -111,6 +122,22 @@ export const Header = () => {
     }
   };
 
+  const handleDeleteAllNotifications = () => {
+    setShowConfirmDeleteAll(true);
+  };
+
+  const executeDeleteAllNotifications = async () => {
+    try {
+      const res = await notificationService.deleteAllNotifications();
+      if (res.success) {
+        setNotifications([]);
+        setUnreadCount(0);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const formatTimeAgo = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -179,44 +206,45 @@ export const Header = () => {
   const getNavLinks = () => {
     if (!user) {
       return [
-        { path: '/', label: 'Trang Chủ' },
-        { path: '/bikes', label: 'Dòng Xe' },
-        { path: '/promotions', label: 'Khuyến Mãi' },
+        { path: '/', label: t('nav.home') },
+        { path: '/bikes', label: t('nav.bikes') },
+        { path: '/promotions', label: t('nav.promotions') },
       ];
     }
 
     if (user.role === 'admin') {
       return [
-        { path: '/admin/dashboard', label: 'Thống Kê' },
-        { path: '/admin/bikes', label: 'Quản Lý Xe' },
-        { path: '/admin/bookings', label: 'Đơn Toàn Hệ Thống' },
-        { path: '/admin/users', label: 'Phân Quyền' },
-        { path: '/admin/promotions', label: 'Khuyến Mãi' },
-        { path: '/admin/feedbacks', label: 'Quản Lý Đánh Giá' },
+        { path: '/admin/dashboard', label: t('nav.dashboard') },
+        { path: '/admin/bikes', label: t('nav.manageBikes') },
+        { path: '/admin/bookings', label: t('nav.allBookings') },
+        { path: '/admin/users', label: t('nav.roles') },
+        { path: '/admin/promotions', label: t('nav.promotions') },
+        { path: '/admin/feedbacks', label: t('nav.feedbacks') },
+        { path: '/admin/settings', label: 'Cấu hình hệ thống' },
       ];
     }
 
     if (user.role === 'staff') {
       return [
-        { path: '/staff/bookings', label: 'Duyệt Đơn Thuê' },
-        { path: '/staff/bikes', label: 'Tình Trạng Xe' },
+        { path: '/staff/bookings', label: t('nav.approveBookings') },
+        { path: '/staff/bikes', label: t('nav.bikeStatus') },
       ];
     }
 
     if (user.role === 'owner') {
       return [
-        { path: '/owner/dashboard', label: 'Doanh Thu' },
-        { path: '/owner/bikes', label: 'Xe Của Tôi' },
-        { path: '/owner/bookings', label: 'Lịch Sử Thuê' },
+        { path: '/owner/dashboard', label: t('nav.revenue') },
+        { path: '/owner/bikes', label: t('nav.myBikes') },
+        { path: '/owner/bookings', label: t('nav.myBookings') },
       ];
     }
 
     // Default: Customer
     return [
-      { path: '/', label: 'Trang Chủ' },
-      { path: '/bikes', label: 'Dòng Xe' },
-      { path: '/bookings', label: 'Đơn Thuê Của Tôi' },
-      { path: '/promotions', label: 'Khuyến Mãi' },
+      { path: '/', label: t('nav.home') },
+      { path: '/bikes', label: t('nav.bikes') },
+      { path: '/bookings', label: t('nav.myBookings') },
+      { path: '/promotions', label: t('nav.promotions') },
     ];
   };
 
@@ -245,10 +273,67 @@ export const Header = () => {
 
         {/* User profile / Login button */}
         <div className="hidden md:flex items-center gap-4">
+          {/* Language Switcher Dropdown */}
+          <div 
+            className="relative"
+            onMouseEnter={() => setShowLangMenu(true)}
+            onMouseLeave={() => setShowLangMenu(false)}
+          >
+            <button
+              onClick={() => setShowLangMenu(!showLangMenu)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface border border-gray-800 hover:border-neon text-xs font-semibold text-gray-300 hover:text-white transition-all duration-300 cursor-pointer"
+            >
+              <Globe size={14} className="text-neon" />
+              <span className="uppercase">
+                {language === 'vi' ? 'VI 🇻🇳' : language === 'en' ? 'EN 🇺🇸' : 'KO 🇰🇷'}
+              </span>
+            </button>
+
+            <AnimatePresence>
+              {showLangMenu && (
+                <>
+                  <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowLangMenu(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl w-[150px] overflow-hidden py-1"
+                  >
+                    {languagesList.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => {
+                          setLanguage(lang.code);
+                          setShowLangMenu(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-4 py-2 text-xs transition-all hover:bg-white/5 border-none bg-transparent cursor-pointer ${
+                          language === lang.code ? 'text-neon font-bold' : 'text-gray-300'
+                        }`}
+                      >
+                        <span>{lang.flag} {lang.label}</span>
+                        {language === lang.code && <Check size={12} className="text-neon" />}
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+
           {user ? (
             <>
               {/* Notification Bell Icon */}
-              <div className="relative">
+              <div 
+                className="relative"
+                onMouseEnter={() => {
+                  setIsNotiOpen(true);
+                  setIsDropdownOpen(false); // Close profile dropdown if open
+                }}
+                onMouseLeave={() => {
+                  setIsNotiOpen(false);
+                }}
+              >
                 <button
                   onClick={() => {
                     setIsNotiOpen(!isNotiOpen);
@@ -268,67 +353,144 @@ export const Header = () => {
                 <AnimatePresence>
                   {isNotiOpen && (
                     <>
-                      <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsNotiOpen(false)} />
+                      <div className="fixed inset-0 z-40 bg-transparent md:hidden" onClick={() => setIsNotiOpen(false)} />
                       <motion.div
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl w-[320px] md:w-[360px] overflow-hidden text-gray-300 font-sans"
+                        className="absolute right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl w-[320px] md:w-[360px] overflow-hidden text-gray-300 font-sans pb-2"
                       >
                         {/* Top Neon line */}
                         <div className="absolute top-0 inset-x-0 h-[3px] bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
 
                         {/* Header */}
-                        <div className="p-4 flex items-center justify-between border-b border-white/5 bg-black/20">
-                          <span className="font-bold text-white text-sm uppercase tracking-wider">Thông báo ({unreadCount})</span>
-                          {unreadCount > 0 && (
+                        <div className="p-4 flex items-center justify-between pb-2">
+                          <span className="font-bold text-white text-base">Thông báo</span>
+                          <div className="flex items-center gap-1">
+                            {/* Đánh dấu tất cả đã đọc */}
                             <button 
                               onClick={handleMarkAllAsRead}
-                              className="text-xs text-neon hover:underline cursor-pointer flex items-center gap-1 font-semibold border-none bg-transparent"
+                              title="Đánh dấu tất cả đã đọc"
+                              className="w-8 h-8 rounded-full hover:bg-white/10 text-gray-400 hover:text-neon transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
                             >
-                              <Check size={12} /> Đọc tất cả
+                              <Check size={16} />
                             </button>
-                          )}
+                            {/* Xóa tất cả thông báo */}
+                            <button 
+                              onClick={handleDeleteAllNotifications}
+                              title="Xóa tất cả thông báo"
+                              className="w-8 h-8 rounded-full hover:bg-white/10 text-gray-400 hover:text-red-500 transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Facebook-style Pill Filters */}
+                        <div className="flex gap-2 px-4 pb-3 border-b border-white/5">
+                          <button
+                            onClick={() => setNotiFilter('all')}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border-none ${
+                              notiFilter === 'all'
+                                ? 'bg-neon/15 text-neon shadow-[0_0_8px_rgba(204,255,0,0.1)]'
+                                : 'bg-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                            }`}
+                          >
+                            Tất cả
+                          </button>
+                          <button
+                            onClick={() => setNotiFilter('unread')}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border-none ${
+                              notiFilter === 'unread'
+                                ? 'bg-neon/15 text-neon shadow-[0_0_8px_rgba(204,255,0,0.1)]'
+                                : 'bg-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                            }`}
+                          >
+                            {unreadCount > 0 ? `Chưa đọc (${unreadCount})` : 'Chưa đọc'}
+                          </button>
                         </div>
 
                         {/* List content */}
-                        <div className="max-h-[360px] overflow-y-auto divide-y divide-white/5">
-                          {notifications.length === 0 ? (
-                            <div className="p-8 text-center text-gray-500 text-sm">
+                        <div className="max-h-[320px] overflow-y-auto py-2 space-y-0.5">
+                          {notifications.filter(n => notiFilter === 'all' || !n.isRead).length === 0 ? (
+                            <div className="p-8 text-center text-gray-500 text-xs italic">
                               Không có thông báo nào.
                             </div>
                           ) : (
-                            notifications.map((noti) => (
-                              <div
-                                key={noti._id}
-                                onClick={() => handleMarkAsRead(noti._id, noti.relatedId)}
-                                className={`p-4 flex gap-3 text-left transition-all duration-200 cursor-pointer ${
-                                  noti.isRead ? 'opacity-70 hover:opacity-100 hover:bg-white/5' : 'bg-neon/5 hover:bg-neon/10 border-l-2 border-neon'
-                                }`}
-                              >
-                                {/* Status Indicator Color */}
-                                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                                  noti.type === 'BookingConfirmed' ? 'bg-green-500' :
-                                  noti.type === 'BookingCancelled' ? 'bg-red-500' :
-                                  noti.type === 'BookingPending' ? 'bg-yellow-500' :
-                                  'bg-neon'
-                                }`} />
-                                
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-bold text-white truncate">{noti.title}</p>
-                                  <p className="text-xs text-gray-400 mt-1 line-clamp-2 leading-relaxed">{noti.message}</p>
-                                  <span className="text-[10px] text-gray-500 mt-2 block">{formatTimeAgo(noti.createdAt)}</span>
-                                </div>
-
-                                <button 
-                                  onClick={(e) => handleDeleteNotification(e, noti._id)}
-                                  className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-all h-fit border-none bg-transparent cursor-pointer"
+                            notifications
+                              .filter(n => notiFilter === 'all' || !n.isRead)
+                              .map((noti) => (
+                                <div
+                                  key={noti._id}
+                                  onClick={() => handleMarkAsRead(noti._id, noti.relatedId)}
+                                  className={`group p-3 flex gap-3 text-left transition-all duration-200 cursor-pointer rounded-lg mx-2 ${
+                                    noti.isRead 
+                                      ? 'hover:bg-white/5' 
+                                      : 'bg-neon/5 hover:bg-neon/10'
+                                  }`}
                                 >
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                            ))
+                                  {/* Left side: Circular Icon Container like FB avatar */}
+                                  <div className="relative w-11 h-11 rounded-full bg-black/40 border border-white/5 flex items-center justify-center shrink-0">
+                                    {noti.type === 'BookingConfirmed' ? (
+                                      <ClipboardList size={20} className="text-green-400" />
+                                    ) : noti.type === 'BookingCancelled' ? (
+                                      <ClipboardList size={20} className="text-red-400" />
+                                    ) : noti.type === 'BookingPending' ? (
+                                      <ClipboardList size={20} className="text-yellow-400" />
+                                    ) : noti.type === 'IdentityVerified' ? (
+                                      <UserCheck size={20} className="text-green-400" />
+                                    ) : (
+                                      <Bell size={20} className="text-neon" />
+                                    )}
+                                    
+                                    {/* Mini badge at bottom-right corner */}
+                                    <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-surface shadow-md ${
+                                      noti.type === 'BookingConfirmed' ? 'bg-green-500 text-white' :
+                                      noti.type === 'BookingCancelled' ? 'bg-red-500 text-white' :
+                                      noti.type === 'BookingPending' ? 'bg-yellow-500 text-dark' :
+                                      'bg-neon text-dark'
+                                    }`}>
+                                      {noti.type === 'BookingConfirmed' ? (
+                                        <Check size={8} className="stroke-[3]" />
+                                      ) : noti.type === 'BookingCancelled' ? (
+                                        <X size={8} className="stroke-[3]" />
+                                      ) : (
+                                        <Bell size={8} className="stroke-[3]" />
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Middle Content */}
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-xs text-white leading-relaxed ${noti.isRead ? 'font-normal' : 'font-bold'}`}>
+                                      {noti.title}
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">{noti.message}</p>
+                                    <span className={`text-[10px] mt-1.5 block ${noti.isRead ? 'text-gray-500' : 'text-neon font-semibold'}`}>
+                                      {formatTimeAgo(noti.createdAt)}
+                                    </span>
+                                  </div>
+
+                                  {/* Right side status & action */}
+                                  <div className="flex flex-col items-center justify-between self-stretch shrink-0 py-0.5 gap-2">
+                                    {/* Unread indicator dot */}
+                                    {!noti.isRead ? (
+                                      <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] my-auto" />
+                                    ) : (
+                                      <div className="w-2.5 h-2.5 opacity-0" />
+                                    )}
+                                    
+                                    {/* Delete Button (shows on hover like FB) */}
+                                    <button 
+                                      onClick={(e) => handleDeleteNotification(e, noti._id)}
+                                      className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-all border-none bg-transparent cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))
                           )}
                         </div>
                       </motion.div>
@@ -539,7 +701,7 @@ export const Header = () => {
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-surface border border-gray-800 text-sm font-medium text-gray-300 hover:border-neon hover:text-white transition-all duration-300"
             >
               <User size={16} />
-              Đăng Nhập
+              {t('common.login')}
             </Link>
           )}
         </div>
@@ -563,6 +725,28 @@ export const Header = () => {
               {link.label}
             </Link>
           ))}
+
+          {/* Language Switcher for Mobile */}
+          <div className="flex flex-col gap-2 border-t border-white/5 pt-4 mt-2">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Globe size={14} className="text-neon" /> Ngôn ngữ / Language
+            </span>
+            <div className="grid grid-cols-3 gap-2 bg-surface/50 border border-gray-800 rounded-xl p-1 select-none">
+              {languagesList.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => setLanguage(lang.code)}
+                  className={`py-2 rounded-lg text-xs font-bold transition-all duration-300 cursor-pointer text-center border-none ${
+                    language === lang.code 
+                      ? 'bg-neon text-dark shadow-[0_0_10px_rgba(204,255,0,0.2)]' 
+                      : 'bg-transparent text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {lang.flag} {lang.code.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
           
           {user ? (
             <div className="flex flex-col gap-3 border-t border-gray-800 pt-4 mt-2">
@@ -609,10 +793,10 @@ export const Header = () => {
             <Link 
               to="/auth" 
               onClick={() => setIsOpen(false)}
-              className="flex items-center justify-center gap-2 mt-2 px-4 py-2.5 rounded-lg bg-neon text-dark font-bold text-center"
+              className="flex items-center justify-center gap-2 mt-2 px-4 py-2.5 rounded-lg bg-neon text-dark font-bold text-center uppercase text-sm"
             >
               <User size={16} />
-              ĐĂNG NHẬP
+              {t('common.login')}
             </Link>
           )}
         </div>
@@ -646,8 +830,8 @@ export const Header = () => {
                   <LogOut size={18} />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">Đăng xuất</h4>
-                  <p className="text-gray-400 text-xs mt-0.5">Bạn muốn đăng xuất đúng không?</p>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">{t('common.logout')}</h4>
+                  <p className="text-gray-400 text-xs mt-0.5">{t('auth.logoutConfirm')}</p>
                 </div>
               </div>
               
@@ -656,7 +840,7 @@ export const Header = () => {
                   onClick={() => setShowLogoutModal(false)}
                   className="px-4 py-2 rounded-lg border border-gray-800 text-gray-400 hover:text-white hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-wider cursor-pointer text-center"
                 >
-                  Hủy
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={() => {
@@ -664,6 +848,61 @@ export const Header = () => {
                     handleLogout();
                   }}
                   className="px-4 py-2 rounded-lg bg-neon text-dark hover:bg-[#bbf000] font-bold text-xs uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-[0_0_10px_rgba(204,255,0,0.2)] text-center"
+                >
+                  {t('common.confirm')}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+
+    {/* Custom Sliding Delete All Notifications Popover */}
+    <AnimatePresence>
+      {showConfirmDeleteAll && (
+        <>
+          {/* Click-Outside Dismiss Area */}
+          <div
+            onClick={() => setShowConfirmDeleteAll(false)}
+            className="fixed inset-0 z-[90]"
+          />
+
+          {/* Small Popover on the top-right */}
+          <motion.div
+            initial={{ y: -10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -10, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-24 right-4 z-[100] bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl p-5 shadow-2xl w-[320px] overflow-hidden text-gray-300 font-sans"
+          >
+            {/* Top red indicator bar */}
+            <div className="absolute top-0 inset-x-0 h-[3px] bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]"></div>
+
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-red-500/10 rounded-lg text-red-500 shrink-0 border border-red-500/20 mt-0.5 animate-pulse">
+                  <Trash2 size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">Xóa thông báo</h4>
+                  <p className="text-gray-400 text-xs mt-1 leading-relaxed">Bạn có chắc chắn muốn xóa toàn bộ thông báo không? Hành động này không thể hoàn tác.</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <button
+                  onClick={() => setShowConfirmDeleteAll(false)}
+                  className="px-4 py-2 rounded-lg border border-gray-800 text-gray-400 hover:text-white hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-wider cursor-pointer text-center bg-transparent"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConfirmDeleteAll(false);
+                    executeDeleteAllNotifications();
+                  }}
+                  className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-bold text-xs uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-[0_0_10px_rgba(239,68,68,0.2)] text-center border-none"
                 >
                   Đồng ý
                 </button>

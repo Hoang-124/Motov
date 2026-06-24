@@ -145,9 +145,20 @@ describe('returnMotorbike()', () => {
     ({ returnMotorbike } = await import('../controllers/bookingController.js'));
   });
 
-  it('should return 403 if user is not Staff or Admin', async () => {
+  it('should return 403 if user is not Staff, Admin or the booking owner', async () => {
+    const booking = await Booking.create({
+      bookingCode: 'BK-TEST-403',
+      userId: new mongoose.Types.ObjectId(),
+      vehicleId: new mongoose.Types.ObjectId(),
+      pickupDateTime: new Date(),
+      returnDateTime: new Date(Date.now() + 86400000),
+      totalAmount: 100000,
+      status: 'Ongoing',
+      vehicleSnapshot: { name: 'Test Bike', licensePlate: '12-A3 45678', rentalPrice: 100000, image: 'test.jpg' }
+    });
+
     const req: any = { 
-      params: { id: new mongoose.Types.ObjectId().toString() }, 
+      params: { id: booking._id.toString() }, 
       body: {},
       user: { id: 'user-1', roles: ['Customer'] } 
     };

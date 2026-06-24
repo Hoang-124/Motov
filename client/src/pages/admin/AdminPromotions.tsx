@@ -218,15 +218,15 @@ export const AdminPromotions = () => {
     const end = new Date(promo.endDate);
 
     if (!promo.isActive) {
-      return <span className="bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] px-2 py-0.5 rounded font-bold uppercase">Tắt hoạt động</span>;
+      return <span className="bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] px-2 py-0.5 rounded font-semibold whitespace-nowrap">Tắt hoạt động</span>;
     }
     if (now > end) {
-      return <span className="bg-gray-800 text-gray-500 border border-gray-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase">Hết hạn</span>;
+      return <span className="bg-gray-800 text-gray-500 border border-gray-700 text-[10px] px-2 py-0.5 rounded font-semibold whitespace-nowrap">Hết hạn</span>;
     }
     if (now < start) {
-      return <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 text-[10px] px-2 py-0.5 rounded font-bold uppercase">Sắp diễn ra</span>;
+      return <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 text-[10px] px-2 py-0.5 rounded font-semibold whitespace-nowrap">Sắp diễn ra</span>;
     }
-    return <span className="bg-neon/10 text-neon border border-neon/20 text-[10px] px-2 py-0.5 rounded font-bold uppercase text-glow">Đang chạy</span>;
+    return <span className="bg-neon/10 text-neon border border-neon/20 text-[10px] px-2 py-0.5 rounded font-semibold whitespace-nowrap">Đang chạy</span>;
   };
 
   return (
@@ -236,18 +236,18 @@ export const AdminPromotions = () => {
         {/* Title */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
           <div>
-            <h1 className="font-display font-black text-3xl text-white uppercase tracking-tight">
-              Quản Lý <span className="text-neon text-glow">Khuyến Mãi</span>
+            <h1 className="font-display font-black text-3xl text-white tracking-tight">
+              Quản lý khuyến mãi
             </h1>
             <p className="text-gray-400 text-xs mt-1">Thiết lập các mã voucher và ưu đãi giảm giá trên toàn hệ thống</p>
           </div>
           
           <button
             onClick={handleOpenCreateModal}
-            className="bg-neon text-dark font-bold px-5 py-2.5 rounded-lg hover:bg-[#bbf000] shadow-[0_0_15px_rgba(204,255,0,0.3)] hover:shadow-[0_0_20px_rgba(204,255,0,0.5)] transition-all duration-300 flex items-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+            className="bg-neon text-dark font-bold px-5 py-2.5 rounded-lg hover:bg-[#bbf000] shadow-md hover:shadow-[0_0_12px_rgba(204,255,0,0.25)] transition-all duration-300 flex items-center gap-2 text-xs cursor-pointer whitespace-nowrap"
           >
             <Plus size={16} />
-            <span>Thêm Khuyến Mãi</span>
+            <span>Thêm khuyến mãi</span>
           </button>
         </div>
 
@@ -327,7 +327,7 @@ export const AdminPromotions = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-black/30 border-b border-gray-800 text-gray-400 font-bold uppercase tracking-wider text-[10px]">
+                  <tr className="bg-black/30 border-b border-gray-800 text-gray-400 font-semibold text-[10px]">
                     <th className="p-4">Khuyến mãi & Mã code</th>
                     <th className="p-4">Loại giảm giá</th>
                     <th className="p-4">Thời gian áp dụng</th>
@@ -341,7 +341,7 @@ export const AdminPromotions = () => {
                   {promotions.map((promo) => (
                     <tr key={promo._id} className="hover:bg-white/5 transition-colors">
                       {/* Name & Code */}
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         <div className="font-bold text-white text-sm">{promo.discountName}</div>
                         <div className="mt-1 flex items-center gap-2">
                           <span className="font-mono bg-dark px-2 py-0.5 rounded text-neon font-bold border border-gray-800 tracking-wider">
@@ -354,7 +354,7 @@ export const AdminPromotions = () => {
                       </td>
                       
                       {/* Discount Value */}
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         <div className="font-bold">
                           {promo.discountType === 'Percentage' 
                             ? `${promo.discountValue}%` 
@@ -368,7 +368,7 @@ export const AdminPromotions = () => {
                       </td>
 
                       {/* Time */}
-                      <td className="p-4 space-y-0.5">
+                      <td className="p-4 space-y-0.5 whitespace-nowrap">
                         <div className="flex items-center gap-1.5 text-gray-400">
                           <span className="text-[10px] text-gray-500">Từ:</span>
                           <span>{new Date(promo.startDate).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</span>
@@ -380,7 +380,7 @@ export const AdminPromotions = () => {
                       </td>
 
                       {/* Usage Limit */}
-                      <td className="p-4 text-center">
+                      <td className="p-4 text-center whitespace-nowrap">
                         <div className="font-semibold text-white">
                           {promo.usedCount} / {promo.usageLimit !== undefined && promo.usageLimit !== null ? promo.usageLimit : '∞'}
                         </div>
@@ -390,12 +390,12 @@ export const AdminPromotions = () => {
                       </td>
 
                       {/* Timeline status badge */}
-                      <td className="p-4 text-center">
+                      <td className="p-4 text-center whitespace-nowrap">
                         {getStatusBadge(promo)}
                       </td>
 
                       {/* Toggle switch active */}
-                      <td className="p-4 text-center">
+                      <td className="p-4 text-center whitespace-nowrap">
                         <button
                           onClick={() => handleToggleStatus(promo)}
                           className="text-gray-500 hover:text-neon transition-colors cursor-pointer"
@@ -409,7 +409,7 @@ export const AdminPromotions = () => {
                       </td>
 
                       {/* Actions */}
-                      <td className="p-4 text-right">
+                      <td className="p-4 text-right whitespace-nowrap">
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => handleOpenEditModal(promo)}
@@ -492,7 +492,7 @@ export const AdminPromotions = () => {
                 )}
                 {formSuccess && (
                   <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-xs flex items-center gap-2 font-semibold animate-pulse">
-                    <span>✅ {formSuccess}</span>
+                    <span>{formSuccess}</span>
                   </div>
                 )}
 

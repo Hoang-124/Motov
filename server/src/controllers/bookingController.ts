@@ -1,10 +1,100 @@
 import { Response } from 'express';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
+import axios from 'axios';
 import { Booking, IBooking } from '../models/Booking.js';
 import { Vehicle } from '../models/Vehicle.js';
 import { User } from '../models/User.js';
 import { Discount } from '../models/Discount.js';
 import { Notification } from '../models/Notification.js';
+import { SystemSetting } from '../models/SystemSetting.js';
+
+// Helper to get system setting value by key with fallback to env
+const getSettingVal = async (key: string, fallback: string): Promise<string> => {
+  try {
+    const setting = await SystemSetting.findOne({ key });
+    return setting ? setting.value : fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+
+export const refundVNPayPayment = async (booking: IBooking, amount: number, creatorEmail: string) => {
+  try {
+    const tmnCode = await getSettingVal('vnp_TmnCode', process.env.VNP_TMNCODE || '');
+    const secretKey = await getSettingVal('vnp_HashSecret', process.env.VNP_HASHSECRET || '');
+    const vnpUrl = 'https://sandbox.vnpayment.vn/merchant_webapi/api/transaction';
+
+    if (!tmnCode || !secretKey) {
+      console.warn('[VNPAY Refund] Chưa cấu hình tmnCode hoặc secretKey, không thể hoàn tiền tự động');
+      return false;
+    }
+
+    const date = new Date();
+    const createDate = date.getFullYear().toString() +
+      (date.getMonth() + 1).toString().padStart(2, '0') +
+      date.getDate().toString().padStart(2, '0') +
+      date.getHours().toString().padStart(2, '0') +
+      date.getMinutes().toString().padStart(2, '0') +
+      date.getSeconds().toString().padStart(2, '0');
+
+    const originalDate = new Date(booking.updatedAt || booking.createdAt);
+    const originalTxnDate = originalDate.getFullYear().toString() +
+      (originalDate.getMonth() + 1).toString().padStart(2, '0') +
+      originalDate.getDate().toString().padStart(2, '0') +
+      originalDate.getHours().toString().padStart(2, '0') +
+      originalDate.getMinutes().toString().padStart(2, '0') +
+      originalDate.getSeconds().toString().padStart(2, '0');
+
+    const requestId = `${booking._id.toString()}_${Date.now()}`;
+    const txnRef = `${booking._id.toString()}`;
+
+    const vnp_Params: any = {
+      vnp_RequestId: requestId,
+      vnp_Version: '2.1.0',
+      vnp_Command: 'refund',
+      vnp_TmnCode: tmnCode,
+      vnp_TransactionType: '02',
+      vnp_TxnRef: txnRef,
+      vnp_Amount: amount * 100,
+      vnp_OrderInfo: `Hoan tien coc don hang ${booking.bookingCode}`,
+      vnp_TransactionNo: '0',
+      vnp_TransactionDate: originalTxnDate,
+      vnp_CreateBy: creatorEmail,
+      vnp_CreateDate: createDate,
+      vnp_IpAddr: '127.0.0.1',
+    };
+
+    const signData = [
+      vnp_Params.vnp_RequestId,
+      vnp_Params.vnp_Version,
+      vnp_Params.vnp_Command,
+      vnp_Params.vnp_TmnCode,
+      vnp_Params.vnp_TransactionType,
+      vnp_Params.vnp_TxnRef,
+      vnp_Params.vnp_Amount,
+      vnp_Params.vnp_TransactionNo,
+      vnp_Params.vnp_TransactionDate,
+      vnp_Params.vnp_CreateBy,
+      vnp_Params.vnp_CreateDate,
+      vnp_Params.vnp_IpAddr,
+      vnp_Params.vnp_OrderInfo
+    ].join('|');
+
+    const hmac = crypto.createHmac('sha512', secretKey);
+    const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+    vnp_Params['vnp_SecureHash'] = signed;
+
+    console.log('[VNPAY Refund] Đang gửi yêu cầu hoàn tiền tới VNPAY...', vnp_Params);
+    const response = await axios.post(vnpUrl, vnp_Params);
+    console.log('[VNPAY Refund] Kết quả từ VNPAY:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('[VNPAY Refund] Lỗi khi gọi API hoàn tiền VNPAY:', error.message);
+    return false;
+  }
+};
+
 import {
   sendBookingCreatedEmail,
   sendNewBookingAlertToOwnerEmail,
@@ -39,12 +129,22 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, message: 'Yêu cầu đăng nhập trước khi đặt chỗ' });
     }
 
-    const { vehicleId, pickupDateTime, returnDateTime, pickupLocation, returnLocation, promoCode } = req.body;
+    const { vehicleId, pickupDateTime, returnDateTime, pickupLocation, returnLocation, promoCode, paymentMethod, deliveryMethod } = req.body;
 
     // Validate input
     const validation = validateBookingInput(req.body);
     if (!validation.valid) {
       return res.status(400).json({ success: false, message: validation.error });
+    }
+
+    const pMethod = paymentMethod || 'Banking';
+    const dMethod = deliveryMethod || 'StorePickup';
+
+    if (pMethod === 'Cash' && dMethod !== 'StorePickup') {
+      return res.status(400).json({
+        success: false,
+        message: 'Nếu thanh toán bằng tiền mặt, bạn bắt buộc phải nhận xe trực tiếp tại cửa hàng.'
+      });
     }
 
     // Check user exists
@@ -156,6 +256,8 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     }
 
     const totalAmount = initialTotalAmount - discountAmount;
+    const depositAmount = Math.round(totalAmount * 0.3);
+    const remainingAmount = totalAmount - depositAmount;
 
     // Create vehicle snapshot
     const vehicleSnapshot = {
@@ -177,9 +279,14 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       pickupLocation: pickupLocation || { coordinates: [0, 0] },
       returnLocation: returnLocation || { coordinates: [0, 0] },
       totalAmount,
+      depositAmount,
+      remainingAmount,
       status: 'Pending',
       bookingCode,
       surcharges: [],
+      paymentMethod: pMethod,
+      deliveryMethod: dMethod,
+      isPaid: false,
       discountId,
       discountAmount,
       promoCodeUsed
@@ -245,6 +352,32 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         }
       }
 
+      // 2.5 Tìm tất cả Admin và Staff hoạt động để tạo thông báo in-app
+      const adminsAndStaffs = await User.find({
+        roles: { $in: ['Admin', 'Staff'] },
+        status: 'Active'
+      }, '_id');
+      
+      if (adminsAndStaffs && adminsAndStaffs.length > 0) {
+        const notiPromises = adminsAndStaffs.map(userObj => {
+          // Tránh gửi trùng cho chủ xe nếu chủ xe có cả role Admin/Staff
+          if (owner && owner._id.toString() === userObj._id.toString()) return Promise.resolve();
+          // Tránh gửi trùng cho khách hàng nếu họ có role Admin/Staff đang test
+          if (userId.toString() === userObj._id.toString()) return Promise.resolve();
+          
+          return Notification.create({
+            userId: userObj._id,
+            title: 'Đơn đặt xe mới chờ duyệt',
+            message: `Hệ thống nhận được đơn đặt xe mới ${savedBooking.bookingCode} đang chờ duyệt.`,
+            type: 'BookingPending',
+            relatedId: savedBooking._id
+          });
+        });
+        await Promise.all(notiPromises).catch(err => 
+          console.error('Lỗi khi tạo thông báo cho Admin/Staff:', err)
+        );
+      }
+
       // 3. Gửi email xác nhận cho khách hàng
       if (savedBooking.userId && (savedBooking.userId as any).email) {
         sendBookingCreatedEmail((savedBooking.userId as any).email, emailDetails).catch(err =>
@@ -265,11 +398,16 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         pickupDateTime: savedBooking.pickupDateTime,
         returnDateTime: savedBooking.returnDateTime,
         totalAmount: savedBooking.totalAmount,
+        depositAmount: savedBooking.depositAmount,
+        remainingAmount: savedBooking.remainingAmount,
+        paymentMethod: savedBooking.paymentMethod,
+        deliveryMethod: savedBooking.deliveryMethod,
+        isPaid: savedBooking.isPaid,
         status: savedBooking.status,
         rentalDays,
         discountAmount: savedBooking.discountAmount,
         promoCodeUsed: savedBooking.promoCodeUsed,
-        message: '⏳ Đợi chủ xe xác nhận. Bạn sẽ nhận được thông báo khi được phê duyệt.'
+        message: 'Đợi chủ xe xác nhận. Bạn sẽ nhận được thông báo khi được phê duyệt.'
       }
     });
 
@@ -571,6 +709,14 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
             });
           }
 
+          // Tự động hoàn cọc VNPAY nếu đã thanh toán
+          if (updatedBooking.isPaid && updatedBooking.depositAmount && updatedBooking.depositAmount > 0) {
+            const creatorEmail = req.user?.email || 'staff@motov.com';
+            refundVNPayPayment(updatedBooking, updatedBooking.depositAmount, creatorEmail).catch(err => 
+              console.error('Lỗi khi gọi API VNPAY Refund từ updateBooking:', err)
+            );
+          }
+
           // Tạo thông báo in-app
           await Notification.create({
             userId: customer._id,
@@ -673,6 +819,14 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
 
     const cancelledBooking = await booking.save();
 
+    // Tự động hoàn cọc VNPAY nếu khách hàng đã thanh toán
+    if (cancelledBooking.isPaid && cancelledBooking.depositAmount && cancelledBooking.depositAmount > 0) {
+      const creatorEmail = req.user?.email || 'customer@motov.com';
+      refundVNPayPayment(cancelledBooking, cancelledBooking.depositAmount, creatorEmail).catch(err =>
+        console.error('Lỗi khi gọi API VNPAY Refund từ cancelBooking:', err)
+      );
+    }
+
     // Gửi thông báo & email sau khi hủy booking (In-app & SMTP)
     try {
       const customer = await User.findById(cancelledBooking.userId);
@@ -727,7 +881,7 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: '❌ Booking đã bị hủy thành công',
+      message: 'Booking đã bị hủy thành công',
       booking: formatBookingResponse(cancelledBooking)
     });
 
@@ -773,7 +927,7 @@ export const deleteBooking = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: '✓ Booking đã bị xóa khỏi hệ thống'
+      message: 'Booking đã bị xóa khỏi hệ thống'
     });
 
   } catch (error: any) {
@@ -936,14 +1090,9 @@ export const getBookingTracking = async (req: AuthRequest, res: Response) => {
 export const returnMotorbike = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { actualReturnTime } = req.body;
+    const { actualReturnTime, returnReason } = req.body;
+    const userId = req.user?.id;
     
-    // Verify role is Staff or Admin (this is also done in the route middleware, but checking here too)
-    const userRoles = req.user?.roles || [];
-    if (!userRoles.includes('Staff') && !userRoles.includes('Admin')) {
-      return res.status(403).json({ success: false, message: 'Chỉ nhân viên hoặc quản trị viên mới có thể xác nhận trả xe' });
-    }
-
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'ID booking không hợp lệ' });
     }
@@ -951,6 +1100,15 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
     const booking = await Booking.findById(id).populate('vehicleId');
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy booking' });
+    }
+
+    // Verify role or ownership
+    const userRoles = req.user?.roles || [];
+    const isStaffOrAdmin = userRoles.includes('Staff') || userRoles.includes('Admin');
+    const isBookingOwner = booking.userId.toString() === userId;
+
+    if (!isStaffOrAdmin && !isBookingOwner) {
+      return res.status(403).json({ success: false, message: 'Chỉ nhân viên, quản trị viên hoặc chính khách hàng thuê mới có thể xác nhận trả xe' });
     }
 
     if (booking.status !== 'Ongoing' && booking.status !== 'Confirmed') {
@@ -968,14 +1126,18 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
     }
 
     const scheduledReturnTime = new Date(booking.returnDateTime);
+    const pickupTime = new Date(booking.pickupDateTime);
     
     // Vehicle rental price for fee calculation
     const vehicle = booking.vehicleId as any;
     const dailyRate = vehicle?.rentalPrice || 0;
     const hourlyRate = dailyRate / 24;
 
-    // Calculate late fees
+    // Calculate late fees or early return
     const lateFee = calculateLateFees(returnedTime, scheduledReturnTime, hourlyRate);
+    let earlyRefund = 0;
+    
+    const deposit = booking.depositAmount || 0;
     
     if (lateFee > 0) {
       booking.surcharges.push({
@@ -986,9 +1148,45 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
         createdAt: new Date()
       });
       booking.totalAmount += lateFee;
+      booking.remainingAmount = (booking.remainingAmount || 0) + lateFee;
+    } else {
+      // Calculate early return (returned earlier than scheduled by 2 hours or more)
+      const earlyHours = Math.floor((scheduledReturnTime.getTime() - returnedTime.getTime()) / (1000 * 60 * 60));
+      if (earlyHours >= 2) {
+        // Số giờ thực tế đã sử dụng
+        const actualHours = Math.ceil((returnedTime.getTime() - pickupTime.getTime()) / (1000 * 60 * 60));
+        // Tiền thuê thực tế đã đi
+        const actualRentalFee = Math.round(actualHours * hourlyRate);
+        
+        // Mất cọc, khách hàng phải thanh toán thêm số tiền bằng đúng tiền thuê thực tế
+        booking.totalAmount = deposit + actualRentalFee;
+        booking.remainingAmount = actualRentalFee;
+        
+        booking.surcharges.push({
+          surchargeType: 'Early Return Penalty (Lost Deposit)',
+          amount: deposit,
+          description: `Phạt trả xe sớm (Mất tiền cọc giữ xe đã đóng trước).`,
+          isPaid: true,
+          createdAt: new Date()
+        });
+        
+        booking.surcharges.push({
+          surchargeType: 'Actual Rental Usage',
+          amount: actualRentalFee,
+          description: `Tiền thuê xe tính theo số giờ thực tế đã đi (${actualHours} giờ).`,
+          isPaid: false,
+          createdAt: new Date()
+        });
+      } else {
+        // Trả đúng hẹn, khách thanh toán nốt số tiền remainingAmount còn lại
+        booking.remainingAmount = booking.remainingAmount || 0;
+      }
     }
 
     booking.status = 'Completed';
+    if (returnReason) {
+      booking.returnReason = returnReason;
+    }
     await booking.save();
 
     // Set vehicle status to Available
@@ -1001,6 +1199,8 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
       message: 'Đã xác nhận trả xe thành công',
       lateFeeApplied: lateFee > 0,
       lateFeeAmount: lateFee,
+      earlyRefundApplied: earlyRefund > 0,
+      earlyRefundAmount: earlyRefund,
       booking: formatBookingResponse(booking)
     });
 
@@ -1055,6 +1255,12 @@ function formatBookingResponse(booking: any) {
     statusLabel: getStatusLabel(booking.status),
     surcharges: booking.surcharges,
     cancelReason: booking.cancelReason,
+    returnReason: booking.returnReason,
+    depositAmount: booking.depositAmount,
+    remainingAmount: booking.remainingAmount,
+    paymentMethod: booking.paymentMethod,
+    deliveryMethod: booking.deliveryMethod,
+    isPaid: booking.isPaid,
     createdAt: booking.createdAt,
     updatedAt: booking.updatedAt
   };
@@ -1065,11 +1271,11 @@ function formatBookingResponse(booking: any) {
  */
 function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
-    'Pending': '⏳ Chờ xác nhận',
-    'Confirmed': '✓ Đã xác nhận',
-    'Ongoing': '🚴 Đang cho thuê',
-    'Completed': '✓ Hoàn tất',
-    'Cancelled': '❌ Đã hủy'
+    'Pending': 'Chờ xác nhận',
+    'Confirmed': 'Đã xác nhận',
+    'Ongoing': 'Đang cho thuê',
+    'Completed': 'Hoàn tất',
+    'Cancelled': 'Đã hủy'
   };
   return labels[status] || status;
 }
@@ -1157,7 +1363,7 @@ export const confirmBookingByStaff = async (req: AuthRequest, res: Response) => 
 
     res.status(200).json({
       success: true,
-      message: '✓ Duyệt đơn đặt xe thành công!',
+      message: 'Duyệt đơn đặt xe thành công!',
       booking: formatBookingResponse(updatedBooking)
     });
 
@@ -1231,7 +1437,7 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
 
     res.status(200).json({
       success: true,
-      message: '✓ Xác nhận khách lấy xe thành công! Trạng thái xe đã chuyển sang Đang cho thuê.',
+      message: 'Xác nhận khách lấy xe thành công! Trạng thái xe đã chuyển sang Đang cho thuê.',
       booking: formatBookingResponse(updatedBooking)
     });
 
@@ -1242,6 +1448,217 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
       message: 'Lỗi máy chủ nội bộ khi xác nhận nhận xe',
       error: error.message
     });
+  }
+};
+
+/**
+ * Helper to sort object by key alphabetically (VNPAY requirement)
+ */
+const sortObject = (obj: any) => {
+  let sorted: any = {};
+  let str = [];
+  let key;
+  for (key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      str.push(encodeURIComponent(key));
+    }
+  }
+  str.sort();
+  for (key = 0; key < str.length; key++) {
+    sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, '+');
+  }
+  return sorted;
+};
+
+/**
+ * Generate VNPAY payment URL (Real VNPAY Sandbox)
+ * POST /api/bookings/:id/vnpay-url
+ */
+export const createVNPayUrl = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy booking' });
+    }
+
+    // Amount to pay is the depositAmount (30%)
+    const amount = booking.depositAmount || Math.round(booking.totalAmount * 0.3);
+
+    const tmnCode = await getSettingVal('vnp_TmnCode', process.env.VNP_TMNCODE || '');
+    const secretKey = await getSettingVal('vnp_HashSecret', process.env.VNP_HASHSECRET || '');
+    let vnpUrl = await getSettingVal('vnp_Url', process.env.VNP_URL || '');
+    const returnUrl = await getSettingVal('vnp_ReturnUrl', process.env.VNP_RETURNURL || '');
+
+    if (!tmnCode || !secretKey || !vnpUrl || !returnUrl) {
+      return res.status(500).json({
+        success: false,
+        message: 'Chưa cấu hình đầy đủ biến môi trường VNPAY (VNP_TMNCODE, VNP_HASHSECRET, VNP_URL, VNP_RETURNURL)'
+      });
+    }
+
+    const ipAddr = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+
+    const date = new Date();
+    const createDate = date.getFullYear().toString() +
+      (date.getMonth() + 1).toString().padStart(2, '0') +
+      date.getDate().toString().padStart(2, '0') +
+      date.getHours().toString().padStart(2, '0') +
+      date.getMinutes().toString().padStart(2, '0') +
+      date.getSeconds().toString().padStart(2, '0');
+
+    // TxnRef must be unique per request to avoid "Duplicate transaction" error on VNPAY.
+    // Format: bookingId_timestamp
+    const txnRef = `${booking._id.toString()}_${Date.now()}`;
+
+    let vnp_Params: any = {};
+    vnp_Params['vnp_Version'] = '2.1.0';
+    vnp_Params['vnp_Command'] = 'pay';
+    vnp_Params['vnp_TmnCode'] = tmnCode;
+    vnp_Params['vnp_Locale'] = 'vn';
+    vnp_Params['vnp_CurrCode'] = 'VND';
+    vnp_Params['vnp_TxnRef'] = txnRef;
+    vnp_Params['vnp_OrderInfo'] = `Thanh toan dat coc don hang ${booking.bookingCode}`;
+    vnp_Params['vnp_OrderType'] = 'other';
+    vnp_Params['vnp_Amount'] = amount * 100; // VNPAY amount is in cents
+    vnp_Params['vnp_ReturnUrl'] = returnUrl;
+    vnp_Params['vnp_IpAddr'] = ipAddr;
+    vnp_Params['vnp_CreateDate'] = createDate;
+
+    // Sort params
+    const sortedParams = sortObject(vnp_Params);
+    
+    // Create query string
+    const signData = Object.keys(sortedParams)
+      .map(key => `${key}=${sortedParams[key]}`)
+      .join('&');
+
+    const hmac = crypto.createHmac('sha512', secretKey);
+    const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+
+    // Append secure hash
+    const paymentUrl = `${vnpUrl}?${signData}&vnp_SecureHash=${signed}`;
+
+    res.status(200).json({
+      success: true,
+      paymentUrl
+    });
+  } catch (error: any) {
+    console.error('Lỗi tạo URL VNPAY:', error);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ', error: error.message });
+  }
+};
+
+/**
+ * Process VNPAY IPN webhook (Real VNPAY Sandbox verification)
+ * GET/POST /api/bookings/vnpay-ipn
+ */
+export const processVNPayIPN = async (req: any, res: Response) => {
+  try {
+    let vnp_Params = req.query;
+    if (!vnp_Params || Object.keys(vnp_Params).length === 0) {
+      vnp_Params = req.body;
+    }
+
+    const secureHash = vnp_Params['vnp_SecureHash'];
+    
+    // Delete hash params
+    delete vnp_Params['vnp_SecureHash'];
+    delete vnp_Params['vnp_SecureHashType'];
+
+    // Sort params
+    const sortedParams = sortObject(vnp_Params);
+    
+    const secretKey = await getSettingVal('vnp_HashSecret', process.env.VNP_HASHSECRET || '');
+    if (!secretKey) {
+      return res.status(500).json({ RspCode: '99', Message: 'Internal server error' });
+    }
+
+    const signData = Object.keys(sortedParams)
+      .map(key => `${key}=${sortedParams[key]}`)
+      .join('&');
+
+    const hmac = crypto.createHmac('sha512', secretKey);
+    const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+
+    if (secureHash === signed) {
+      // Valid signature
+      const txnRef = vnp_Params['vnp_TxnRef'] as string;
+      if (!txnRef) {
+        return res.status(200).json({ RspCode: '01', Message: 'TxnRef not found' });
+      }
+
+      const bookingId = txnRef.split('_')[0];
+      const booking = await Booking.findById(bookingId);
+      if (!booking) {
+        return res.status(200).json({ RspCode: '01', Message: 'Order not found' });
+      }
+
+      // Check amount
+      const amount = Number(vnp_Params['vnp_Amount']) / 100;
+      const expectedAmount = booking.depositAmount || Math.round(booking.totalAmount * 0.3);
+      
+      if (Math.abs(amount - expectedAmount) > 100) { // Small tolerance
+        return res.status(200).json({ RspCode: '04', Message: 'Invalid amount' });
+      }
+
+      // Check payment status
+      if (booking.isPaid) {
+        return res.status(200).json({ RspCode: '02', Message: 'Order already confirmed' });
+      }
+
+      const responseCode = vnp_Params['vnp_ResponseCode'];
+      if (responseCode === '00') {
+        // Payment success
+        booking.isPaid = true;
+        booking.status = 'Confirmed';
+        await booking.save();
+
+        // Create notification
+        try {
+          await Notification.create({
+            userId: booking.userId,
+            title: 'Thanh toán đặt cọc thành công 🎉',
+            message: `Đơn thuê xe ${booking.bookingCode} đã đặt cọc thành công qua VNPAY. Đơn hàng hiện đã được tự động xác nhận!`,
+            type: 'BookingConfirmed',
+            relatedId: booking._id,
+            createdAt: new Date()
+          });
+        } catch (notiError) {
+          console.error('Lỗi tạo thông báo khi thanh toán VNPAY:', notiError);
+        }
+
+        return res.status(200).json({ RspCode: '00', Message: 'Confirm success' });
+      } else {
+        // Payment failed
+        booking.status = 'Cancelled';
+        booking.cancelReason = `Thanh toán đặt cọc qua VNPAY thất bại hoặc bị hủy (Mã lỗi: ${responseCode})`;
+        await booking.save();
+
+        // Create notification for cancellation
+        try {
+          await Notification.create({
+            userId: booking.userId,
+            title: 'Đơn đặt xe đã bị hủy ❌',
+            message: `Đơn thuê xe ${booking.bookingCode} đã tự động hủy do giao dịch thanh toán đặt cọc qua VNPAY không thành công hoặc bị khách hàng hủy bỏ.`,
+            type: 'BookingCancelled',
+            relatedId: booking._id,
+            createdAt: new Date()
+          });
+        } catch (notiError) {
+          console.error('Lỗi tạo thông báo hủy khi thanh toán VNPAY thất bại:', notiError);
+        }
+
+        return res.status(200).json({ RspCode: '00', Message: 'Payment failed. Booking cancelled.' });
+      }
+    } else {
+      // Signature error
+      console.warn('Sai signature VNPAY. Gửi secureHash:', secureHash, 'Tính toán:', signed);
+      return res.status(200).json({ RspCode: '97', Message: 'Invalid checksum' });
+    }
+  } catch (error: any) {
+    console.error('Lỗi xử lý IPN VNPAY:', error);
+    res.status(500).json({ RspCode: '99', Message: 'Internal server error', error: error.message });
   }
 };
 
@@ -1257,5 +1674,7 @@ export default {
   confirmBookingByStaff,
   confirmBikePickupByStaff,
   getBookingTracking,
-  returnMotorbike
+  returnMotorbike,
+  createVNPayUrl,
+  processVNPayIPN
 };
