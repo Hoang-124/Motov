@@ -306,5 +306,16 @@ export const ko: TranslationKeys = {
     newsletterSuccess: 'Motov 뉴스레터를 구독해주셔서 감사합니다.',
     newsletterSuccessHeader: '구독 완료',
     newsletterError: '올바른 이메일 주소를 입력해주세요.'
+  },
+  recommendations: {
+    personalizedTitle: '개인 맞춤형 추천',
+    homeSubTitle: '회원님을 위한 추천 바이크',
+    reasonPopular: '많은 이용자들이 선호하는 바이크',
+    reasonTopRentals: '가장 대여 횟수가 많은 인기 바이크',
+    reasonNewFeatured: '시스템의 새로운 추천 바이크',
+    reasonSimilar: '이전 대여 차량과 유사한 바이크',
+    reasonPreferenceManual: '수동 변속기(매뉴얼) 선호도 맞춤 추천',
+    reasonPreferenceAutomatic: '자동 변속기(스쿠터) 선호도 맞춤 추천',
+    reasonPreferenceClutch: '클러치 바이크 선호도 맞춤 추천'
   }
 };

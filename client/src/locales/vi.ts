@@ -304,6 +304,17 @@ export const vi = {
     newsletterSuccess: 'Cảm ơn bạn đã đăng ký nhận bản tin từ Motov.',
     newsletterSuccessHeader: 'ĐÃ ĐĂNG KÝ',
     newsletterError: 'Vui lòng nhập đúng định dạng email.'
+  },
+  recommendations: {
+    personalizedTitle: 'GỢI Ý CÁ NHÂN HÓA',
+    homeSubTitle: 'Xe máy đề xuất cho bạn',
+    reasonPopular: 'Được nhiều người dùng yêu thích',
+    reasonTopRentals: 'Dòng xe phổ biến có lượt thuê cao nhất',
+    reasonNewFeatured: 'Các dòng xe máy mới nổi bật của hệ thống',
+    reasonSimilar: 'Dòng xe tương tự các chuyến đi trước của bạn',
+    reasonPreferenceManual: 'Gợi ý theo sở thích chạy xe số của bạn',
+    reasonPreferenceAutomatic: 'Gợi ý theo sở thích chạy xe ga của bạn',
+    reasonPreferenceClutch: 'Gợi ý theo sở thích chạy xe côn tay của bạn'
   }
 };
 

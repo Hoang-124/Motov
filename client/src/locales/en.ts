@@ -306,5 +306,16 @@ export const en: TranslationKeys = {
     newsletterSuccess: 'Thank you for subscribing to Motov newsletter.',
     newsletterSuccessHeader: 'SUBSCRIBED',
     newsletterError: 'Please enter a valid email address.'
+  },
+  recommendations: {
+    personalizedTitle: 'PERSONALIZED RECOMMENDATIONS',
+    homeSubTitle: 'Recommended bikes for you',
+    reasonPopular: 'Loved by many users',
+    reasonTopRentals: 'Most popular bikes with highest rentals',
+    reasonNewFeatured: 'New outstanding motorbikes in the system',
+    reasonSimilar: 'Bikes similar to your previous trips',
+    reasonPreferenceManual: 'Recommended based on your preference for manual bikes',
+    reasonPreferenceAutomatic: 'Recommended based on your preference for automatic bikes',
+    reasonPreferenceClutch: 'Recommended based on your preference for clutch bikes'
   }
 };
