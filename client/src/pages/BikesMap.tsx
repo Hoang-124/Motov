@@ -397,7 +397,7 @@ export const BikesMap = () => {
             )}
             
             {/* The Leaflet Map element */}
-            <div id="bikes-leaflet-map" className="w-full h-full min-h-[500px] lg:min-h-[600px] z-0"></div>
+            <div id="bikes-leaflet-map" className="w-full h-full min-h-[500px] lg:min-h-[600px] z-0" style={{ filter: 'brightness(0.65) contrast(1.35) saturate(0.8)' }}></div>
 
             {/* Float Recenter Button */}
             {!loading && (
