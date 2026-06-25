@@ -6,6 +6,7 @@ import { LanguageProvider } from './hooks/useLanguage';
 import { ToastProvider } from './hooks/useToast';
 import { Home } from './pages/Home';
 import { Bikes } from './pages/Bikes';
+import { BikesMap } from './pages/BikesMap';
 import { MotorbikeDetail } from './pages/MotorbikeDetail';
 import { MotorbikeForm } from './pages/MotorbikeForm';
 import { Booking } from './pages/Booking';
@@ -73,6 +74,7 @@ export default function App() {
               {/* Public Routes */}
               <Route path="/" element={<Home />} />
               <Route path="/bikes" element={<Bikes />} />
+              <Route path="/bikes-map" element={<BikesMap />} />
               <Route path="/motorbike/new" element={
                 <ProtectedRoute allowedRoles={['staff', 'admin']}>
                   <MotorbikeForm />

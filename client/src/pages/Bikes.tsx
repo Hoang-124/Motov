@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { BikeCard } from '../components/BikeCard';
-import { SlidersHorizontal, Search, AlertCircle, Loader, ChevronDown } from 'lucide-react';
+import { SlidersHorizontal, Search, AlertCircle, Loader, ChevronDown, MapPin } from 'lucide-react';
 import { getAllMotorbikes, getRecommendations, Motorbike } from '../services/vehicleService';
 import { useLanguage } from '../hooks/useLanguage';
 
 export const Bikes = () => {
+  const navigate = useNavigate();
   const { language, t } = useLanguage();
   const [searchParams] = useSearchParams();
   const initialLocation = searchParams.get('location') || '';
@@ -214,6 +215,16 @@ export const Bikes = () => {
                   )}
                 </div>
               </div>
+
+              {/* Nút xem bản đồ xe máy */}
+              <button
+                onClick={() => navigate('/bikes-map')}
+                className="flex items-center gap-2 bg-neon/10 border border-neon/20 hover:bg-neon hover:text-dark text-neon text-xs font-bold rounded-lg px-4 py-3.5 transition-all duration-300 cursor-pointer whitespace-nowrap shadow-[0_0_10px_rgba(204,255,0,0.1)]"
+                title="Xem các xe máy gần bạn trên bản đồ"
+              >
+                <MapPin size={14} />
+                <span>Bản đồ xe</span>
+              </button>
             </div>
           </div>
         )}
