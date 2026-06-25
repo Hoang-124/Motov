@@ -70,25 +70,8 @@ export const BikesMap = () => {
   // Get user GPS coordinates
   const getUserLocation = (): Promise<[number, number]> => {
     return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        // Fallback to Da Nang center if not supported
-        resolve([16.068, 108.22]);
-        return;
-      }
-
-      setIsGpsLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setIsGpsLoading(false);
-          resolve([position.coords.latitude, position.coords.longitude]);
-        },
-        (err) => {
-          console.warn('Geolocation access denied/failed, falling back to Da Nang center.', err);
-          setIsGpsLoading(false);
-          resolve([16.068, 108.22]); // Da Nang default
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
+      // Always center on Da Nang as the project scope is restricted to Da Nang
+      resolve([16.068, 108.22]);
     });
   };
 
