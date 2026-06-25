@@ -14,7 +14,8 @@ import {
   User, 
   CreditCard, 
   UserCheck,
-  Key
+  Key,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { bookingService, Booking } from '../../services/bookingService';
@@ -33,6 +34,8 @@ interface OwnerRequest {
   status: string;
   ownerRequestStatus: string;
   createdAt: string;
+  ownerContractText?: string;
+  ownerContractSignedAt?: string;
 }
 
 export const AdminBookings = () => {
@@ -46,6 +49,7 @@ export const AdminBookings = () => {
   const [error, setError] = useState('');
   const [returningBookingId, setReturningBookingId] = useState<string | null>(null);
   const [returningPickupTime, setReturningPickupTime] = useState<string | undefined>(undefined);
+  const [viewingContractRequest, setViewingContractRequest] = useState<OwnerRequest | null>(null);
 
   const getAuthHeaders = () => {
     let token = localStorage.getItem('token');
@@ -484,6 +488,15 @@ export const AdminBookings = () => {
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex justify-end gap-2">
+                          {req.ownerContractText && (
+                            <button
+                              onClick={() => setViewingContractRequest(req)}
+                              className="px-3 py-1.5 rounded-lg bg-surface border border-gray-800 text-gray-300 hover:border-neon hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                              title="Xem hợp đồng đã ký"
+                            >
+                              <FileText size={12} /> Hợp đồng
+                            </button>
+                          )}
                           <button
                             onClick={() => handleApproveOwner(req.id)}
                             className="px-3 py-1.5 rounded-lg bg-neon text-dark font-bold text-xs hover:opacity-90 transition-all cursor-pointer flex items-center gap-1"
@@ -521,6 +534,55 @@ export const AdminBookings = () => {
         )}
 
       </div>
+
+      {/* Modal Xem hợp đồng đối tác cho Admin */}
+      {viewingContractRequest && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+            onClick={() => setViewingContractRequest(null)}
+          />
+          <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-3xl z-10 overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+            
+            {/* Header */}
+            <div className="p-5 border-b border-white/5 flex justify-between items-center bg-black/20">
+              <h3 className="font-display font-black text-lg text-white uppercase flex items-center gap-2">
+                <FileText size={18} className="text-neon" />
+                Hợp đồng đối tác chủ xe đã ký
+              </h3>
+              <button
+                onClick={() => setViewingContractRequest(null)}
+                className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 overflow-y-auto flex-grow text-gray-300 text-sm font-sans space-y-4">
+              <div className="text-xs text-gray-400 flex items-center justify-between bg-neon/10 border border-neon/20 p-3 rounded-lg text-neon font-bold">
+                <span>Hợp đồng điện tử đã được đối tác ký cam kết</span>
+                <span>Ký ngày: {viewingContractRequest.ownerContractSignedAt ? new Date(viewingContractRequest.ownerContractSignedAt).toLocaleDateString('vi-VN') : 'N/A'}</span>
+              </div>
+
+              <pre className="whitespace-pre-wrap font-mono text-xs bg-black/40 border border-white/5 rounded-xl p-4 max-h-[50vh] overflow-y-auto leading-relaxed">
+                {viewingContractRequest.ownerContractText || 'Không có dữ liệu hợp đồng.'}
+              </pre>
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 border-t border-white/5 flex justify-end gap-3 bg-black/20">
+              <button
+                onClick={() => setViewingContractRequest(null)}
+                className="px-6 py-2.5 rounded-lg bg-neon text-dark font-bold text-xs uppercase hover:bg-[#bbf000] transition-all cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ReturnMotorbikeModal
         isOpen={!!returningBookingId}

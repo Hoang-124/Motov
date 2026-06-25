@@ -343,6 +343,14 @@ export const becomeOwner = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy thông tin tài khoản' });
     }
 
+    // Kiểm tra trạng thái eKYC
+    if (user.identityStatus !== 'Verified') {
+      return res.status(400).json({
+        success: false,
+        message: 'Bạn phải hoàn thành xác thực danh tính (eKYC) và được phê duyệt trước khi ký hợp đồng đối tác chủ xe!'
+      });
+    }
+
     // FIX [BUG-8]: Idempotency guard — don't re-process if already an Owner
     if (user.roles.includes('Owner')) {
       return res.status(400).json({ success: false, message: 'Tài khoản của bạn đã là Chủ xe đối tác' });
@@ -352,17 +360,50 @@ export const becomeOwner = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Yêu cầu đăng ký làm Chủ xe của bạn đang chờ phê duyệt.' });
     }
 
-    // Đặt trạng thái yêu cầu nâng cấp lên Owner
-    user.ownerRequestStatus = 'Pending';
-    const savedUser = await user.save();
+    const displayName = user.firstName && user.lastName
+      ? `${user.lastName} ${user.firstName}`
+      : (user.firstName || user.lastName || user.username);
 
-    const displayName = savedUser.firstName && savedUser.lastName
-      ? `${savedUser.lastName} ${savedUser.firstName}`
-      : (savedUser.firstName || savedUser.lastName || savedUser.username);
+    // Biên soạn hợp đồng đối tác điện tử dựa trên thông tin cá nhân hiện tại
+    const contractText = `HỢP ĐỒNG HỢP TÁC KINH DOANH (ĐỐI TÁC CHỦ XE)
+Số: MOTOV-OWNER-${user._id.toString().slice(-6).toUpperCase()}/${new Date().getFullYear()}
+
+Hợp đồng này được ký kết vào ngày ${new Date().toLocaleDateString('vi-VN')} giữa các bên:
+
+BÊN A: CÔNG TY CỔ PHẦN DỊCH VỤ MOTOV (MOTOV INC.)
+- Đại diện: Ban Giám Đốc
+- Địa chỉ: Tòa nhà Motov, số 124 Đường 3/2, Quận Hải Châu, Đà Nẵng
+- Điện thoại: 1900 8198
+- Email: partner@motov.com
+
+BÊN B: ĐỐI TÁC CHỦ XE
+- Họ và tên: ${user.citizenIdInfo?.fullName || displayName}
+- Số CCCD/CMND: ${user.citizenIdInfo?.idNumber || 'N/A'}
+- Số điện thoại: ${user.phoneNumber || 'N/A'}
+- Email: ${user.email || 'N/A'}
+- Địa chỉ thường trú: ${user.citizenIdInfo?.address || 'N/A'}
+
+ĐIỀU KHOẢN HỢP TÁC:
+1. Bên B đồng ý đưa các phương tiện xe máy thuộc quyền sở hữu/sử dụng hợp pháp của mình lên hệ thống Motov để thực hiện dịch vụ cho thuê xe máy tự lái.
+2. Bên B cam kết các phương tiện cung cấp luôn trong tình trạng hoạt động tốt, được bảo dưỡng định kỳ và có đầy đủ giấy tờ pháp lý (Đăng ký xe, Bảo hiểm trách nhiệm dân sự còn hiệu lực).
+3. Doanh thu từ hoạt động cho thuê xe sẽ được phân chia theo tỷ lệ: Bên B nhận 85%, Bên A nhận 15% phí dịch vụ nền tảng.
+4. Bên A chịu trách nhiệm vận hành nền tảng kết nối, quảng bá dịch vụ và thu hộ tiền thuê xe từ khách hàng.
+5. Bên B cam kết tuân thủ nghiêm ngặt quy trình bàn giao, nhận lại xe và xử lý sự cố theo đúng quy định của Motov.
+6. Hợp đồng có hiệu lực kể từ ngày Bên A (Admin hoặc Nhân viên đại diện) phê duyệt tài khoản của Bên B thành trạng thái Chủ xe (Owner).
+
+BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG ĐIỆN TỬ NÀY.`;
+
+    // Cập nhật thông tin yêu cầu và lưu hợp đồng
+    user.ownerRequestStatus = 'Pending';
+    user.ownerContractSigned = true;
+    user.ownerContractSignedAt = new Date();
+    user.ownerContractText = contractText;
+    
+    const savedUser = await user.save();
 
     res.status(200).json({
       success: true,
-      message: 'Đăng ký làm chủ xe thành công! Vui lòng chờ nhân viên phê duyệt.',
+      message: 'Ký hợp đồng đối tác và gửi đăng ký thành công! Vui lòng chờ nhân viên phê duyệt.',
       user: {
         id: savedUser._id,
         username: savedUser.username,
@@ -371,7 +412,10 @@ export const becomeOwner = async (req: AuthRequest, res: Response) => {
         role: mapBackendRoleToFrontend(savedUser.roles),
         phoneNumber: savedUser.phoneNumber,
         status: savedUser.status,
-        ownerRequestStatus: savedUser.ownerRequestStatus
+        ownerRequestStatus: savedUser.ownerRequestStatus,
+        ownerContractSigned: savedUser.ownerContractSigned,
+        ownerContractSignedAt: savedUser.ownerContractSignedAt,
+        ownerContractText: savedUser.ownerContractText
       }
     });
   } catch (error: any) {
@@ -390,7 +434,7 @@ export const getOwnerRequests = async (req: AuthRequest, res: Response) => {
     }
 
     const requests = await User.find({ ownerRequestStatus: 'Pending' })
-      .select('username email firstName lastName phoneNumber status ownerRequestStatus createdAt')
+      .select('username email firstName lastName phoneNumber status ownerRequestStatus createdAt ownerContractText ownerContractSignedAt')
       .sort('-updatedAt');
 
     const formattedRequests = requests.map(u => {
@@ -405,7 +449,9 @@ export const getOwnerRequests = async (req: AuthRequest, res: Response) => {
         phoneNumber: u.phoneNumber,
         status: u.status,
         ownerRequestStatus: u.ownerRequestStatus,
-        createdAt: u.createdAt
+        createdAt: u.createdAt,
+        ownerContractText: u.ownerContractText,
+        ownerContractSignedAt: u.ownerContractSignedAt
       };
     });
 
