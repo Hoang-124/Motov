@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, MapPin, ChevronDown } from 'lucide-react';
+import { CalendarDays, MapPin, ChevronDown, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAllMotorbikes, getRecommendations, Motorbike } from '../services/vehicleService';
 import { BikeCard } from '../components/BikeCard';
@@ -274,6 +274,21 @@ const RecommendationsSection = () => {
     fetchRecommendations();
   }, []);
 
+  const { t } = useLanguage();
+
+  const translateReason = (resStr: string) => {
+    if (!resStr) return '';
+    const r = resStr.trim();
+    if (r === 'Được nhiều người dùng yêu thích') return t('recommendations.reasonPopular');
+    if (r === 'Dòng xe phổ biến có lượt thuê cao nhất') return t('recommendations.reasonTopRentals');
+    if (r === 'Các dòng xe máy mới nổi bật của hệ thống') return t('recommendations.reasonNewFeatured');
+    if (r === 'Dòng xe tương tự các chuyến đi trước của bạn') return t('recommendations.reasonSimilar');
+    if (r === 'Gợi ý theo sở thích chạy xe số của bạn') return t('recommendations.reasonPreferenceManual');
+    if (r === 'Gợi ý theo sở thích chạy xe ga của bạn') return t('recommendations.reasonPreferenceAutomatic');
+    if (r === 'Gợi ý theo sở thích chạy xe côn tay của bạn') return t('recommendations.reasonPreferenceClutch');
+    return resStr;
+  };
+
   if (loading || recommendedBikes.length === 0) return null;
 
   return (
@@ -281,14 +296,15 @@ const RecommendationsSection = () => {
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
           <div>
-            <span className="text-neon text-[10px] font-bold uppercase tracking-widest font-mono border border-neon/20 px-3 py-1.5 rounded-full bg-neon/5">
-              ✨ Gợi ý cá nhân hóa
+            <span className="text-neon text-[10px] font-bold uppercase tracking-widest font-mono border border-neon/20 px-3 py-1.5 rounded-full bg-neon/5 inline-flex items-center gap-1.5">
+              <Sparkles size={12} className="text-neon" />
+              {t('recommendations.personalizedTitle')}
             </span>
             <h2 className="font-display font-bold text-3xl text-white uppercase mt-4 tracking-tight">
-              Xe máy đề xuất cho bạn
+              {t('recommendations.homeSubTitle')}
             </h2>
             <p className="text-gray-400 mt-2 text-xs font-semibold font-mono">
-              {reason}
+              {translateReason(reason)}
             </p>
           </div>
         </div>

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { BikeCard } from '../components/BikeCard';
-import { SlidersHorizontal, Search, AlertCircle, Loader, ChevronDown, MapPin } from 'lucide-react';
+import { SlidersHorizontal, Search, AlertCircle, Loader, ChevronDown, MapPin, Sparkles } from 'lucide-react';
 import { getAllMotorbikes, getRecommendations, Motorbike } from '../services/vehicleService';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -287,15 +287,31 @@ const BikesRecommendations = () => {
     fetchRecs();
   }, []);
 
+  const { t } = useLanguage();
+
+  const translateReason = (resStr: string) => {
+    if (!resStr) return '';
+    const r = resStr.trim();
+    if (r === 'Được nhiều người dùng yêu thích') return t('recommendations.reasonPopular');
+    if (r === 'Dòng xe phổ biến có lượt thuê cao nhất') return t('recommendations.reasonTopRentals');
+    if (r === 'Các dòng xe máy mới nổi bật của hệ thống') return t('recommendations.reasonNewFeatured');
+    if (r === 'Dòng xe tương tự các chuyến đi trước của bạn') return t('recommendations.reasonSimilar');
+    if (r === 'Gợi ý theo sở thích chạy xe số của bạn') return t('recommendations.reasonPreferenceManual');
+    if (r === 'Gợi ý theo sở thích chạy xe ga của bạn') return t('recommendations.reasonPreferenceAutomatic');
+    if (r === 'Gợi ý theo sở thích chạy xe côn tay của bạn') return t('recommendations.reasonPreferenceClutch');
+    return resStr;
+  };
+
   if (loading || recommended.length === 0) return null;
 
   return (
     <div className="bg-surface border border-gray-800 rounded-2xl p-6 mb-10 bg-gradient-to-r from-neon/0 via-neon/5 to-transparent shadow-lg">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-6">
-        <span className="text-neon text-[10px] font-bold uppercase tracking-widest font-mono border border-neon/20 px-3 py-1.5 rounded-full bg-neon/5 w-fit">
-          ✨ Gợi ý cá nhân hóa
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+        <span className="text-neon text-[10px] font-bold uppercase tracking-widest font-mono border border-neon/20 px-3 py-1.5 rounded-full bg-neon/5 w-fit flex items-center gap-1.5">
+          <Sparkles size={12} className="text-neon" />
+          {t('recommendations.personalizedTitle')}
         </span>
-        <span className="text-xs text-gray-400 font-mono">({reason})</span>
+        <span className="text-xs text-gray-400 font-mono">({translateReason(reason)})</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {recommended.slice(0, 3).map(bike => (
