@@ -411,7 +411,7 @@ describe('becomeOwner()', () => {
   });
 
   it('should request upgrade from Customer to Owner and then approve it', async () => {
-    const user = await User.create({ username: 'newowner', email: 'newowner@example.com', roles: ['Customer'], status: 'Active' });
+    const user = await User.create({ username: 'newowner', email: 'newowner@example.com', roles: ['Customer'], status: 'Active', identityStatus: 'Verified' });
     const req: any = { user: { id: user._id.toString() } };
     const res = createMockRes();
     await becomeOwner(req, res);
@@ -434,7 +434,7 @@ describe('becomeOwner()', () => {
   });
 
   it('should reject if already an Owner (BUG-8)', async () => {
-    const user = await User.create({ username: 'alreadyowner', email: 'alreadyowner@example.com', roles: ['Owner'], status: 'Active' });
+    const user = await User.create({ username: 'alreadyowner', email: 'alreadyowner@example.com', roles: ['Owner'], status: 'Active', identityStatus: 'Verified' });
     const req: any = { user: { id: user._id.toString() } };
     const res = createMockRes();
     await becomeOwner(req, res);

@@ -159,45 +159,8 @@ export const Header = () => {
     window.location.reload();
   };
 
-  const handleBecomeOwner = async () => {
-    const confirmBecome = window.confirm(
-      "Bạn có chắc chắn muốn gửi yêu cầu đăng ký làm chủ xe đối tác của Motov không? Yêu cầu của bạn sẽ được nhân viên xét duyệt."
-    );
-    if (!confirmBecome) return;
-
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) return;
-      
-      const { token } = JSON.parse(storedUser);
-
-      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${apiBaseUrl}/auth/become-owner`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const data = await response.json();
-      if (response.ok && data.success) {
-        alert("Đăng ký làm đối tác chủ xe thành công! Vui lòng chờ nhân viên phê duyệt.");
-        
-        // Cập nhật trạng thái chờ duyệt vào user local
-        const parsedUser = JSON.parse(storedUser);
-        parsedUser.ownerRequestStatus = 'Pending';
-        localStorage.setItem('user', JSON.stringify(parsedUser));
-        setUser(parsedUser);
-        
-        window.location.reload();
-      } else {
-        alert(data.message || "Có lỗi xảy ra trong quá trình đăng ký.");
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
-    }
+  const handleBecomeOwner = () => {
+    navigate('/profile', { state: { scrollToOwner: true } });
   };
 
   const isActive = (path: string) => location.pathname === path;
