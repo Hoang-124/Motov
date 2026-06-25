@@ -12,7 +12,8 @@ import {
   getOwnerVehicles,
   updateVehicleStatus,
   resetMaintenance,
-  getRecommendations
+  getRecommendations,
+  getNearbyVehicles
 } from '../controllers/vehicleController.js';
 
 describe('Vehicle Controller Tests', () => {
@@ -431,6 +432,73 @@ describe('Vehicle Controller Tests', () => {
       expect(callArgs.vehicles).toBeDefined();
       expect(callArgs.vehicles.length).toBeGreaterThan(0);
       expect(callArgs.reason).toBeDefined();
+    });
+  });
+
+  describe('getNearbyVehicles', () => {
+    it('should return nearby available vehicles sorted by distance', async () => {
+      await Vehicle.deleteMany({}); // Clear database for isolated coordinate testing
+
+      // Create test vehicles at specific coordinates
+      // Customer is at Da Nang center (16.068, 108.22)
+      const nearBike = new Vehicle({
+        ownerId: testUserId,
+        vehicleModel: 'Near Bike',
+        licensePlate: 'NEAR001',
+        category: testCategoryId,
+        transmissionType: 'Automatic',
+        rentalPrice: 120000,
+        status: 'Available',
+        location: {
+          type: 'Point',
+          coordinates: [108.225, 16.070] // Close (~600m)
+        }
+      });
+      const farBike = new Vehicle({
+        ownerId: testUserId,
+        vehicleModel: 'Far Bike',
+        licensePlate: 'FAR001',
+        category: testCategoryId,
+        transmissionType: 'Automatic',
+        rentalPrice: 120000,
+        status: 'Available',
+        location: {
+          type: 'Point',
+          coordinates: [108.250, 16.100] // Further (~4.5km)
+        }
+      });
+      await nearBike.save();
+      await farBike.save();
+
+      mockRequest.query = {
+        lat: '16.068',
+        lng: '108.22',
+        radius: '5000'
+      };
+
+      await getNearbyVehicles(mockRequest, mockResponse);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const callArgs = mockResponse.json.mock.calls[0][0];
+      expect(callArgs.success).toBe(true);
+      expect(callArgs.data).toBeDefined();
+      expect(callArgs.data.length).toBeGreaterThanOrEqual(2);
+
+      // Verify that sorting matches proximity
+      expect(callArgs.data[0].vehicleModel).toBe('Near Bike');
+      expect(callArgs.data[0].distance).toBeLessThan(1);
+      expect(callArgs.data[1].vehicleModel).toBe('Far Bike');
+      expect(callArgs.data[1].distance).toBeGreaterThan(1);
+    });
+
+    it('should return 400 if coordinates are invalid', async () => {
+      mockRequest.query = {
+        lat: 'invalid',
+        lng: '108.22'
+      };
+
+      await getNearbyVehicles(mockRequest, mockResponse);
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
     });
   });
 });
