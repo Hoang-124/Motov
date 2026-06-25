@@ -4,6 +4,7 @@ import { User } from '../models/User.js';
 import { Category } from '../models/Category.js';
 import mongoose from 'mongoose';
 import { Notification } from '../models/Notification.js';
+import { Booking } from '../models/Booking.js';
 
 // Type for authenticated request
 interface AuthRequest extends Request {
@@ -539,5 +540,191 @@ export const checkLowAvailabilityAlert = async (vehicleModel: string, ownerId: a
     }
   } catch (err) {
     console.error('Error checking low availability alert:', err);
+  }
+};
+
+/**
+ * Reset vehicle maintenance status (Admin/Staff/Owner of vehicle)
+ * PUT /api/vehicles/:id/maintenance-reset
+ */
+export const resetMaintenance = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const userRoles = req.user?.roles || [];
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'ID xe không hợp lệ' });
+    }
+
+    const vehicle = await Vehicle.findById(id);
+    if (!vehicle) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy xe máy' });
+    }
+
+    // Check authorization: Admin, Staff, or Owner of the vehicle
+    const isOwner = vehicle.ownerId.toString() === userId;
+    const isAdminOrStaff = userRoles.includes('Admin') || userRoles.includes('Staff');
+
+    if (!isOwner && !isAdminOrStaff) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện hành động này' });
+    }
+
+    // Reset cờ bảo dưỡng
+    vehicle.lastMaintenanceOdometer = vehicle.odometer;
+    vehicle.requiresMaintenance = false;
+    
+    // Nếu xe đang ở trạng thái Bảo trì, tự động cho hoạt động trở lại
+    if (vehicle.status === 'Maintenance') {
+      vehicle.status = 'Available';
+    }
+
+    await vehicle.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Đặt lại chu kỳ bảo dưỡng và tắt cảnh báo thành công',
+      data: vehicle
+    });
+  } catch (error: any) {
+    console.error('Error resetting maintenance:', error);
+    res.status(500).json({ success: false, error: 'Thao tác đặt lại bảo dưỡng thất bại' });
+  }
+};
+
+/**
+ * Get recommended vehicles for current user based on preferences/rental history,
+ * or general popular/top rated vehicles for new users.
+ * GET /api/vehicles/recommendations
+ */
+export const getRecommendations = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    
+    let recommendedVehicles: any[] = [];
+    let reason = 'Được nhiều người dùng yêu thích';
+
+    if (userId) {
+      // 1. Tìm lịch sử đơn thuê Completed hoặc Ongoing của user
+      const userBookings = await Booking.find({
+        userId,
+        status: { $in: ['Completed', 'Ongoing'] }
+      }).populate('vehicleId');
+
+      if (userBookings && userBookings.length > 0) {
+        // Gom các Category và TransmissionType của các xe đã thuê
+        const categoriesCount: Record<string, number> = {};
+        const transmissionCount: Record<string, number> = {};
+        let totalRentalPrice = 0;
+        let rentedCount = 0;
+
+        for (const booking of userBookings) {
+          const v = booking.vehicleId as any;
+          if (v) {
+            const catId = v.category ? v.category.toString() : '';
+            if (catId) categoriesCount[catId] = (categoriesCount[catId] || 0) + 1;
+            
+            const trans = v.transmissionType;
+            if (trans) transmissionCount[trans] = (transmissionCount[trans] || 0) + 1;
+            
+            totalRentalPrice += v.rentalPrice || 0;
+            rentedCount++;
+          }
+        }
+
+        // Tìm Category và Transmission Type thuê nhiều nhất
+        let favCategory = '';
+        let maxCat = 0;
+        for (const cat in categoriesCount) {
+          if (categoriesCount[cat] > maxCat) {
+            maxCat = categoriesCount[cat];
+            favCategory = cat;
+          }
+        }
+
+        let favTransmission = '';
+        let maxTrans = 0;
+        for (const trans in transmissionCount) {
+          if (transmissionCount[trans] > maxTrans) {
+            maxTrans = transmissionCount[trans];
+            favTransmission = trans;
+          }
+        }
+
+        // Truy vấn các xe phù hợp sở thích:
+        // Cùng category hoặc cùng loại hộp số, đang Available, không phải của chính mình (nếu mình là owner),
+        // và loại trừ các xe đang thuê
+        const rentedVehicleIds = userBookings.map(b => b.vehicleId.toString());
+
+        const query: any = {
+          status: 'Available',
+          _id: { $nin: rentedVehicleIds }
+        };
+
+        // Ưu tiên sở thích
+        const orConditions: any[] = [];
+        if (favCategory) orConditions.push({ category: favCategory });
+        if (favTransmission) orConditions.push({ transmissionType: favTransmission });
+        
+        if (orConditions.length > 0) {
+          query.$or = orConditions;
+        }
+
+        recommendedVehicles = await Vehicle.find(query)
+          .populate('category', 'name')
+          .limit(5);
+
+        if (favTransmission) {
+          const transLabel = favTransmission === 'Manual' ? 'xe số' : favTransmission === 'Automatic' ? 'xe ga' : 'xe côn tay';
+          reason = `Gợi ý theo sở thích chạy ${transLabel} của bạn`;
+        } else if (favCategory) {
+          reason = `Dòng xe tương tự các chuyến đi trước của bạn`;
+        }
+      }
+    }
+
+    // 2. Fallback: Nếu không tìm được đề xuất theo sở thích (hoặc khách chưa đăng nhập / khách mới)
+    if (recommendedVehicles.length === 0) {
+      // Đề xuất các xe phổ biến nhất: Tìm các xe có lượt thuê nhiều nhất trong Booking
+      const popularVehiclesGroup = await Booking.aggregate([
+        { $match: { status: 'Completed' } },
+        { $group: { _id: '$vehicleId', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]);
+
+      const popularIds = popularVehiclesGroup.map(g => g._id);
+
+      if (popularIds.length > 0) {
+        recommendedVehicles = await Vehicle.find({
+          _id: { $in: popularIds },
+          status: 'Available'
+        })
+        .populate('category', 'name')
+        .limit(5);
+        
+        reason = 'Dòng xe phổ biến có lượt thuê cao nhất';
+      }
+
+      // Nếu vẫn chưa có (ví dụ hệ thống chưa có booking nào), lấy các xe có điểm đánh giá rating cao nhất hoặc xe ngẫu nhiên
+      if (recommendedVehicles.length === 0) {
+        // Tìm xe Available ngẫu nhiên/mới nhất
+        recommendedVehicles = await Vehicle.find({ status: 'Available' })
+          .populate('category', 'name')
+          .sort({ createdAt: -1 })
+          .limit(5);
+
+        reason = 'Các dòng xe máy mới nổi bật của hệ thống';
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      reason,
+      vehicles: recommendedVehicles
+    });
+  } catch (error: any) {
+    console.error('Error fetching recommended vehicles:', error);
+    res.status(500).json({ success: false, error: 'Không thể lấy danh sách đề xuất xe' });
   }
 };
