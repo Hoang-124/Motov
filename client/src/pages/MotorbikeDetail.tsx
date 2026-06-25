@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertCircle, Loader, Edit2, Trash2, MapPin, Users, Zap, Check, X, Star } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Loader, Edit2, Trash2, MapPin, Users, Zap, Check, X, Star, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getMotorbikeById, Motorbike, deleteMotorbike, getAllMotorbikes } from '../services/vehicleService';
 import { feedbackService, FeedbackItem } from '../services/feedbackService';
