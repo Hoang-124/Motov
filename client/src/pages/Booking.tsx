@@ -1,16 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getMotorbikeById, Motorbike } from '../services/vehicleService';
-import { CalendarDays, MapPin, Phone, User, CreditCard, ArrowLeft, CheckCircle2, Ticket, X as XIcon } from 'lucide-react';
-import { motion } from 'motion/react';
+import { CalendarDays, MapPin, Phone, User, CreditCard, ArrowLeft, CheckCircle2, Ticket, X as XIcon, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { bookingService } from '../services/bookingService'; // Import Service API
 import { promotionService } from '../services/promotionService'; // Import Promotion Service
 import { useLanguage } from '../hooks/useLanguage';
 
+const translateCategory = (cat: string, t: any) => {
+  const c = (cat || '').toLowerCase().trim();
+  if (c === 'xe máy điện' || c === 'electric' || c === 'xe may dien') return t('categories.electric');
+  if (c === 'xe số' || c === 'manual' || c === 'xe so') return t('categories.manual');
+  if (c === 'xe ga' || c === 'scooter') return t('categories.scooter');
+  return cat;
+};
+
+const translateLocation = (loc: string, t: any) => {
+  const l = (loc || '').toLowerCase().trim();
+  if (l === 'sân bay đà nẵng' || l === 'da nang airport' || l === 'airport') return t('locations.airport');
+  if (l === 'ga đà nẵng' || l === 'da nang railway station' || l === 'railway') return t('locations.railway');
+  if (l === 'bán đảo sơn trà' || l === 'son tra peninsula' || l === 'son tra') return t('locations.sontra');
+  if (l === 'khách sạn khu vực mỹ khê' || l === 'my khe area hotel' || l === 'my khe') return t('locations.mykhe');
+  return loc;
+};
+
 export const Booking = () => {
   const { bikeId } = useParams();
   const navigate = useNavigate();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   
   const [bike, setBike] = useState<Motorbike | undefined>(undefined);
   
@@ -49,6 +66,7 @@ export const Booking = () => {
   const [license, setLicense] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Banking'>('Banking');
   const [deliveryMethod, setDeliveryMethod] = useState<'StorePickup' | 'HomeDelivery'>('StorePickup');
+  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
   const [success, setSuccess] = useState(false);
   const [apiError, setApiError] = useState(''); // Lưu lỗi từ server nếu có
 
@@ -227,6 +245,7 @@ export const Booking = () => {
   // Hàm xử lý gửi Đơn lên Backend
   const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setApiError('');
 
     if (step < 2) {
@@ -325,16 +344,16 @@ export const Booking = () => {
           <div className="w-20 h-20 bg-neon/10 rounded-full flex items-center justify-center mx-auto mb-6 text-neon border border-neon/30">
             <CheckCircle2 size={44} />
           </div>
-          <h2 className="font-display font-black text-3xl text-white mb-3">ĐẶT XE THÀNH CÔNG!</h2>
+          <h2 className="font-display font-black text-3xl text-white mb-3">{t('bookingPage.successTitle')}</h2>
           <p className="text-gray-400 text-sm mb-8">
-            Cảm ơn bạn đã lựa chọn dịch vụ của <strong>Motov</strong>. Đơn hàng của bạn đang được duyệt, chúng tôi sẽ liên hệ trong ít phút để bàn giao xe.
+            {t('bookingPage.successSubtitle')}
           </p>
           <div className="flex flex-col gap-3">
             <Link to="/bookings" className="bg-neon text-dark font-bold py-3.5 rounded-lg hover:bg-[#bbf000] transition-colors">
-              XEM ĐƠN THUÊ XE
+              {t('bookingPage.viewBookingsBtn')}
             </Link>
             <Link to="/" className="text-gray-400 hover:text-white transition-colors text-sm">
-              Quay về Trang chủ
+              {t('bookingPage.backHomeBtn')}
             </Link>
           </div>
         </motion.div>
@@ -348,7 +367,7 @@ export const Booking = () => {
         
         <Link to={`/motorbike/${bikeId}`} className="inline-flex items-center gap-2 text-gray-400 hover:text-neon transition-colors mb-8 text-sm group">
           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-          {language === 'vi' ? 'Quay lại chi tiết xe' : 'Back to Motorbike Details'}
+          {t('bookingPage.backBtn')}
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
@@ -362,7 +381,7 @@ export const Booking = () => {
             </div>
 
             <h2 className="font-display font-black text-2xl text-white mb-6 uppercase">
-              {step === 1 ? 'Thông Tin Nhận Xe' : 'Thông Tin Cá Nhân'}
+              {step === 1 ? t('bookingPage.step1Title') : t('bookingPage.step2Title')}
             </h2>
 
             {apiError && (
@@ -374,19 +393,19 @@ export const Booking = () => {
             {identityStatus !== 'Verified' && (
               <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex flex-col gap-2 text-left">
                 <p className="text-xs text-red-400 font-bold flex items-center gap-1.5">
-                  ⚠️ Yêu cầu xác minh danh tính (eKYC)
+                  ⚠️ {t('bookingPage.ekycWarning')}
                 </p>
                 <p className="text-[11px] text-gray-400">
-                  {identityStatus === 'Unverified' && 'Tài khoản của bạn chưa xác thực danh tính. Vui lòng hoàn tất eKYC trước khi đặt xe máy.'}
-                  {identityStatus === 'Pending' && 'Hồ sơ eKYC của bạn đang chờ phê duyệt. Vui lòng đợi nhân viên kiểm duyệt.'}
-                  {identityStatus === 'Rejected' && 'Hồ sơ eKYC của bạn đã bị từ chối. Vui lòng chụp lại ảnh CCCD rõ nét hơn.'}
+                  {identityStatus === 'Unverified' && t('bookingPage.ekycUnverified')}
+                  {identityStatus === 'Pending' && t('bookingPage.ekycPending')}
+                  {identityStatus === 'Rejected' && t('bookingPage.ekycRejected')}
                 </p>
                 {(identityStatus === 'Unverified' || identityStatus === 'Rejected') && (
                   <Link 
                     to="/profile" 
                     className="mt-1 px-4 py-2 bg-neon text-dark font-black text-center rounded-lg text-[10px] uppercase tracking-wider hover:bg-[#bbf000] w-fit transition-all duration-300"
                   >
-                    Đi đến Trang cá nhân để xác thực
+                    {t('bookingPage.ekycBtn')}
                   </Link>
                 )}
               </div>
@@ -397,7 +416,7 @@ export const Booking = () => {
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="block text-sm font-semibold text-gray-300">Thời gian lấy xe</label>
+                      <label className="block text-sm font-semibold text-gray-300">{t('bookingPage.pickupTime')}</label>
                       <div 
                         onClick={handleOpenPickupPicker}
                         className="relative flex items-center bg-black/50 border border-gray-800 rounded-lg hover:border-neon focus-within:ring-2 focus-within:ring-neon focus-within:border-transparent transition-all duration-300 cursor-pointer"
@@ -418,7 +437,7 @@ export const Booking = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="block text-sm font-semibold text-gray-300">Thời gian trả xe</label>
+                      <label className="block text-sm font-semibold text-gray-300">{t('bookingPage.returnTime')}</label>
                       <div 
                         onClick={handleOpenReturnPicker}
                         className="relative flex items-center bg-black/50 border border-gray-800 rounded-lg hover:border-neon focus-within:ring-2 focus-within:ring-neon focus-within:border-transparent transition-all duration-300 cursor-pointer"
@@ -441,7 +460,7 @@ export const Booking = () => {
 
                   {/* Payment Method */}
                   <div className="space-y-3">
-                    <label className="block text-sm font-semibold text-gray-300">Phương thức thanh toán</label>
+                    <label className="block text-sm font-semibold text-gray-300">{t('bookingPage.paymentMethod')}</label>
                     <div className="grid grid-cols-2 gap-4">
                       <button
                         type="button"
@@ -455,7 +474,7 @@ export const Booking = () => {
                         }`}
                       >
                         <CreditCard size={18} />
-                        VNPAY Banking
+                        {t('bookingPage.paymentOnline').replace(' (Online)', '')}
                       </button>
                       <button
                         type="button"
@@ -470,14 +489,14 @@ export const Booking = () => {
                         }`}
                       >
                         <User size={18} />
-                        Tiền mặt
+                        {t('bookingPage.paymentCash').replace(' (Trực tiếp)', '')}
                       </button>
                     </div>
                   </div>
 
                   {/* Delivery Method */}
                   <div className="space-y-3">
-                    <label className="block text-sm font-semibold text-gray-300">Hình thức giao nhận xe</label>
+                    <label className="block text-sm font-semibold text-gray-300">{t('bookingPage.deliveryMethod')}</label>
                     <div className="grid grid-cols-2 gap-4">
                       <button
                         type="button"
@@ -488,7 +507,7 @@ export const Booking = () => {
                             : 'bg-black/50 border-gray-800 text-gray-400 hover:border-gray-700 hover:text-white'
                         }`}
                       >
-                        Nhận tại cửa hàng
+                        {t('bookingPage.storePickup')}
                       </button>
                       <button
                         type="button"
@@ -500,12 +519,12 @@ export const Booking = () => {
                             : 'bg-black/50 border-gray-800 text-gray-400 hover:border-gray-700 hover:text-white'
                         }`}
                       >
-                        Giao xe tận nơi
+                        {t('bookingPage.homeDelivery')}
                       </button>
                     </div>
                     {paymentMethod === 'Cash' && (
                       <p className="text-[10px] text-yellow-500/80 italic">
-                        * Thanh toán bằng tiền mặt bắt buộc nhận xe trực tiếp tại cửa hàng Motov.
+                        * {t('bookingPage.paymentCash')} {t('bookingPage.cashInstruction')}
                       </p>
                     )}
                   </div>
@@ -513,21 +532,63 @@ export const Booking = () => {
                   {/* Delivery Location Selection */}
                   {deliveryMethod === 'HomeDelivery' && (
                     <div className="space-y-2 animate-fade-in">
-                      <label className="block text-sm font-semibold text-gray-300">Địa điểm giao xe tận nơi</label>
+                      <label className="block text-sm font-semibold text-gray-300">{t('bookingPage.deliveryAddress')}</label>
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <MapPin size={18} className="text-neon" />
-                        </div>
-                        <select 
-                          value={location}
-                          onChange={(e) => setLocation(e.target.value)}
-                          className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none appearance-none cursor-pointer transition-all duration-300"
+                        <button
+                          type="button"
+                          onClick={() => setIsLocationDropdownOpen(!isLocationDropdownOpen)}
+                          className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent flex items-center pl-10 pr-10 p-3.5 outline-none cursor-pointer transition-all duration-300 text-left relative"
                         >
-                          <option value="Sân bay Đà Nẵng">Sân bay Đà Nẵng</option>
-                          <option value="Ga Đà Nẵng">Ga Đà Nẵng</option>
-                          <option value="Bán đảo Sơn Trà">Bán đảo Sơn Trà</option>
-                          <option value="Khách sạn khu vực Mỹ Khê">Khách sạn khu vực Mỹ Khê</option>
-                        </select>
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <MapPin size={18} className="text-neon" />
+                          </div>
+                          <span>
+                            {location === 'Sân bay Đà Nẵng' && t('locations.airport')}
+                            {location === 'Ga Đà Nẵng' && t('locations.railway')}
+                            {location === 'Bán đảo Sơn Trà' && t('locations.sontra')}
+                            {location === 'Khách sạn khu vực Mỹ Khê' && t('locations.mykhe')}
+                          </span>
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${isLocationDropdownOpen ? 'rotate-180 text-neon' : ''}`} />
+                          </div>
+                        </button>
+
+                        <AnimatePresence>
+                          {isLocationDropdownOpen && (
+                            <>
+                              <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsLocationDropdownOpen(false)} />
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute left-0 right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl overflow-hidden text-gray-300 py-1 font-sans"
+                              >
+                                <div className="absolute top-0 inset-x-0 h-[2px] bg-neon shadow-[0_0_10px_rgba(204,255,0,0.5)]"></div>
+                                {[
+                                  { value: 'Sân bay Đà Nẵng', label: t('locations.airport') },
+                                  { value: 'Ga Đà Nẵng', label: t('locations.railway') },
+                                  { value: 'Bán đảo Sơn Trà', label: t('locations.sontra') },
+                                  { value: 'Khách sạn khu vực Mỹ Khê', label: t('locations.mykhe') }
+                                ].map((opt) => (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => {
+                                      setLocation(opt.value);
+                                      setIsLocationDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer bg-transparent border-none ${
+                                      location === opt.value ? 'text-neon bg-neon/5 font-bold' : 'text-gray-300 hover:text-neon hover:bg-white/5'
+                                    }`}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </motion.div>
+                            </>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </div>
                   )}
@@ -537,7 +598,7 @@ export const Booking = () => {
               {step === 2 && (
                 <>
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-300">Họ và tên khách hàng</label>
+                    <label className="block text-sm font-semibold text-gray-300">{t('bookingPage.fullName')}</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <User size={18} className="text-neon" />
@@ -553,7 +614,7 @@ export const Booking = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-300">Số điện thoại liên lạc</label>
+                    <label className="block text-sm font-semibold text-gray-300">{t('bookingPage.phone')}</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Phone size={18} className="text-neon" />
@@ -561,7 +622,7 @@ export const Booking = () => {
                       <input 
                         type="tel" 
                         required
-                        placeholder="Nhập số điện thoại nhận xe"
+                        placeholder={language === 'vi' ? 'Nhập số điện thoại nhận xe' : 'Enter phone number'}
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none transition-all duration-300"
@@ -570,7 +631,7 @@ export const Booking = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-300">Số giấy phép lái xe (GPLX)</label>
+                    <label className="block text-sm font-semibold text-gray-300">{t('bookingPage.license')}</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <CreditCard size={18} className="text-neon" />
@@ -578,7 +639,7 @@ export const Booking = () => {
                       <input 
                         type="text" 
                         required
-                        placeholder="Nhập số GPLX đối chiếu"
+                        placeholder={language === 'vi' ? 'Nhập số GPLX đối chiếu' : 'Enter driver license number'}
                         value={license}
                         onChange={(e) => setLicense(e.target.value)}
                         className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3.5 outline-none transition-all duration-300"
@@ -595,7 +656,7 @@ export const Booking = () => {
                     onClick={() => setStep(1)}
                     className="flex-grow bg-transparent border border-gray-800 text-gray-300 font-bold py-3.5 rounded-lg hover:border-gray-600 transition-all cursor-pointer text-center"
                   >
-                    Quay Lại
+                    {t('bookingPage.prevBtn')}
                   </button>
                 )}
                 <button 
@@ -603,7 +664,7 @@ export const Booking = () => {
                   disabled={loading || identityStatus !== 'Verified'}
                   className="flex-grow bg-neon text-dark font-bold py-3.5 rounded-lg hover:bg-[#bbf000] focus:ring-4 focus:ring-neon/30 transition-all shadow-[0_0_15px_rgba(204,255,0,0.3)] cursor-pointer text-center disabled:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? 'ĐANG XỬ LÝ...' : step === 1 ? 'Tiếp Theo' : 'XÁC NHẬN ĐẶT XE'}
+                  {loading ? (language === 'vi' ? 'ĐANG XỬ LÝ...' : language === 'ko' ? '처리 중...' : 'PROCESSING...') : step === 1 ? t('bookingPage.nextBtn') : t('bookingPage.confirmBtn')}
                 </button>
               </div>
             </form>
@@ -611,7 +672,7 @@ export const Booking = () => {
 
           {/* Bike Info Summary Side */}
           <div className="lg:col-span-5 bg-surface border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6">
-            <h3 className="font-display font-bold text-xl text-white uppercase border-b border-gray-800 pb-4">Tóm Tắt Đơn Thuê Xe</h3>
+            <h3 className="font-display font-bold text-xl text-white uppercase border-b border-gray-800 pb-4">{t('bookingPage.summaryTitle')}</h3>
             <div className="space-y-3">
               <div className="aspect-video w-full rounded-lg overflow-hidden bg-black border border-gray-800 relative">
                 <img src={activeImage} alt={bike.vehicleModel} className="w-full h-full object-cover" />
@@ -619,39 +680,39 @@ export const Booking = () => {
             </div>
 
             <div>
-              <span className="text-xs text-neon font-semibold uppercase px-2.5 py-1 rounded bg-neon/10 border border-neon/30">{bike.category}</span>
+              <span className="text-xs text-neon font-semibold uppercase px-2.5 py-1 rounded bg-neon/10 border border-neon/30">{translateCategory(bike.category, t)}</span>
               <h2 className="font-display font-black text-2xl text-white mt-3">{bike.vehicleModel}</h2>
-              <p className="text-neon font-semibold text-lg mt-1">{bike.rentalPrice ? bike.rentalPrice.toLocaleString() : '0'} VNĐ / Ngày</p>
+              <p className="text-neon font-semibold text-lg mt-1">{bike.rentalPrice ? bike.rentalPrice.toLocaleString() : '0'} VNĐ / {t('bookingPage.billingUnit').replace('đ/', '')}</p>
             </div>
 
             <div className="border-t border-gray-800 pt-4 space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Loại xe:</span>
-                <span className="text-white font-medium">{bike.category}</span>
+                <span className="text-gray-500">{t('bookingPage.bikeType')}</span>
+                <span className="text-white font-medium">{translateCategory(bike.category, t)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Bảo hiểm:</span>
-                <span className="text-white font-medium">Bảo hiểm trách nhiệm dân sự</span>
+                <span className="text-gray-500">{t('bookingPage.insurance')}</span>
+                <span className="text-white font-medium">{t('bookingPage.insuranceDesc')}</span>
               </div>
               {pickupDate && returnDate && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Thời gian thuê:</span>
+                  <span className="text-gray-500">{t('bookingPage.rentalPeriod')}</span>
                   <span className="text-neon font-medium">
-                    {new Date(pickupDate).toLocaleDateString('vi-VN')} - {new Date(returnDate).toLocaleDateString('vi-VN')}
+                    {new Date(pickupDate).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')} - {new Date(returnDate).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
                   </span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Hình thức nhận xe:</span>
-                <span className="text-white font-medium">{deliveryMethod === 'StorePickup' ? 'Nhận tại cửa hàng' : 'Giao xe tận nơi'}</span>
+                <span className="text-gray-500">{t('bookingPage.deliveryType')}</span>
+                <span className="text-white font-medium">{deliveryMethod === 'StorePickup' ? t('bookingPage.storePickup') : t('bookingPage.homeDelivery')}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Giao nhận tại:</span>
-                <span className="text-white font-medium">{deliveryMethod === 'StorePickup' ? 'Nhận tại cửa hàng Motov' : location}</span>
+                <span className="text-gray-500">{t('bookingPage.deliveryAt')}</span>
+                <span className="text-white font-medium">{deliveryMethod === 'StorePickup' ? t('bookingPage.storeAddress') : translateLocation(location, t)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Thanh toán bằng:</span>
-                <span className="text-neon font-medium">{paymentMethod === 'Banking' ? 'VNPAY Banking (Online)' : 'Tiền mặt (Trực tiếp)'}</span>
+                <span className="text-gray-500">{t('bookingPage.payBy')}</span>
+                <span className="text-neon font-medium">{paymentMethod === 'Banking' ? t('bookingPage.paymentOnline') : t('bookingPage.paymentCash')}</span>
               </div>
             </div>
 
@@ -660,12 +721,12 @@ export const Booking = () => {
               <div className="border-t border-gray-800 pt-4 space-y-4 animate-fade-in">
                 {/* Apply Voucher Form */}
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">Mã giảm giá (Promo Code)</label>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('bookingPage.promoLabel')}</label>
                   <div className="flex gap-2">
                     <div className="relative flex-grow">
                       <input
                         type="text"
-                        placeholder="Nhập mã code..."
+                        placeholder={t('bookingPage.promoPlaceholder')}
                         value={promoCode}
                         onChange={(e) => setPromoCode(e.target.value)}
                         disabled={appliedPromo !== null || validatingPromo}
@@ -691,7 +752,7 @@ export const Booking = () => {
                       onClick={handleApplyPromo}
                       className="bg-surface border border-gray-800 text-white hover:border-neon hover:text-neon disabled:opacity-40 disabled:border-gray-800 disabled:text-gray-500 font-bold px-4 py-2.5 rounded-lg transition-all text-xs uppercase cursor-pointer shrink-0"
                     >
-                      {validatingPromo ? '...' : 'Áp dụng'}
+                      {validatingPromo ? '...' : t('bookingPage.applyBtn')}
                     </button>
                   </div>
                   
@@ -706,15 +767,15 @@ export const Booking = () => {
                 {/* Bill details list */}
                 <div className="bg-black/20 p-4 border border-gray-800 rounded-xl space-y-2.5 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Đơn giá xe:</span>
-                    <span>{bike.rentalPrice ? bike.rentalPrice.toLocaleString() : '0'} đ/Ngày</span>
+                    <span className="text-gray-500">{t('myBookingsPage.totalPay').split(':')[0]}:</span>
+                    <span>{bike.rentalPrice ? bike.rentalPrice.toLocaleString() : '0'} {t('bookingPage.billingUnit')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Số ngày thuê:</span>
-                    <span>{rentalDays} Ngày</span>
+                    <span className="text-gray-500">{t('bookingPage.billingDays')}</span>
+                    <span>{rentalDays} {language === 'vi' ? 'Ngày' : language === 'ko' ? '일' : 'Days'}</span>
                   </div>
                   <div className="flex justify-between font-semibold border-t border-white/5 pt-2.5">
-                    <span className="text-gray-500">Tạm tính:</span>
+                    <span className="text-gray-500">{t('bookingPage.billingSubtotal')}</span>
                     <span>{totalAmountBeforeDiscount.toLocaleString()} VNĐ</span>
                   </div>
                   
@@ -722,14 +783,14 @@ export const Booking = () => {
                     <div className="flex justify-between text-green-400 font-semibold">
                       <span className="flex items-center gap-1">
                         <Ticket size={12} />
-                        Giảm giá ({appliedPromo.voucherCode}):
+                        {t('bookingPage.billingDiscount').replace('{code}', appliedPromo.voucherCode)}
                       </span>
                       <span>-{appliedPromo.discountAmount.toLocaleString()} VNĐ</span>
                     </div>
                   )}
 
                   <div className="flex justify-between font-bold text-sm text-neon border-t border-white/5 pt-2.5 text-glow">
-                    <span>Tổng cộng:</span>
+                    <span>{t('bookingPage.billingTotal')}</span>
                     <span>
                       {(totalAmountBeforeDiscount - (appliedPromo ? appliedPromo.discountAmount : 0)).toLocaleString()} VNĐ
                     </span>
@@ -738,13 +799,13 @@ export const Booking = () => {
                   {paymentMethod === 'Banking' ? (
                     <>
                       <div className="flex justify-between text-xs text-yellow-400 font-bold border-t border-dashed border-white/5 pt-2.5">
-                        <span>Đặt cọc giữ xe (VNPAY 30%):</span>
+                        <span>{t('bookingPage.billingDeposit')}</span>
                         <span>
                           {Math.round((totalAmountBeforeDiscount - (appliedPromo ? appliedPromo.discountAmount : 0)) * 0.3).toLocaleString()} VNĐ
                         </span>
                       </div>
                       <div className="flex justify-between text-xs text-gray-300">
-                        <span>Thanh toán còn lại (70%):</span>
+                        <span>{t('bookingPage.billingRemaining')}</span>
                         <span>
                           {((totalAmountBeforeDiscount - (appliedPromo ? appliedPromo.discountAmount : 0)) - Math.round((totalAmountBeforeDiscount - (appliedPromo ? appliedPromo.discountAmount : 0)) * 0.3)).toLocaleString()} VNĐ
                         </span>
@@ -753,11 +814,11 @@ export const Booking = () => {
                   ) : (
                     <>
                       <div className="flex justify-between text-xs text-yellow-400 font-bold border-t border-dashed border-white/5 pt-2.5">
-                        <span>Đặt cọc giữ xe:</span>
-                        <span>0 VNĐ (Không cần cọc online)</span>
+                        <span>{t('bookingPage.billingCashDeposit')}</span>
+                        <span>{t('bookingPage.billingCashNoDeposit')}</span>
                       </div>
                       <div className="flex justify-between text-xs text-gray-300">
-                        <span>Thanh toán trực tiếp tại cửa hàng (100%):</span>
+                        <span>{t('bookingPage.billingCashRemaining')}</span>
                         <span>
                           {(totalAmountBeforeDiscount - (appliedPromo ? appliedPromo.discountAmount : 0)).toLocaleString()} VNĐ
                         </span>
@@ -768,7 +829,7 @@ export const Booking = () => {
               </div>
             ) : (
               <div className="border-t border-gray-800 pt-4 text-center">
-                <p className="text-gray-500 text-xs italic">Vui lòng chọn thời gian lấy/trả xe ở Bước 1 để hiển thị hóa đơn tính tiền.</p>
+                <p className="text-gray-500 text-xs italic">{t('bookingPage.billingInstruction')}</p>
               </div>
             )}
           </div>

@@ -5,6 +5,53 @@ import { motion, AnimatePresence } from 'motion/react';
 import { notificationService, NotificationItem } from '../services/notificationService.js';
 import { useLanguage } from '../hooks/useLanguage';
 
+const translateNotificationTitle = (title: string, t: any) => {
+  const tLower = (title || '').toLowerCase().trim();
+  if (tLower.includes('chờ duyệt') && tLower.includes('mới')) return t('notifications.newPendingTitle');
+  if (tLower.includes('phê duyệt') || tLower.includes('được duyệt')) return t('notifications.confirmedTitle');
+  if (tLower.includes('bị hủy')) return t('notifications.cancelledTitle');
+  if (tLower.includes('yêu cầu duyệt')) return t('notifications.ownerActionTitle');
+  if (tLower.includes('thành công') && tLower.includes('thanh toán')) {
+    if (tLower.includes('không') || tLower.includes('thất bại')) {
+      return t('notifications.paymentFailedTitle');
+    }
+    return t('notifications.paymentSuccessTitle');
+  }
+  if (tLower.includes('thành công') && tLower.includes('đặt cọc')) {
+    return t('notifications.paymentSuccessTitle');
+  }
+  return title;
+};
+
+const translateNotificationMessage = (message: string, t: any) => {
+  const mLower = (message || '').toLowerCase().trim();
+  // Extract booking code (e.g. MV-XXXXXX)
+  const codeMatch = message.match(/MV-\d+/i) || message.match(/[A-Z0-9]{8,}/);
+  const code = codeMatch ? codeMatch[0] : '';
+  
+  if (mLower.includes('chờ duyệt') && mLower.includes('của bạn')) {
+    return t('notifications.pendingCustomerMsg', { code });
+  }
+  if (mLower.includes('chờ duyệt') && (mLower.includes('hệ thống') || mLower.includes('bạn có'))) {
+    return t('notifications.pendingStaffMsg', { code });
+  }
+  if (mLower.includes('phê duyệt') || mLower.includes('duyệt thành công')) {
+    return t('notifications.confirmedMsg', { code });
+  }
+  if (mLower.includes('bị hủy')) {
+    const reasonMatch = message.split(/lý do:|reason:/i);
+    const reason = reasonMatch.length > 1 ? reasonMatch[1].trim() : '';
+    return t('notifications.cancelledMsg', { code, reason: reason || 'N/A' });
+  }
+  if (mLower.includes('thành công') && mLower.includes('thanh toán')) {
+    return t('notifications.paymentSuccessMsg', { code });
+  }
+  if (mLower.includes('thất bại') || mLower.includes('không thành công')) {
+    return t('notifications.paymentFailedMsg', { code });
+  }
+  return message;
+};
+
 export const Header = () => {
   const { language, setLanguage, t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -27,12 +74,23 @@ export const Header = () => {
   const [isNotiOpen, setIsNotiOpen] = useState(false);
   const [notiFilter, setNotiFilter] = useState<'all' | 'unread'>('all');
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [activeToast, setActiveToast] = useState<{ id: string; title: string; message: string } | null>(null);
 
   const languagesList = [
     { code: 'vi' as const, label: 'Tiếng Việt', flag: '🇻🇳' },
     { code: 'en' as const, label: 'English', flag: '🇺🇸' },
     { code: 'ko' as const, label: '한국어', flag: '🇰🇷' },
   ];
+
+  // Tự đóng Toast sau 5 giây
+  useEffect(() => {
+    if (activeToast) {
+      const timer = setTimeout(() => {
+        setActiveToast(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeToast]);
 
   // Lấy thông báo định kỳ
   const fetchNotifications = async () => {
@@ -49,13 +107,61 @@ export const Header = () => {
     }
   };
 
+  // Thiết lập kết nối SSE (Server-Sent Events) thời gian thực
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      fetchNotifications();
-      // Poll notifications every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
+    if (!storedUser) return;
+
+    fetchNotifications();
+
+    try {
+      const parsedUser = JSON.parse(storedUser);
+      const token = parsedUser.token;
+
+      if (token) {
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const sseUrl = `${API_BASE_URL}/notifications/stream?token=${token}`;
+        const eventSource = new EventSource(sseUrl);
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'NOTIFICATION') {
+              const newNoti = data.data;
+              // Thêm thông báo mới lên đầu danh sách và tăng số lượng tin chưa đọc
+              setNotifications(prev => {
+                // Kiểm tra trùng lặp để tránh tin nhắn trùng
+                if (prev.some(n => n._id === newNoti._id)) return prev;
+                return [newNoti, ...prev];
+              });
+              setUnreadCount(prev => prev + 1);
+              // Kích hoạt Toast hiển thị thông báo pop-up
+              setActiveToast({
+                id: newNoti._id,
+                title: translateNotificationTitle(newNoti.title, t),
+                message: translateNotificationMessage(newNoti.message, t)
+              });
+            }
+          } catch (err) {
+            console.error('Lỗi phân tích dữ liệu thông báo thời gian thực:', err);
+          }
+        };
+
+        eventSource.onerror = (err) => {
+          console.error('Mất kết nối với SSE Stream, đang thử kết nối lại...', err);
+          eventSource.close();
+        };
+
+        // Dự phòng: Poll dữ liệu mỗi 45 giây nếu SSE gặp sự cố
+        const interval = setInterval(fetchNotifications, 45000);
+
+        return () => {
+          eventSource.close();
+          clearInterval(interval);
+        };
+      }
+    } catch (e) {
+      console.error('Lỗi khởi tạo kết nối SSE:', e);
     }
   }, [user]);
 
@@ -252,6 +358,39 @@ export const Header = () => {
 
   return (
     <>
+      {/* Toast Notification Pop-up thời gian thực */}
+      <AnimatePresence>
+        {activeToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            onClick={() => {
+              handleMarkAsRead(activeToast.id);
+              setActiveToast(null);
+            }}
+            className="fixed top-24 right-6 z-[9999] max-w-sm w-full bg-surface/95 border border-neon/30 rounded-xl shadow-[0_0_20px_rgba(0,242,254,0.2)] backdrop-blur-md overflow-hidden flex items-start gap-4 p-4 cursor-pointer hover:border-neon transition-all"
+          >
+            <div className="p-2 bg-neon/10 rounded-lg text-neon">
+              <Bell size={20} className="animate-bounce" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-bold text-sm text-white truncate">{activeToast.title}</h4>
+              <p className="text-xs text-gray-300 mt-1 leading-relaxed break-words">{activeToast.message}</p>
+            </div>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveToast(null);
+              }}
+              className="text-gray-400 hover:text-white transition-colors cursor-pointer border-none bg-transparent"
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <header className="fixed top-0 w-full z-50 bg-dark/85 backdrop-blur-md border-b border-white/5">
       <div className="max-w-7xl mx-auto px-4 lg:px-8 h-20 flex items-center justify-between">
         <Link to="/" className="font-display font-black text-3xl tracking-tight text-neon transition-transform hover:scale-105 duration-200">
@@ -366,12 +505,12 @@ export const Header = () => {
 
                         {/* Header */}
                         <div className="p-4 flex items-center justify-between pb-2">
-                          <span className="font-bold text-white text-base">Thông báo</span>
+                          <span className="font-bold text-white text-base">{t('headerDropdown.notificationsTitle')}</span>
                           <div className="flex items-center gap-1">
                             {/* Đánh dấu tất cả đã đọc */}
                             <button 
                               onClick={handleMarkAllAsRead}
-                              title="Đánh dấu tất cả đã đọc"
+                              title={t('headerDropdown.markAllAsReadTooltip')}
                               className="w-8 h-8 rounded-full hover:bg-white/10 text-gray-400 hover:text-neon transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
                             >
                               <Check size={16} />
@@ -379,7 +518,7 @@ export const Header = () => {
                             {/* Xóa tất cả thông báo */}
                             <button 
                               onClick={handleDeleteAllNotifications}
-                              title="Xóa tất cả thông báo"
+                              title={t('headerDropdown.deleteAllTooltip')}
                               className="w-8 h-8 rounded-full hover:bg-white/10 text-gray-400 hover:text-red-500 transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
                             >
                               <Trash2 size={16} />
@@ -397,7 +536,7 @@ export const Header = () => {
                                 : 'bg-transparent text-gray-400 hover:text-white hover:bg-white/5'
                             }`}
                           >
-                            Tất cả
+                            {t('headerDropdown.all')}
                           </button>
                           <button
                             onClick={() => setNotiFilter('unread')}
@@ -407,7 +546,7 @@ export const Header = () => {
                                 : 'bg-transparent text-gray-400 hover:text-white hover:bg-white/5'
                             }`}
                           >
-                            {unreadCount > 0 ? `Chưa đọc (${unreadCount})` : 'Chưa đọc'}
+                            {unreadCount > 0 ? t('headerDropdown.unreadCount', { count: unreadCount }) : t('headerDropdown.unread')}
                           </button>
                         </div>
 
@@ -415,7 +554,7 @@ export const Header = () => {
                         <div className="max-h-[320px] overflow-y-auto py-2 space-y-0.5">
                           {notifications.filter(n => notiFilter === 'all' || !n.isRead).length === 0 ? (
                             <div className="p-8 text-center text-gray-500 text-xs italic">
-                              Không có thông báo nào.
+                              {t('headerDropdown.noNotifications')}
                             </div>
                           ) : (
                             notifications
@@ -433,20 +572,20 @@ export const Header = () => {
                                   {/* Left side: Circular Icon Container like FB avatar */}
                                   <div className="relative w-11 h-11 rounded-full bg-black/40 border border-white/5 flex items-center justify-center shrink-0">
                                     {noti.type === 'BookingConfirmed' ? (
-                                      <ClipboardList size={20} className="text-green-400" />
+                                      <ClipboardList size={20} className="text-neon" />
                                     ) : noti.type === 'BookingCancelled' ? (
                                       <ClipboardList size={20} className="text-red-400" />
                                     ) : noti.type === 'BookingPending' ? (
                                       <ClipboardList size={20} className="text-yellow-400" />
                                     ) : noti.type === 'IdentityVerified' ? (
-                                      <UserCheck size={20} className="text-green-400" />
+                                      <UserCheck size={20} className="text-neon" />
                                     ) : (
                                       <Bell size={20} className="text-neon" />
                                     )}
                                     
                                     {/* Mini badge at bottom-right corner */}
                                     <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-surface shadow-md ${
-                                      noti.type === 'BookingConfirmed' ? 'bg-green-500 text-white' :
+                                      noti.type === 'BookingConfirmed' ? 'bg-neon text-dark' :
                                       noti.type === 'BookingCancelled' ? 'bg-red-500 text-white' :
                                       noti.type === 'BookingPending' ? 'bg-yellow-500 text-dark' :
                                       'bg-neon text-dark'
@@ -464,9 +603,9 @@ export const Header = () => {
                                   {/* Middle Content */}
                                   <div className="flex-1 min-w-0">
                                     <p className={`text-xs text-white leading-relaxed ${noti.isRead ? 'font-normal' : 'font-bold'}`}>
-                                      {noti.title}
+                                      {translateNotificationTitle(noti.title, t)}
                                     </p>
-                                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">{noti.message}</p>
+                                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">{translateNotificationMessage(noti.message, t)}</p>
                                     <span className={`text-[10px] mt-1.5 block ${noti.isRead ? 'text-gray-500' : 'text-neon font-semibold'}`}>
                                       {formatTimeAgo(noti.createdAt)}
                                     </span>
@@ -526,7 +665,7 @@ export const Header = () => {
                   user.role === 'owner' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' :
                   'bg-green-500/10 text-green-500 border border-green-500/20'
                 }`}>
-                  {user.role === 'admin' ? 'Admin' : user.role === 'staff' ? 'Staff' : user.role === 'owner' ? 'Owner' : 'Khách'}
+                  {user.role === 'admin' ? t('headerDropdown.roleAdmin') : user.role === 'staff' ? t('headerDropdown.roleStaff') : user.role === 'owner' ? t('headerDropdown.roleOwner') : t('headerDropdown.roleShortCustomer')}
                 </span>
               </button>
 
@@ -566,14 +705,14 @@ export const Header = () => {
 
                     {/* Role Tag & Info */}
                     <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between text-xs text-gray-400 bg-black/10">
-                      <span className="font-medium uppercase tracking-wider text-[10px]">Vai trò</span>
+                      <span className="font-medium uppercase tracking-wider text-[10px]">{t('common.role')}</span>
                       <span className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-bold ${
                         user.role === 'admin' ? 'bg-neon/10 text-neon border border-neon/20' :
                         user.role === 'staff' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' :
                         user.role === 'owner' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' :
                         'bg-green-500/10 text-green-500 border border-green-500/20'
                       }`}>
-                        {user.role === 'admin' ? 'Quản trị viên' : user.role === 'staff' ? 'Nhân viên' : user.role === 'owner' ? 'Chủ xe' : 'Khách thuê'}
+                        {user.role === 'admin' ? t('headerDropdown.roleAdmin') : user.role === 'staff' ? t('headerDropdown.roleStaff') : user.role === 'owner' ? t('headerDropdown.roleOwner') : t('headerDropdown.roleCustomer')}
                       </span>
                     </div>
 
@@ -581,7 +720,7 @@ export const Header = () => {
                     <div className="py-2 border-b border-white/5">
                       <Link to="/profile" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                         <User size={15} />
-                        <span>Trang cá nhân</span>
+                        <span>{t('nav.profile')}</span>
                       </Link>
 
                       {/* Customer-specific links */}
@@ -589,16 +728,16 @@ export const Header = () => {
                         <>
                           <Link to="/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <ClipboardList size={15} />
-                            <span>Đơn thuê của tôi</span>
+                            <span>{t('nav.myBookings')}</span>
                           </Link>
                           <Link to="/promotions" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <Ticket size={15} />
-                            <span>Khuyến mãi / Ưu đãi</span>
+                            <span>{t('nav.promotions')}</span>
                           </Link>
                           {user.ownerRequestStatus === 'Pending' ? (
                             <div className="flex items-center gap-3 px-4 py-2 text-xs text-yellow-500 bg-yellow-500/5 border-t border-b border-yellow-500/10">
                               <UserCheck size={15} />
-                              <span>Đang chờ duyệt làm Chủ xe...</span>
+                              <span>{t('nav.pendingOwner')}</span>
                             </div>
                           ) : (
                             <button 
@@ -606,7 +745,7 @@ export const Header = () => {
                               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-cyan-400 hover:bg-white/5 transition-all text-left cursor-pointer border-none bg-transparent"
                             >
                               <UserCheck size={15} className="text-cyan-400" />
-                              <span>Đăng ký chủ xe</span>
+                              <span>{t('nav.becomeOwner')}</span>
                             </button>
                           )}
                         </>
@@ -621,11 +760,11 @@ export const Header = () => {
                           </Link>
                           <Link to="/owner/bikes" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <BookOpen size={15} />
-                            <span>Xe của tôi</span>
+                            <span>{t('nav.myBikes')}</span>
                           </Link>
                           <Link to="/owner/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <ClipboardList size={15} />
-                            <span>Lịch sử thuê xe</span>
+                            <span>{t('nav.allBookings')}</span>
                           </Link>
                         </>
                       )}
@@ -635,11 +774,11 @@ export const Header = () => {
                         <>
                           <Link to="/staff/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <ClipboardList size={15} />
-                            <span>Duyệt đơn thuê</span>
+                            <span>{t('nav.approveBookings')}</span>
                           </Link>
                           <Link to="/staff/bikes" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <BookOpen size={15} />
-                            <span>Tình trạng xe</span>
+                            <span>{t('nav.bikeStatus')}</span>
                           </Link>
                         </>
                       )}
@@ -649,27 +788,27 @@ export const Header = () => {
                         <>
                           <Link to="/admin/dashboard" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <Activity size={15} />
-                            <span>Thống kê hệ thống</span>
+                            <span>{t('nav.dashboard')}</span>
                           </Link>
                           <Link to="/admin/bikes" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <BookOpen size={15} />
-                            <span>Quản lý xe</span>
+                            <span>{t('nav.manageBikes')}</span>
                           </Link>
                           <Link to="/admin/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <ClipboardList size={15} />
-                            <span>Đơn toàn hệ thống</span>
+                            <span>{t('nav.allBookings')}</span>
                           </Link>
                           <Link to="/admin/users" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <UserCheck size={15} />
-                            <span>Phân quyền thành viên</span>
+                            <span>{t('nav.roles')}</span>
                           </Link>
                           <Link to="/admin/promotions" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <Ticket size={15} />
-                            <span>Quản lý khuyến mãi</span>
+                            <span>{t('nav.promotions')}</span>
                           </Link>
                           <Link to="/admin/feedbacks" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <MessageSquare size={15} />
-                            <span>Quản lý đánh giá</span>
+                            <span>{t('nav.feedbacks')}</span>
                           </Link>
                         </>
                       )}
@@ -729,7 +868,7 @@ export const Header = () => {
           {/* Language Switcher for Mobile */}
           <div className="flex flex-col gap-2 border-t border-white/5 pt-4 mt-2">
             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Globe size={14} className="text-neon" /> Ngôn ngữ / Language
+              <Globe size={14} className="text-neon" /> {language === 'vi' ? 'Ngôn ngữ' : language === 'ko' ? '언어' : 'Language'}
             </span>
             <div className="grid grid-cols-3 gap-2 bg-surface/50 border border-gray-800 rounded-xl p-1 select-none">
               {languagesList.map((lang) => (
@@ -753,7 +892,7 @@ export const Header = () => {
               {user.role === 'customer' && (
                 user.ownerRequestStatus === 'Pending' ? (
                   <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-yellow-500/5 border border-yellow-500/20 text-yellow-500 font-bold text-center text-xs">
-                    ⏳ ĐANG CHỜ DUYỆT LÀM CHỦ XE
+                    {t('headerDropdown.pendingOwnerStatus')}
                   </div>
                 ) : (
                   <button
@@ -761,7 +900,7 @@ export const Header = () => {
                     className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-surface border border-gray-800 text-gray-300 font-bold text-center hover:border-cyan-500 hover:text-cyan-400 transition-all cursor-pointer text-xs"
                   >
                     <UserCheck size={14} className="text-cyan-400" />
-                    ĐĂNG KÝ CHỦ XE ĐỐI TÁC
+                    {t('headerDropdown.registerOwnerBtn')}
                   </button>
                 )
               )}
@@ -778,7 +917,7 @@ export const Header = () => {
                 )}
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-white">{user.name}</span>
-                  <span className="text-[10px] text-gray-500 uppercase">{user.role}</span>
+                  <span className="text-[10px] text-gray-500 uppercase">{user.role === 'admin' ? t('headerDropdown.roleAdmin') : user.role === 'staff' ? t('headerDropdown.roleStaff') : user.role === 'owner' ? t('headerDropdown.roleOwner') : t('headerDropdown.roleCustomer')}</span>
                 </div>
               </Link>
               <button 
@@ -786,7 +925,7 @@ export const Header = () => {
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-red-500/20 text-red-500 font-bold text-center hover:bg-red-500/5 transition-all cursor-pointer"
               >
                 <LogOut size={16} />
-                ĐĂNG XUẤT
+                {t('common.logout').toUpperCase()}
               </button>
             </div>
           ) : (
@@ -885,8 +1024,8 @@ export const Header = () => {
                   <Trash2 size={18} />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">Xóa thông báo</h4>
-                  <p className="text-gray-400 text-xs mt-1 leading-relaxed">Bạn có chắc chắn muốn xóa toàn bộ thông báo không? Hành động này không thể hoàn tác.</p>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">{t('headerDropdown.deleteAllTitle')}</h4>
+                  <p className="text-gray-400 text-xs mt-1 leading-relaxed">{t('headerDropdown.deleteAllConfirm')}</p>
                 </div>
               </div>
               
@@ -895,7 +1034,7 @@ export const Header = () => {
                   onClick={() => setShowConfirmDeleteAll(false)}
                   className="px-4 py-2 rounded-lg border border-gray-800 text-gray-400 hover:text-white hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-wider cursor-pointer text-center bg-transparent"
                 >
-                  Hủy
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={() => {
@@ -904,7 +1043,7 @@ export const Header = () => {
                   }}
                   className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-bold text-xs uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-[0_0_10px_rgba(239,68,68,0.2)] text-center border-none"
                 >
-                  Đồng ý
+                  {t('common.confirm')}
                 </button>
               </div>
             </div>

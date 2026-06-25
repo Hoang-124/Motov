@@ -238,9 +238,9 @@ export const Bookings = () => {
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
                       booking.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30' :
-                      booking.status === 'Confirmed' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' :
-                      booking.status === 'Ongoing' ? 'bg-green-500/10 text-green-500 border-green-500/30' :
-                      booking.status === 'Completed' ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' :
+                      booking.status === 'Confirmed' ? 'bg-neon/10 text-neon border-neon/30 shadow-[0_0_10px_rgba(204,255,0,0.1)]' :
+                      booking.status === 'Ongoing' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' :
+                      booking.status === 'Completed' ? 'bg-white/5 text-gray-300 border-white/20' :
                       'bg-red-500/10 text-red-500 border-red-500/30' // Cancelled
                     }`}>
                       {translateStatusLabel(booking.status, booking.statusLabel)}
@@ -511,8 +511,8 @@ export const Bookings = () => {
 
                   {/* Thông báo chi phí / hoàn trả */}
                   {details.type === 'early' && (
-                    <div className="bg-emerald-500/5 border border-emerald-500/10 p-4 rounded-xl space-y-2">
-                      <div className="flex items-center gap-2 text-emerald-400 text-sm font-bold">
+                    <div className="bg-neon/5 border border-neon/30 p-4 rounded-xl space-y-2 relative overflow-hidden">
+                      <div className="flex items-center gap-2 text-neon text-sm font-bold uppercase tracking-wider font-display neon-text-glow">
                         <CheckCircle size={16} />
                         <span>{t('myBookingsPage.returnModalEarlyReturn')}</span>
                       </div>
@@ -524,7 +524,7 @@ export const Bookings = () => {
                           amount: details.amount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') 
                         })}
                       </p>
-                      <div className="flex gap-1.5 items-start text-[10px] text-emerald-400/80 leading-normal">
+                      <div className="flex gap-1.5 items-start text-[10px] text-neon/85 leading-normal">
                         <Info size={12} className="shrink-0 mt-0.5" />
                         <span>{t('myBookingsPage.returnModalRefundNote')}</span>
                       </div>

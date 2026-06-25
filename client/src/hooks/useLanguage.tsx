@@ -21,6 +21,10 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('language', lang);
   };
 
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
   // Cache for resolved key paths to optimize CPU performance
   const translationCache = React.useRef<Record<string, Record<string, string>>>({
     vi: {},

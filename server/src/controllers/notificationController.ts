@@ -1,6 +1,37 @@
 import { Response } from 'express';
 import { Notification } from '../models/Notification.js';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
+import { registerClient } from '../services/realtimeService.js';
+
+// Thiết lập kết nối SSE (Server-Sent Events) để đẩy thông báo thời gian thực
+export const streamNotifications = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized: Missing user information'
+      });
+    }
+
+    const userId = req.user.id;
+
+    // Cấu hình headers cho Server-Sent Events (SSE)
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    
+    // Gửi headers ngay lập tức
+    res.flushHeaders?.();
+
+    // Đăng ký client vào danh sách lắng nghe
+    registerClient(userId, res);
+
+  } catch (error: any) {
+    console.error('Lỗi khi thiết lập luồng SSE:', error);
+    res.status(500).end();
+  }
+};
 
 // Get user notifications sorted by newest first
 export const getMyNotifications = async (req: AuthRequest, res: Response) => {

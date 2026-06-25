@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, MapPin, ChevronDown } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { getAllMotorbikes, Motorbike } from '../services/vehicleService';
 import { BikeCard } from '../components/BikeCard';
 import { useLanguage } from '../hooks/useLanguage';
@@ -11,6 +11,7 @@ const HeroSearch = () => {
   const navigate = useNavigate();
   const [date, setDate] = useState('');
   const [location, setLocation] = useState('Son Tra Peninsula');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,21 +43,59 @@ const HeroSearch = () => {
           
           <div className="space-y-2">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MapPin size={18} className="text-neon" />
-              </div>
-              <select 
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none appearance-none cursor-pointer transition-all duration-300"
+              <button
+                type="button"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent flex items-center pl-10 pr-10 p-3 outline-none cursor-pointer transition-all duration-300 text-left relative"
               >
-                <option value="Son Tra Peninsula">{t('home.sonTra')}</option>
-                <option value="Da Nang Airport">{t('home.airport')}</option>
-                <option value="City Center">{t('home.cityCenter')}</option>
-              </select>
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <ChevronDown size={16} className="text-gray-400" />
-              </div>
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MapPin size={18} className="text-neon" />
+                </div>
+                <span>
+                  {location === 'Son Tra Peninsula' && t('home.sonTra')}
+                  {location === 'Da Nang Airport' && t('home.airport')}
+                  {location === 'City Center' && t('home.cityCenter')}
+                </span>
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180 text-neon' : ''}`} />
+                </div>
+              </button>
+
+              <AnimatePresence>
+                {isDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsDropdownOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-0 right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl overflow-hidden text-gray-300 py-1 font-sans"
+                    >
+                      <div className="absolute top-0 inset-x-0 h-[2px] bg-neon shadow-[0_0_10px_rgba(204,255,0,0.5)]"></div>
+                      {[
+                        { value: 'Son Tra Peninsula', label: t('home.sonTra') },
+                        { value: 'Da Nang Airport', label: t('home.airport') },
+                        { value: 'City Center', label: t('home.cityCenter') }
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setLocation(opt.value);
+                            setIsDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer bg-transparent border-none ${
+                            location === opt.value ? 'text-neon bg-neon/5 font-bold' : 'text-gray-300 hover:text-neon hover:bg-white/5'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>

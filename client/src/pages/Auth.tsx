@@ -689,9 +689,9 @@ export const Auth = () => {
                 <motion.div 
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-lg text-xs font-semibold text-center mb-4 flex items-center justify-center gap-2"
+                  className="bg-neon/5 border border-neon/30 p-3 rounded-lg text-xs text-white text-center mb-4 flex items-center justify-center gap-2 relative overflow-hidden"
                 >
-                  <span>{success}</span>
+                  <span className="font-semibold text-neon neon-text-glow">{success}</span>
                 </motion.div>
               )}
 

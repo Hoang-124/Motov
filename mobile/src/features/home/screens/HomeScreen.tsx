@@ -74,7 +74,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     };
 
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
+    const interval = setInterval(fetchUnreadCount, 15000); // 15s polling for near real-time count
     return () => clearInterval(interval);
   }, [token, role]);
 
