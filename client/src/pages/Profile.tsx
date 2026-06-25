@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Mail, Phone, Calendar, Shield, Award, Briefcase, UserCheck, Check, Save, ArrowLeft, Camera, Lock, Key, X, RefreshCw, AlertCircle, FileText, Eye, ShieldCheck, Activity, QrCode } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const Profile = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +63,31 @@ export const Profile = () => {
   // QR Code Scanning states & refs
   const [qrError, setQrError] = useState<string | null>(null);
   const qrScannerRef = useRef<any>(null);
+
+  // Owner request states
+  const [ownerRequestStatus, setOwnerRequestStatus] = useState<'None' | 'Pending' | 'Approved' | 'Rejected'>('None');
+  const [savingOwnerRequest, setSavingOwnerRequest] = useState(false);
+  const [ownerRequestError, setOwnerRequestError] = useState<string | null>(null);
+  const [ownerRequestSuccess, setOwnerRequestSuccess] = useState<string | null>(null);
+
+  // Owner contract states
+  const [ownerContractSigned, setOwnerContractSigned] = useState(false);
+  const [ownerContractSignedAt, setOwnerContractSignedAt] = useState<string | null>(null);
+  const [ownerContractText, setOwnerContractText] = useState<string | null>(null);
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+  const [isViewSignedContractOpen, setIsViewSignedContractOpen] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.scrollToOwner) {
+      setTimeout(() => {
+        const element = document.getElementById('owner-registration-section');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+    }
+  }, [location]);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -533,6 +559,10 @@ export const Profile = () => {
       setIdentityStatus(u.identityStatus || 'Unverified');
       setIdentityRejectReason(u.identityRejectReason || '');
       setCitizenIdInfo(u.citizenIdInfo || null);
+      setOwnerRequestStatus(u.ownerRequestStatus || 'None');
+      setOwnerContractSigned(u.ownerContractSigned || false);
+      setOwnerContractSignedAt(u.ownerContractSignedAt || null);
+      setOwnerContractText(u.ownerContractText || null);
       
       if (u.dob) {
         // Format YYYY-MM-DD for date input
@@ -662,6 +692,96 @@ export const Profile = () => {
       setPasswordError(err.message || 'Đã xảy ra lỗi khi thay đổi mật khẩu.');
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const getPreviewContractText = () => {
+    const fullName = citizenIdInfo?.fullName || (lastName && firstName ? `${lastName} ${firstName}` : username);
+    const idNumber = citizenIdInfo?.idNumber || 'N/A';
+    const address = citizenIdInfo?.address || 'Chưa cập nhật';
+    return `HỢP ĐỒNG HỢP TÁC KINH DOANH (ĐỐI TÁC CHỦ XE)
+Số: MOTOV-OWNER-PREVIEW/${new Date().getFullYear()}
+
+Hợp đồng này được ký kết vào ngày ${new Date().toLocaleDateString('vi-VN')} giữa các bên:
+
+BÊN A: CÔNG TY CỔ PHẦN DỊCH VỤ MOTOV (MOTOV INC.)
+- Đại diện: Ban Giám Đốc
+- Địa chỉ: Tòa nhà Motov, số 124 Đường 3/2, Quận Hải Châu, Đà Nẵng
+- Điện thoại: 1900 8198
+- Email: partner@motov.com
+
+BÊN B: ĐỐI TÁC CHỦ XE
+- Họ và tên: ${fullName}
+- Số CCCD/CMND: ${idNumber}
+- Số điện thoại: ${phoneNumber || 'N/A'}
+- Email: ${email || 'N/A'}
+- Địa chỉ thường trú: ${address}
+
+ĐIỀU KHOẢN HỢP TÁC:
+1. Bên B đồng ý đưa các phương tiện xe máy thuộc quyền sở hữu/sử dụng hợp pháp của mình lên hệ thống Motov để thực hiện dịch vụ cho thuê xe máy tự lái.
+2. Bên B cam kết các phương tiện cung cấp luôn trong tình trạng hoạt động tốt, được bảo dưỡng định kỳ và có đầy đủ giấy tờ pháp lý (Đăng ký xe, Bảo hiểm trách nhiệm dân sự còn hiệu lực).
+3. Doanh thu từ hoạt động cho thuê xe sẽ được phân chia theo tỷ lệ: Bên B nhận 85%, Bên A nhận 15% phí dịch vụ nền tảng.
+4. Bên A chịu trách nhiệm vận hành nền tảng kết nối, quảng bá dịch vụ và thu hộ tiền thuê xe từ khách hàng.
+5. Bên B cam kết tuân thủ nghiêm ngặt quy trình bàn giao, nhận lại xe và xử lý sự cố theo đúng quy định của Motov.
+6. Hợp đồng có hiệu lực kể từ ngày Bên A (Admin hoặc Nhân viên đại diện) phê duyệt tài khoản của Bên B thành trạng thái Chủ xe (Owner).
+
+BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG ĐIỆN TỬ NÀY.`;
+  };
+
+  const handleRegisterOwner = async () => {
+    setOwnerRequestError(null);
+    setOwnerRequestSuccess(null);
+
+    // Ràng buộc eKYC
+    if (identityStatus !== 'Verified') {
+      setOwnerRequestError('Bạn phải hoàn thành xác thực danh tính (eKYC) và được phê duyệt trước khi đăng ký làm chủ xe đối tác!');
+      return;
+    }
+
+    setAcceptTerms(false);
+    setIsContractModalOpen(true);
+  };
+
+  const handleConfirmSignContract = async () => {
+    if (!acceptTerms) {
+      alert("Vui lòng đồng ý với các điều khoản hợp tác trước khi ký!");
+      return;
+    }
+
+    setIsContractModalOpen(false);
+    setSavingOwnerRequest(true);
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
+      const { token } = JSON.parse(storedUser);
+
+      const response = await fetch(`${API_BASE_URL}/auth/become-owner`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Ký hợp đồng và đăng ký làm chủ xe thất bại.');
+      }
+
+      setOwnerRequestStatus('Pending');
+      setOwnerContractSigned(true);
+      setOwnerContractSignedAt(data.user.ownerContractSignedAt || new Date().toISOString());
+      setOwnerContractText(data.user.ownerContractText || '');
+      setOwnerRequestSuccess('Ký hợp đồng đối tác và gửi yêu cầu đăng ký thành công! Vui lòng chờ nhân viên phê duyệt.');
+
+      // Cập nhật local storage
+      const parsedUser = JSON.parse(storedUser);
+      parsedUser.ownerRequestStatus = 'Pending';
+      localStorage.setItem('user', JSON.stringify(parsedUser));
+    } catch (err: any) {
+      setOwnerRequestError(err.message || 'Lỗi khi gửi đăng ký.');
+    } finally {
+      setSavingOwnerRequest(false);
     }
   };
 
@@ -1024,6 +1144,132 @@ export const Profile = () => {
                 )}
               </div>
             </motion.div>
+
+            {/* Đăng ký làm chủ xe đối tác (Owner) */}
+            {role === 'customer' && (
+              <motion.div
+                id="owner-registration-section"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-surface/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl relative mt-6"
+              >
+                <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+                
+                <h2 className="font-display font-black text-2xl text-white uppercase mb-6 flex items-center gap-2">
+                  <Briefcase size={22} className="text-neon" />
+                  Đăng ký đối tác Chủ xe (Owner)
+                </h2>
+
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4 p-4 rounded-xl bg-black/40 border border-white/5">
+                    <div className="p-2.5 rounded-lg bg-neon/10 text-neon">
+                      <UserCheck size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-white uppercase tracking-wider text-sm">Trạng thái đăng ký</h4>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {ownerRequestStatus === 'None' && 'Đăng ký trở thành đối tác chủ xe để đăng tải xe máy của bạn lên hệ thống và kiếm thêm thu nhập thụ động.'}
+                        {ownerRequestStatus === 'Pending' && 'Yêu cầu đăng ký làm chủ xe của bạn đã được gửi và đang chờ Admin hoặc Nhân viên phê duyệt.'}
+                        {ownerRequestStatus === 'Approved' && 'Chúc mừng! Yêu cầu của bạn đã được duyệt. Vui lòng đăng nhập lại để cập nhật quyền hạn.'}
+                        {ownerRequestStatus === 'Rejected' && 'Yêu cầu đăng ký làm chủ xe của bạn đã bị từ chối. Vui lòng kiểm tra lại thông tin và gửi lại.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {ownerRequestError && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold text-center">
+                      {ownerRequestError}
+                    </div>
+                  )}
+
+                  {ownerRequestSuccess && (
+                    <div className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-lg text-xs font-semibold text-center flex items-center justify-center gap-2">
+                      <Check size={14} />
+                      {ownerRequestSuccess}
+                    </div>
+                  )}
+
+                  {ownerRequestStatus === 'None' && (
+                    <button
+                      type="button"
+                      onClick={handleRegisterOwner}
+                      disabled={savingOwnerRequest}
+                      className="w-full bg-neon text-dark font-bold py-3 rounded-lg hover:bg-[#bbf000] transition-all duration-300 shadow-[0_0_12px_rgba(204,255,0,0.2)] font-display uppercase tracking-wider text-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {savingOwnerRequest ? 'Đang gửi yêu cầu...' : 'Xem & ký hợp đồng đối tác'}
+                    </button>
+                  )}
+
+                  {ownerRequestStatus === 'Pending' && (
+                    <div className="space-y-4">
+                      <div className="text-center py-2.5 text-yellow-500 text-xs font-semibold bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                        Yêu cầu đang chờ duyệt. Vui lòng kiên nhẫn.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsViewSignedContractOpen(true)}
+                        className="w-full bg-surface border border-gray-800 text-gray-300 hover:border-neon hover:text-white font-bold py-3 rounded-lg transition-all duration-300 font-display uppercase tracking-wider text-xs cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <Eye size={14} />
+                        Xem hợp đồng đã ký
+                      </button>
+                    </div>
+                  )}
+
+                  {ownerRequestStatus === 'Rejected' && (
+                    <button
+                      type="button"
+                      onClick={handleRegisterOwner}
+                      disabled={savingOwnerRequest}
+                      className="w-full bg-neon text-dark font-bold py-3 rounded-lg hover:bg-[#bbf000] transition-all duration-300 shadow-[0_0_12px_rgba(204,255,0,0.2)] font-display uppercase tracking-wider text-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {savingOwnerRequest ? 'Đang gửi lại...' : 'Xem & ký lại hợp đồng'}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Hợp đồng đối tác chủ xe đã ký (Cho Owner) */}
+            {role === 'owner' && ownerContractSigned && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-surface/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl relative mt-6"
+              >
+                <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+                
+                <h2 className="font-display font-black text-2xl text-white uppercase mb-6 flex items-center gap-2">
+                  <FileText size={22} className="text-neon" />
+                  Hợp đồng đối tác Chủ xe
+                </h2>
+
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4 p-4 rounded-xl bg-black/40 border border-white/5">
+                    <div className="p-2.5 rounded-lg bg-green-500/10 text-green-400">
+                      <ShieldCheck size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-white uppercase tracking-wider text-sm">Hợp đồng hoạt động</h4>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Hợp đồng hợp tác kinh doanh giữa bạn và Motov đã có hiệu lực pháp lý. Bạn có thể mở xem lại hoặc in ra khi cần thiết.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsViewSignedContractOpen(true)}
+                    className="w-full bg-surface border border-gray-800 text-gray-300 hover:border-neon hover:text-white font-bold py-3 rounded-lg transition-all duration-300 font-display uppercase tracking-wider text-xs cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Eye size={14} />
+                    Xem hợp đồng đã ký
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
             {/* eKYC Full Modal Screen */}
             {isEkycModalOpen && (
@@ -1436,10 +1682,146 @@ export const Profile = () => {
                 </button>
               </form>
             </motion.div>
+            {/* Modal Xem & Ký hợp đồng đối tác */}
+            {isContractModalOpen && (
+              <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                <div 
+                  className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+                  onClick={() => setIsContractModalOpen(false)}
+                />
+                <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-3xl z-10 overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh]">
+                  <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+                  
+                  {/* Header */}
+                  <div className="p-5 border-b border-white/5 flex justify-between items-center bg-black/20">
+                    <h3 className="font-display font-black text-lg text-white uppercase flex items-center gap-2">
+                      <FileText size={18} className="text-neon" />
+                      Ký hợp đồng đối tác chủ xe
+                    </h3>
+                    <button
+                      onClick={() => setIsContractModalOpen(false)}
+                      className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  {/* Body - hiển thị bản text hợp đồng */}
+                  <div className="p-6 overflow-y-auto flex-grow text-gray-300 text-sm font-sans space-y-4">
+                    <pre className="whitespace-pre-wrap font-mono text-xs bg-black/40 border border-white/5 rounded-xl p-4 max-h-[50vh] overflow-y-auto leading-relaxed">
+                      {getPreviewContractText()}
+                    </pre>
+
+                    {/* Checkbox đồng ý */}
+                    <label className="flex items-start gap-3 p-3 rounded-xl bg-black/20 border border-white/5 cursor-pointer hover:bg-black/30 transition-all select-none">
+                      <input 
+                        type="checkbox"
+                        checked={acceptTerms}
+                        onChange={(e) => setAcceptTerms(e.target.checked)}
+                        className="w-4 h-4 mt-0.5 rounded border-gray-800 text-neon focus:ring-neon bg-black focus:ring-offset-0"
+                      />
+                      <span className="text-xs text-gray-400 font-semibold leading-normal">
+                        Tôi cam kết các thông tin cá nhân trên là hoàn toàn chính xác, đã đọc kỹ, hiểu rõ và đồng ý ký kết hợp đồng hợp tác đối tác chủ xe với Motov.
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="p-5 border-t border-white/5 flex justify-end gap-3 bg-black/20">
+                    <button
+                      onClick={() => setIsContractModalOpen(false)}
+                      className="px-5 py-2.5 rounded-lg border border-gray-800 text-gray-400 hover:text-white text-xs font-bold uppercase transition-all cursor-pointer"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      onClick={handleConfirmSignContract}
+                      disabled={!acceptTerms || savingOwnerRequest}
+                      className="px-6 py-2.5 rounded-lg bg-neon text-dark font-bold text-xs uppercase hover:bg-[#bbf000] disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Check size={14} />
+                      Ký & gửi yêu cầu
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Xem hợp đồng đối tác đã ký */}
+            {isViewSignedContractOpen && (
+              <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                <div 
+                  className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+                  onClick={() => setIsViewSignedContractOpen(false)}
+                />
+                <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-3xl z-10 overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh]">
+                  <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+                  
+                  {/* Header */}
+                  <div className="p-5 border-b border-white/5 flex justify-between items-center bg-black/20">
+                    <h3 className="font-display font-black text-lg text-white uppercase flex items-center gap-2">
+                      <ShieldCheck size={18} className="text-neon" />
+                      Hợp đồng đối tác chủ xe đã ký
+                    </h3>
+                    <button
+                      onClick={() => setIsViewSignedContractOpen(false)}
+                      className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-6 overflow-y-auto flex-grow text-gray-300 text-sm font-sans space-y-4">
+                    <div className="text-xs text-gray-400 flex items-center justify-between bg-green-500/10 border border-green-500/20 p-3 rounded-lg text-green-400 font-bold">
+                      <span className="flex items-center gap-1"><ShieldCheck size={14} /> Hợp đồng điện tử đã được xác nhận ký kết thành công</span>
+                      <span>Ký lúc: {ownerContractSignedAt ? new Date(ownerContractSignedAt).toLocaleString('vi-VN') : 'N/A'}</span>
+                    </div>
+
+                    <pre className="whitespace-pre-wrap font-mono text-xs bg-black/40 border border-white/5 rounded-xl p-4 max-h-[50vh] overflow-y-auto leading-relaxed">
+                      {ownerContractText || 'Không có dữ liệu hợp đồng.'}
+                    </pre>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="p-5 border-t border-white/5 flex justify-between items-center bg-black/20">
+                    <button
+                      onClick={() => {
+                        const printWindow = window.open('', '_blank');
+                        if (printWindow) {
+                          printWindow.document.write(`
+                            <html>
+                              <head>
+                                <title>Hợp đồng đối tác Motov</title>
+                                <style>
+                                  body { font-family: monospace; padding: 40px; white-space: pre-wrap; line-height: 1.6; font-size: 14px; color: #333; }
+                                  @media print { body { padding: 0; } }
+                                </style>
+                              </head>
+                              <body>${ownerContractText}</body>
+                            </html>
+                          `);
+                          printWindow.document.close();
+                          printWindow.print();
+                        }
+                      }}
+                      className="px-5 py-2.5 rounded-lg border border-gray-800 hover:border-neon text-gray-400 hover:text-neon text-xs font-bold uppercase transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      In hợp đồng
+                    </button>
+
+                    <button
+                      onClick={() => setIsViewSignedContractOpen(false)}
+                      className="px-6 py-2.5 rounded-lg bg-neon text-dark font-bold text-xs uppercase hover:bg-[#bbf000] transition-all cursor-pointer"
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-
         </div>
-
       </div>
     </div>
   );
