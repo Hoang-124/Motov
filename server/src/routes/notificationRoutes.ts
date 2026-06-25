@@ -4,7 +4,8 @@ import {
   markAsRead,
   markAllAsRead,
   deleteNotification,
-  deleteAllNotifications
+  deleteAllNotifications,
+  streamNotifications
 } from '../controllers/notificationController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
@@ -13,6 +14,7 @@ const router = Router();
 // Yêu cầu đăng nhập cho tất cả các endpoint thông báo
 router.use(authMiddleware as any);
 
+router.get('/stream', streamNotifications as any);
 router.get('/', getMyNotifications as any);
 router.put('/read-all', markAllAsRead as any);
 router.delete('/', deleteAllNotifications as any);

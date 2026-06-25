@@ -210,8 +210,8 @@ export const Promotions = () => {
                       onClick={() => handleCopyCode(promo.voucherCode)}
                       className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 shrink-0 cursor-pointer ${
                         isCopied 
-                          ? 'bg-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.3)]' 
-                          : 'bg-neon text-dark hover:bg-[#bbf000] shadow-[0_0_10px_rgba(204,255,0,0.15)]'
+                          ? 'bg-neon/15 border border-neon text-neon shadow-[0_0_15px_rgba(204,255,0,0.3)]' 
+                          : 'bg-neon text-dark hover:bg-[#bbf000] border border-transparent shadow-[0_0_10px_rgba(204,255,0,0.15)]'
                       }`}
                     >
                       {isCopied ? (

@@ -10,12 +10,17 @@ export interface AuthRequest extends Request {
 }
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+  let token = '';
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, message: 'Không tìm thấy token xác thực' });
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query && req.query.token) {
+    token = req.query.token as string;
   }
 
-  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Không tìm thấy token xác thực' });
+  }
   try {
     // FIX [SEC-1]: Use env variable only — authController already guards against missing JWT_SECRET at startup
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;

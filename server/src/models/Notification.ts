@@ -26,4 +26,19 @@ const NotificationSchema = new Schema<INotification>({
   timestamps: true
 });
 
+// Post-save hook to send real-time notification
+NotificationSchema.post('save', function(doc) {
+  try {
+    // Import dynamically or statically. Since it might cause circular dependency if models import service and service imports model,
+    // we can import it statically. Let's use static import.
+    import('../services/realtimeService.js').then((service) => {
+      service.sendRealtimeNotification(doc.userId.toString(), doc);
+    }).catch(err => {
+      console.error('Lỗi khi tải realtimeService trong post-save hook:', err);
+    });
+  } catch (err) {
+    console.error('Lỗi trong post-save hook của Notification:', err);
+  }
+});
+
 export const Notification = mongoose.model<INotification>('Notification', NotificationSchema);

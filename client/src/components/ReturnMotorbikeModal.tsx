@@ -88,7 +88,7 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
                 </div>
               )}
               {success && (
-                <div className="p-3 bg-green-500/10 border border-green-500/20 text-green-500 rounded-lg text-xs">
+                <div className="p-3 bg-neon/5 border border-neon/30 text-neon rounded-lg text-xs font-semibold text-center relative overflow-hidden neon-text-glow">
                   {success}
                 </div>
               )}

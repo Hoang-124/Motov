@@ -137,10 +137,10 @@ export const ResetPassword = () => {
           )}
 
           {success && (
-            <div className="bg-green-500/10 border border-green-500/20 text-green-400 p-4 rounded-lg text-xs font-semibold text-center mb-6 space-y-3">
-              <div className="flex items-center justify-center gap-2 text-green-400 font-bold text-sm">
-                <Check size={16} />
-                Thành công!
+            <div className="bg-neon/5 border border-neon/30 p-4 rounded-xl text-xs text-white text-center mb-6 space-y-2 relative overflow-hidden">
+              <div className="flex items-center justify-center gap-2 text-neon font-display font-black text-sm uppercase tracking-wider neon-text-glow">
+                <Check size={16} strokeWidth={3} />
+                Thành công
               </div>
               <p className="text-gray-300 leading-relaxed font-normal">{success}</p>
               <p className="text-gray-500 font-normal text-[11px] pt-1">Đang tự động chuyển hướng về trang đăng nhập...</p>
