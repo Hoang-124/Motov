@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BikeCard } from '../components/BikeCard';
 import { SlidersHorizontal, Search, AlertCircle, Loader, ChevronDown } from 'lucide-react';
-import { getAllMotorbikes, Motorbike } from '../services/vehicleService';
+import { getAllMotorbikes, getRecommendations, Motorbike } from '../services/vehicleService';
 import { useLanguage } from '../hooks/useLanguage';
 
 export const Bikes = () => {
@@ -107,6 +107,11 @@ export const Bikes = () => {
             <AlertCircle size={20} className="text-red-500" />
             <p className="text-red-300">{error}</p>
           </div>
+        )}
+
+        {/* Personalized recommendations */}
+        {searchQuery === '' && selectedCategory === 'All' && (
+          <BikesRecommendations />
         )}
 
         {/* Filter and Search Bar */}
@@ -241,6 +246,50 @@ export const Bikes = () => {
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+const BikesRecommendations = () => {
+  const [recommended, setRecommended] = useState<Motorbike[]>([]);
+  const [reason, setReason] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRecs = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        let token = undefined;
+        if (storedUser) {
+          token = JSON.parse(storedUser).token;
+        }
+        const res = await getRecommendations(token);
+        setRecommended(res.vehicles);
+        setReason(res.reason);
+      } catch (err) {
+        console.error('Error loading recommendations on bikes page:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecs();
+  }, []);
+
+  if (loading || recommended.length === 0) return null;
+
+  return (
+    <div className="bg-surface border border-gray-800 rounded-2xl p-6 mb-10 bg-gradient-to-r from-neon/0 via-neon/5 to-transparent shadow-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-6">
+        <span className="text-neon text-[10px] font-bold uppercase tracking-widest font-mono border border-neon/20 px-3 py-1.5 rounded-full bg-neon/5 w-fit">
+          ✨ Gợi ý cá nhân hóa
+        </span>
+        <span className="text-xs text-gray-400 font-mono">({reason})</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        {recommended.slice(0, 3).map(bike => (
+          <BikeCard key={bike._id} bike={bike} />
+        ))}
       </div>
     </div>
   );

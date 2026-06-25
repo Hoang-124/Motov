@@ -14,6 +14,9 @@ export interface IVehicle extends Document {
   regCertificateUrl?: string;
   imageUrls: string[];
   features: string[];
+  lastMaintenanceOdometer: number;
+  maintenanceInterval: number;
+  requiresMaintenance: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,7 +34,10 @@ const VehicleSchema = new Schema<IVehicle>({
   transmissionType: { type: String, enum: ['Manual', 'Automatic', 'Semi-Automatic'], required: true },
   regCertificateUrl: { type: String },
   imageUrls: [{ type: String }],
-  features: [{ type: String }]
+  features: [{ type: String }],
+  lastMaintenanceOdometer: { type: Number, default: 0 },
+  maintenanceInterval: { type: Number, default: 2000 },
+  requiresMaintenance: { type: Boolean, default: false, index: true }
 }, {
   timestamps: true
 });

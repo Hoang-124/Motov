@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Calendar, Shield, Award, Briefcase, UserCheck, Check, Save, ArrowLeft, Camera, Lock, Key, X, RefreshCw, AlertCircle, FileText, Eye, ShieldCheck, Activity } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Shield, Award, Briefcase, UserCheck, Check, Save, ArrowLeft, Camera, Lock, Key, X, RefreshCw, AlertCircle, FileText, Eye, ShieldCheck, Activity, QrCode } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const Profile = () => {
@@ -41,7 +41,7 @@ export const Profile = () => {
   
   // UI states for eKYC Modal
   const [isEkycModalOpen, setIsEkycModalOpen] = useState(false);
-  const [ekycStep, setEkycStep] = useState<'upload' | 'liveness' | 'scanning' | 'result'>('upload'); 
+  const [ekycStep, setEkycStep] = useState<'upload' | 'liveness' | 'scanning' | 'result' | 'qr_scan'>('upload'); 
   const [cardFront, setCardFront] = useState<string>('');
   const [cardBack, setCardBack] = useState<string>('');
   const [selfie, setSelfie] = useState<string>('');
@@ -59,7 +59,175 @@ export const Profile = () => {
   const [scanProgress, setScanProgress] = useState(0);
   const [scanLogs, setScanLogs] = useState<string[]>([]);
 
+  // QR Code Scanning states & refs
+  const [qrError, setQrError] = useState<string | null>(null);
+  const qrScannerRef = useRef<any>(null);
+
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+  const loadHtml5Qrcode = (): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if ((window as any).Html5Qrcode) {
+        resolve((window as any).Html5Qrcode);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/html5-qrcode';
+      script.onload = () => resolve((window as any).Html5Qrcode);
+      script.onerror = (e) => reject(e);
+      document.body.appendChild(script);
+    });
+  };
+
+  const parseQrData = (decodedText: string) => {
+    try {
+      const parts = decodedText.split('|');
+      
+      // 1. QR CCCD Việt Nam: Số_CCCD|Số_CMND_cũ|Họ_tên|Ngày_sinh|Giới_tính|Địa_chỉ_thường_trú|Ngày_cấp
+      if (parts.length >= 6) {
+        const idNumber = parts[0];
+        const fullName = parts[2];
+        const rawDob = parts[3]; // DDMMYYYY
+        const rawGender = parts[4];
+        const address = parts[5];
+
+        let formattedDob = '';
+        if (rawDob && rawDob.length === 8) {
+          const dd = rawDob.slice(0, 2);
+          const mm = rawDob.slice(2, 4);
+          const yyyy = rawDob.slice(4, 8);
+          formattedDob = `${yyyy}-${mm}-${dd}`;
+        }
+
+        const nameParts = fullName.trim().split(' ');
+        let fName = fullName;
+        let lName = '';
+        if (nameParts.length > 1) {
+          fName = nameParts[nameParts.length - 1];
+          lName = nameParts.slice(0, nameParts.length - 1).join(' ');
+        }
+
+        setFirstName(fName);
+        setLastName(lName);
+        if (formattedDob) setDob(formattedDob);
+        if (rawGender === 'Nam') setGender('Male');
+        else if (rawGender === 'Nữ') setGender('Female');
+
+        setCitizenIdInfo({
+          idNumber,
+          fullName,
+          dob: formattedDob ? new Date(formattedDob) : new Date(),
+          homeTown: parts[5]?.split(',')?.slice(-2)?.join(', ') || 'Việt Nam',
+          address,
+          cardFrontUrl: '',
+          cardBackUrl: '',
+          selfieUrl: '',
+          faceMatchConfidence: 100
+        });
+
+        return { success: true, type: 'CCCD', message: `CCCD: ${fullName}` };
+      }
+
+      // 2. QR GPLX Việt Nam: SốGPLX|HọTên|NgàySinh|Hạng|NơiCấp
+      if (parts.length >= 4) {
+        const licenseNumber = parts[0];
+        const fullName = parts[1];
+        const rawDob = parts[2]; // DD/MM/YYYY hoặc DDMMYYYY
+        const grade = parts[3];
+
+        let formattedDob = '';
+        if (rawDob.includes('/')) {
+          const [dd, mm, yyyy] = rawDob.split('/');
+          formattedDob = `${yyyy}-${mm}-${dd}`;
+        } else if (rawDob.length === 8) {
+          const dd = rawDob.slice(0, 2);
+          const mm = rawDob.slice(2, 4);
+          const yyyy = rawDob.slice(4, 8);
+          formattedDob = `${yyyy}-${mm}-${dd}`;
+        }
+
+        const nameParts = fullName.trim().split(' ');
+        let fName = fullName;
+        let lName = '';
+        if (nameParts.length > 1) {
+          fName = nameParts[nameParts.length - 1];
+          lName = nameParts.slice(0, nameParts.length - 1).join(' ');
+        }
+
+        setFirstName(fName);
+        setLastName(lName);
+        if (formattedDob) setDob(formattedDob);
+
+        setCitizenIdInfo({
+          idNumber: licenseNumber,
+          fullName,
+          dob: formattedDob ? new Date(formattedDob) : new Date(),
+          homeTown: 'Việt Nam',
+          address: `Hạng GPLX: ${grade}`,
+          cardFrontUrl: '',
+          cardBackUrl: '',
+          selfieUrl: '',
+          faceMatchConfidence: 100
+        });
+
+        return { success: true, type: 'GPLX', message: `GPLX Hạng ${grade}: ${fullName}` };
+      }
+
+      throw new Error('Mã QR không khớp định dạng CCCD/GPLX Việt Nam.');
+    } catch (e: any) {
+      return { success: false, message: e.message || 'Lỗi giải mã QR.' };
+    }
+  };
+
+  const startQrScanner = async () => {
+    setQrError(null);
+    try {
+      const Html5Qrcode = await loadHtml5Qrcode();
+      
+      setTimeout(async () => {
+        try {
+          const scanner = new Html5Qrcode("qr-reader");
+          qrScannerRef.current = scanner;
+          
+          await scanner.start(
+            { facingMode: "environment" },
+            {
+              fps: 10,
+              qrbox: { width: 250, height: 250 }
+            },
+            (decodedText: string) => {
+              const res = parseQrData(decodedText);
+              if (res.success) {
+                stopQrScanner();
+                setEkycStep('upload');
+                setSuccess('Đã tự động điền thông tin thành công từ mã QR!');
+                setTimeout(() => setSuccess(null), 3000);
+              } else {
+                setQrError(res.message);
+              }
+            },
+            () => {}
+          );
+        } catch (startErr: any) {
+          console.error("Lỗi scanner:", startErr);
+          setQrError("Không thể mở camera. Vui lòng kiểm tra quyền truy cập camera trên trình duyệt.");
+        }
+      }, 500);
+    } catch (e) {
+      console.error("Lỗi nạp html5-qrcode:", e);
+      setQrError("Không thể tải thư viện quét QR. Kiểm tra lại mạng internet.");
+    }
+  };
+
+  const stopQrScanner = () => {
+    if (qrScannerRef.current) {
+      qrScannerRef.current.stop().then(() => {
+        qrScannerRef.current = null;
+      }).catch((err: any) => {
+        console.error("Lỗi dừng camera QR:", err);
+      });
+    }
+  };
 
   const startCamera = async () => {
     try {
@@ -905,6 +1073,17 @@ export const Profile = () => {
                         <div className="text-center max-w-md mx-auto">
                           <h4 className="font-bold text-white text-base">Bước 1: Tải ảnh Căn cước công dân</h4>
                           <p className="text-xs text-gray-500 mt-1">Vui lòng tải lên ảnh mặt trước và mặt sau rõ nét, không bị lóa sáng hay mất góc.</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEkycStep('qr_scan');
+                              startQrScanner();
+                            }}
+                            className="mt-3 px-4 py-2 border border-neon/30 hover:border-neon hover:bg-neon/10 text-neon text-xs font-bold rounded-lg uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 mx-auto"
+                          >
+                            <QrCode size={14} />
+                            Quét QR CCCD / GPLX điền nhanh
+                          </button>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -982,6 +1161,37 @@ export const Profile = () => {
                           >
                             Tiếp tục
                             <ArrowLeft size={14} className="rotate-180" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step QrScan: Camera quét mã QR */}
+                    {ekycStep === 'qr_scan' && (
+                      <div className="space-y-6 flex flex-col items-center">
+                        <div className="text-center max-w-md">
+                          <h4 className="font-bold text-white text-base">Quét mã QR trên CCCD / GPLX</h4>
+                          <p className="text-xs text-gray-500 mt-1">Đặt mã QR của thẻ nằm trong khung quét của camera để hệ thống nhận dạng.</p>
+                        </div>
+
+                        <div id="qr-reader" className="w-full max-w-sm h-64 bg-black border border-white/10 rounded-xl overflow-hidden relative shadow-inner"></div>
+
+                        {qrError && (
+                          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-2.5 rounded-lg text-xs font-semibold text-center w-full max-w-sm">
+                            {qrError}
+                          </div>
+                        )}
+
+                        <div className="pt-4 border-t border-white/5 w-full flex justify-between">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              stopQrScanner();
+                              setEkycStep('upload');
+                            }}
+                            className="bg-white/5 text-gray-400 hover:text-white border border-white/10 px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer"
+                          >
+                            Quay lại tải ảnh
                           </button>
                         </div>
                       </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, MapPin, ChevronDown } from 'lucide-react';
 import { motion } from 'motion/react';
-import { getAllMotorbikes, Motorbike } from '../services/vehicleService';
+import { getAllMotorbikes, getRecommendations, Motorbike } from '../services/vehicleService';
 import { BikeCard } from '../components/BikeCard';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -210,6 +210,60 @@ const BannerCTA = () => {
   );
 };
 
+const RecommendationsSection = () => {
+  const [recommendedBikes, setRecommendedBikes] = useState<Motorbike[]>([]);
+  const [reason, setReason] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        let token = undefined;
+        if (storedUser) {
+          token = JSON.parse(storedUser).token;
+        }
+        const res = await getRecommendations(token);
+        setRecommendedBikes(res.vehicles);
+        setReason(res.reason);
+      } catch (err) {
+        console.error('Error fetching recommendations:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecommendations();
+  }, []);
+
+  if (loading || recommendedBikes.length === 0) return null;
+
+  return (
+    <section className="py-16 border-b border-white/5 bg-gradient-to-b from-neon/0 to-neon/5 relative">
+      <div className="max-w-7xl mx-auto px-4 lg:px-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+          <div>
+            <span className="text-neon text-[10px] font-bold uppercase tracking-widest font-mono border border-neon/20 px-3 py-1.5 rounded-full bg-neon/5">
+              ✨ Gợi ý cá nhân hóa
+            </span>
+            <h2 className="font-display font-bold text-3xl text-white uppercase mt-4 tracking-tight">
+              Xe máy đề xuất cho bạn
+            </h2>
+            <p className="text-gray-400 mt-2 text-xs font-semibold font-mono">
+              {reason}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {recommendedBikes.slice(0, 3).map((bike, idx) => (
+            <BikeCard key={bike._id || idx} bike={bike} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 export const Home = () => {
   const [bikes, setBikes] = useState<Motorbike[]>([]);
 
@@ -228,6 +282,7 @@ export const Home = () => {
   return (
     <div className="flex-grow">
       <HeroSection />
+      <RecommendationsSection />
       {bikes.length > 0 && <PopularSection bikes={bikes} />}
       {bikes.length > 3 && <HighQualitySection bikes={bikes} />}
       <BannerCTA />
