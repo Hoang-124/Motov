@@ -7,6 +7,45 @@ import { feedbackService, FeedbackItem } from '../services/feedbackService';
 import { BikeCard } from '../components/BikeCard';
 import { useLanguage } from '../hooks/useLanguage';
 
+const translateCategory = (cat: string, t: any) => {
+  const c = (cat || '').toLowerCase().trim();
+  if (c === 'xe máy điện' || c === 'electric' || c === 'xe may dien') return t('categories.electric');
+  if (c === 'xe số' || c === 'manual' || c === 'xe so') return t('categories.manual');
+  if (c === 'xe ga' || c === 'scooter') return t('categories.scooter');
+  return cat;
+};
+
+const translateFeature = (feature: string, lang: string) => {
+  if (!feature) return '';
+  const f = feature.toLowerCase().trim();
+  if (lang === 'en') {
+    if (f.includes('quãng đường') || f.includes('quang duong')) {
+      return feature.replace(/quãng đường/i, 'Range').replace(/sạc/i, 'Charge');
+    }
+    if (f === 'pin lfp tiên tiến' || f === 'pin lfp tien tien') return 'Advanced LFP Battery';
+    if (f === 'chống nước ip67' || f === 'chong nuoc ip67') return 'IP67 Waterproof';
+    if (f.includes('tốc độ tối đa') || f.includes('toc do toi da')) {
+      return feature.replace(/tốc độ tối đa/i, 'Max Speed');
+    }
+    if (f === 'phanh abs an toàn') return 'ABS Safety Brakes';
+    if (f === 'khóa smartkey thông minh') return 'Smartkey System';
+    if (f === 'cốp xe rộng rãi') return 'Spacious Underseat Storage';
+  } else if (lang === 'ko') {
+    if (f.includes('quãng đường') || f.includes('quang duong')) {
+      return feature.replace(/quãng đường/i, '주행 거리').replace(/sạc/i, '충전');
+    }
+    if (f === 'pin lfp tiên tiến' || f === 'pin lfp tien tien') return '고성능 LFP 배터리';
+    if (f === 'chống nước ip67' || f === 'chong nuoc ip67') return 'IP67 방수 등급';
+    if (f.includes('tốc độ tối đa') || f.includes('toc do toi da')) {
+      return feature.replace(/tốc độ tối đa/i, '최고 속도');
+    }
+    if (f === 'phanh abs an toàn') return 'ABS 안전 브레이크';
+    if (f === 'khóa smartkey thông minh') return '스마트키 시스템';
+    if (f === 'cốp xe rộng rãi') return '넓은 수물함 공간';
+  }
+  return feature;
+};
+
 export const MotorbikeDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -114,7 +153,7 @@ export const MotorbikeDetail = () => {
 
   const ownerName = motorbike && typeof motorbike.ownerId !== 'string'
     ? `${motorbike.ownerId.firstName} ${motorbike.ownerId.lastName}`
-    : 'Unknown Owner';
+    : t('bikesPage.ownerNameUnknown');
 
   const imageUrl = motorbike?.imageUrls?.[0] || 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&q=80&w=1200';
 
@@ -138,7 +177,7 @@ export const MotorbikeDetail = () => {
             className="flex items-center gap-2 text-neon hover:text-white mb-6 transition-colors"
           >
             <ArrowLeft size={20} />
-            Back to Bikes
+            {t('bikesPage.backToBikes')}
           </button>
           <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 flex items-center gap-3">
             <AlertCircle size={24} className="text-red-500" />
@@ -158,7 +197,7 @@ export const MotorbikeDetail = () => {
           className="flex items-center gap-2 text-neon hover:text-white mb-8 transition-colors"
         >
           <ArrowLeft size={20} />
-          Back to Bikes
+          {t('bikesPage.backToBikes')}
         </button>
 
         {/* Main Content (2-Column Grid Layout) */}
@@ -182,10 +221,14 @@ export const MotorbikeDetail = () => {
                     ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
                     : 'bg-red-500/20 text-red-400 border-red-500/30'
                 }`}>
-                  {motorbike.status}
+                  {motorbike.status === 'Available' 
+                    ? (language === 'vi' ? 'Sẵn sàng' : language === 'ko' ? '대여 가능' : 'Available') 
+                    : motorbike.status === 'Rented' 
+                    ? (language === 'vi' ? 'Đang thuê' : language === 'ko' ? '대여 중' : 'Rented') 
+                    : (language === 'vi' ? 'Bảo trì' : language === 'ko' ? '정비 중' : 'Maintenance')}
                 </div>
                 <div className="bg-dark/70 backdrop-blur-md px-4 py-1.5 rounded-full font-semibold text-xs text-neon border border-neon/30">
-                  {typeof motorbike.category === 'object' && motorbike.category !== null ? (motorbike.category as any).name : motorbike.category}
+                  {translateCategory(typeof motorbike.category === 'object' && motorbike.category !== null ? (motorbike.category as any).name : motorbike.category, t)}
                 </div>
               </div>
 
@@ -217,20 +260,20 @@ export const MotorbikeDetail = () => {
                   <h1 className="font-display font-black text-3xl text-white mb-2 leading-tight">
                     {motorbike.vehicleModel}
                   </h1>
-                  <p className="text-gray-400 text-xs font-mono">License Plate: {motorbike.licensePlate}</p>
+                  <p className="text-gray-400 text-xs font-mono">{t('bikesPage.licensePlate')}: {motorbike.licensePlate}</p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-2xl font-black text-neon">
                     {motorbike.rentalPrice.toLocaleString()} VNĐ
                   </p>
-                  <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">per day</p>
+                  <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">{t('bikesPage.perDay')}</p>
                 </div>
               </div>
 
               {/* Owner Info Card */}
               <div className="bg-black/40 border border-gray-800/80 rounded-xl p-4 mb-6 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">CHỦ XE</p>
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">{t('bikesPage.ownerTitle')}</p>
                   <p className="text-white font-bold text-sm">{ownerName}</p>
                   {typeof motorbike.ownerId !== 'string' && motorbike.ownerId.phoneNumber && (
                     <p className="text-gray-400 text-xs mt-0.5">{motorbike.ownerId.phoneNumber}</p>
@@ -244,7 +287,7 @@ export const MotorbikeDetail = () => {
               {/* Description */}
               {motorbike.description && (
                 <div className="mb-6">
-                  <h2 className="text-xs text-neon uppercase font-black tracking-wider mb-2">Mô tả xe</h2>
+                  <h2 className="text-xs text-neon uppercase font-black tracking-wider mb-2">{t('bikesPage.description')}</h2>
                   <p className="text-gray-400 text-xs leading-relaxed">{motorbike.description}</p>
                 </div>
               )}
@@ -253,14 +296,14 @@ export const MotorbikeDetail = () => {
               <div className="grid grid-cols-2 gap-4 mb-6">
                 {/* Specifications */}
                 <div className="space-y-2.5 bg-black/25 p-4 rounded-xl border border-gray-800/40">
-                  <h3 className="text-[10px] text-white font-bold uppercase tracking-wider mb-1">Thông số</h3>
+                  <h3 className="text-[10px] text-white font-bold uppercase tracking-wider mb-1">{t('bikesPage.specs')}</h3>
                   <div className="flex items-center gap-2.5 text-xs text-gray-300">
                     <Users size={14} className="text-neon" />
-                    <span>{motorbike.seats} chỗ ngồi</span>
+                    <span>{language === 'vi' ? `${motorbike.seats} chỗ ngồi` : language === 'ko' ? `${motorbike.seats}인승` : `${motorbike.seats} seats`}</span>
                   </div>
                   <div className="flex items-center gap-2.5 text-xs text-gray-300">
                     <Zap size={14} className="text-neon" />
-                    <span>{motorbike.transmissionType}</span>
+                    <span>{motorbike.transmissionType === 'Manual' ? (language === 'vi' ? 'Xe số' : language === 'ko' ? '수동 (매뉴얼)' : 'Manual') : motorbike.transmissionType === 'Automatic' ? (language === 'vi' ? 'Xe ga' : language === 'ko' ? '자동 (스쿠터)' : 'Automatic') : motorbike.transmissionType}</span>
                   </div>
                   <div className="flex items-center gap-2.5 text-xs text-gray-300">
                     <MapPin size={14} className="text-neon" />
@@ -271,12 +314,12 @@ export const MotorbikeDetail = () => {
                 {/* Features */}
                 {motorbike.features && motorbike.features.length > 0 && (
                   <div className="space-y-2 bg-black/25 p-4 rounded-xl border border-gray-800/40">
-                    <h3 className="text-[10px] text-white font-bold uppercase tracking-wider mb-2">Đặc tính</h3>
+                    <h3 className="text-[10px] text-white font-bold uppercase tracking-wider mb-2">{t('bikesPage.features')}</h3>
                     <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
                       {motorbike.features.map((feature, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs text-gray-300">
                           <span className="w-1.5 h-1.5 rounded-full bg-neon shrink-0"></span>
-                          <span className="truncate">{feature}</span>
+                          <span className="truncate">{translateFeature(feature, language)}</span>
                         </div>
                       ))}
                     </div>
@@ -294,7 +337,7 @@ export const MotorbikeDetail = () => {
                     className="flex items-center justify-center gap-2 bg-blue-600/95 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors cursor-pointer"
                   >
                     <Edit2 size={14} />
-                    Sửa
+                    {t('bikesPage.edit')}
                   </button>
                   <button
                     onClick={handleOpenDeleteModal}
@@ -302,7 +345,7 @@ export const MotorbikeDetail = () => {
                     className="flex items-center justify-center gap-2 bg-red-600/95 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors cursor-pointer"
                   >
                     <Trash2 size={14} />
-                    {deleting ? 'Đang xóa...' : 'Xóa'}
+                    {deleting ? t('bikesPage.deleting') : t('bikesPage.delete')}
                   </button>
                 </>
               )}
@@ -330,7 +373,7 @@ export const MotorbikeDetail = () => {
                 onClick={() => navigate('/bikes')}
                 className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors cursor-pointer"
               >
-                Back to Listing
+                {t('bikesPage.backToListing')}
               </button>
             </div>
           </div>
@@ -342,7 +385,8 @@ export const MotorbikeDetail = () => {
         {relatedBikes.length > 0 && (
           <div className="mt-12">
             <h2 className="font-display font-black text-2xl text-neon uppercase mb-6 tracking-tight flex items-center gap-2">
-              🏍️ Xe tương tự
+              <Sparkles size={20} className="text-neon" />
+              {t('bikesPage.relatedBikes')}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {relatedBikes.map((bike) => (
@@ -355,13 +399,17 @@ export const MotorbikeDetail = () => {
         <div className="mt-12 bg-surface border border-gray-800 rounded-2xl p-6 md:p-8">
           <h2 className="font-display font-black text-2xl text-neon uppercase mb-6 tracking-tight flex items-center gap-2">
             <Star size={24} className="fill-neon text-neon" />
-            Đánh giá từ khách hàng ({feedbacks.length})
+            {t('bikesPage.customerReviews')} ({feedbacks.length})
           </h2>
 
           {feedbacks.length === 0 ? (
             <div className="text-center py-10 bg-black/20 rounded-xl border border-white/5">
-              <p className="text-gray-500 text-sm">Chưa có đánh giá nào cho xe này.</p>
-              <p className="text-xs text-gray-600 mt-1">Hãy thuê xe và là người đầu tiên để lại phản hồi!</p>
+              <p className="text-gray-500 text-sm">
+                {language === 'vi' ? 'Chưa có đánh giá nào cho xe này.' : language === 'ko' ? '이 차량에 대한 이용 후기가 없습니다.' : 'No reviews yet for this vehicle.'}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                {language === 'vi' ? 'Hãy thuê xe và là người đầu tiên để lại phản hồi!' : language === 'ko' ? '대여 후 첫 번째로 후기를 작성해보세요!' : 'Rent this bike and be the first to leave feedback!'}
+              </p>
             </div>
           ) : (
             <div className="space-y-6">
@@ -383,7 +431,9 @@ export const MotorbikeDetail = () => {
                       );
                     })}
                   </div>
-                  <span className="text-xs text-gray-500 block mt-0.5">Điểm đánh giá trung bình</span>
+                  <span className="text-xs text-gray-500 block mt-0.5">
+                    {language === 'vi' ? 'Điểm đánh giá trung bình' : language === 'ko' ? '평균 평점' : 'Average Rating'}
+                  </span>
                 </div>
               </div>
 
@@ -402,7 +452,7 @@ export const MotorbikeDetail = () => {
                         </div>
                         <div>
                           <span className="text-xs font-bold text-white block">
-                            {fb.userId ? `${fb.userId.lastName} ${fb.userId.firstName}` : 'Ẩn danh'}
+                            {fb.userId ? `${fb.userId.lastName} ${fb.userId.firstName}` : (language === 'vi' ? 'Ẩn danh' : language === 'ko' ? '익명' : 'Anonymous')}
                           </span>
                           <span className="text-[10px] text-gray-500 block font-mono">@{fb.userId?.username}</span>
                         </div>
@@ -462,22 +512,25 @@ export const MotorbikeDetail = () => {
               </button>
 
               <h3 className="font-display font-black text-xl text-red-500 uppercase mb-4 flex items-center gap-2">
-                🗑️ Delete Motorbike
+                <Trash2 size={20} />
+                {t('bikesPage.delete')}
               </h3>
 
               <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-xs text-red-400 mb-4 flex items-start gap-2.5">
                 <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
                 <p>
-                  This action cannot be undone. The motorbike will be permanently removed from the system.
+                  {language === 'vi' ? 'Hành động này không thể hoàn tác. Xe sẽ bị xóa vĩnh viễn khỏi hệ thống.' : language === 'ko' ? '이 작업은 취소할 수 없습니다. 오토바이가 시스템에서 영구적으로 삭제됩니다.' : 'This action cannot be undone. The motorbike will be permanently removed.'}
                 </p>
               </div>
 
               <div className="space-y-2 mb-6">
-                <p className="text-sm text-gray-300">You are about to delete:</p>
+                <p className="text-sm text-gray-300">
+                  {language === 'vi' ? 'Bạn chuẩn bị xóa:' : language === 'ko' ? '삭제하려는 차량:' : 'You are about to delete:'}
+                </p>
                 <div className="bg-black/35 p-3 rounded-lg border border-white/5">
                   <div className="font-bold text-white text-sm mb-1">{motorbike.vehicleModel}</div>
-                  <div className="text-xs text-gray-400 font-mono">License Plate: {motorbike.licensePlate}</div>
-                  <div className="text-xs text-gray-400 font-mono">Category: {typeof motorbike.category === 'object' && motorbike.category !== null ? (motorbike.category as any).name : motorbike.category}</div>
+                  <div className="text-xs text-gray-400 font-mono">{t('bikesPage.licensePlate')}: {motorbike.licensePlate}</div>
+                  <div className="text-xs text-gray-400 font-mono">{t('bikesPage.categoryFilter')} {translateCategory(typeof motorbike.category === 'object' && motorbike.category !== null ? (motorbike.category as any).name : motorbike.category, t)}</div>
                 </div>
               </div>
 
@@ -488,7 +541,7 @@ export const MotorbikeDetail = () => {
                   disabled={deleting}
                   className="px-4 py-2 bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 hover:text-white rounded-lg transition-all text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
                 >
-                  Cancel
+                  {language === 'vi' ? 'Hủy' : language === 'ko' ? '취소' : 'Cancel'}
                 </button>
                 <button
                   type="button"
@@ -496,7 +549,7 @@ export const MotorbikeDetail = () => {
                   disabled={deleting}
                   className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(239,68,68,0.2)] cursor-pointer disabled:opacity-50"
                 >
-                  {deleting ? 'Deleting...' : 'Delete Permanently'}
+                  {deleting ? t('bikesPage.deleting') : (language === 'vi' ? 'Xóa Vĩnh Viễn' : language === 'ko' ? '영구 삭제' : 'Delete Permanently')}
                 </button>
               </div>
             </motion.div>
