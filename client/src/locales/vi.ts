@@ -61,6 +61,8 @@ export const vi = {
     myBookings: 'Đơn Thuê Của Tôi',
     dashboard: 'Thống Kê',
     manageBikes: 'Quản Lý Xe',
+    manageCategories: 'Quản Lý Danh Mục',
+    manageInventory: 'Quản Lý Kho',
     allBookings: 'Đơn Toàn Hệ Thống',
     roles: 'Phân Quyền',
     feedbacks: 'Quản Lý Đánh Giá',

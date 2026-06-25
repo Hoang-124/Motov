@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import { Vehicle, IVehicle } from '../models/Vehicle.js';
 import { User } from '../models/User.js';
+import { Category } from '../models/Category.js';
 import mongoose from 'mongoose';
 import { Notification } from '../models/Notification.js';
+import { Booking } from '../models/Booking.js';
 
 // Type for authenticated request
 interface AuthRequest extends Request {
@@ -24,8 +26,11 @@ const validateVehicleInput = (data: any) => {
   if (!data.licensePlate || data.licensePlate.trim() === '') {
     errors.push('License plate is required');
   }
-  if (!data.category || data.category.trim() === '') {
+  const categoryStr = data.category ? data.category.toString().trim() : '';
+  if (!categoryStr) {
     errors.push('Category is required');
+  } else if (!mongoose.Types.ObjectId.isValid(categoryStr)) {
+    errors.push('Invalid Category ID');
   }
   if (!data.transmissionType) {
     errors.push('Transmission type is required');
@@ -55,6 +60,7 @@ export const getAllVehicles = async (req: AuthRequest, res: Response) => {
 
     const vehicles = await Vehicle.find(filter)
       .populate('ownerId', 'firstName lastName email phoneNumber avatarUrl')
+      .populate('category')
       .sort(sortBy as string)
       .lean();
 
@@ -87,7 +93,8 @@ export const getVehicleById = async (req: AuthRequest, res: Response) => {
     }
 
     const vehicle = await Vehicle.findById(id)
-      .populate('ownerId', 'firstName lastName email phoneNumber avatarUrl');
+      .populate('ownerId', 'firstName lastName email phoneNumber avatarUrl')
+      .populate('category');
 
     if (!vehicle) {
       return res.status(404).json({
@@ -144,6 +151,15 @@ export const createVehicle = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Check if category exists
+    const categoryExists = await Category.findById(category);
+    if (!categoryExists) {
+      return res.status(400).json({
+        success: false,
+        error: 'Selected Category does not exist'
+      });
+    }
+
     // Create new vehicle
     // If staff/admin provides ownerId, use it; otherwise set as system vehicle
     const newVehicle = new Vehicle({
@@ -164,6 +180,7 @@ export const createVehicle = async (req: AuthRequest, res: Response) => {
 
     // Populate owner info
     await newVehicle.populate('ownerId', 'firstName lastName email phoneNumber avatarUrl');
+    await newVehicle.populate('category');
 
     res.status(201).json({
       success: true,
@@ -242,6 +259,17 @@ export const updateVehicle = async (req: AuthRequest, res: Response) => {
           });
         }
       }
+
+      // Check if updated category exists
+      if (updateData.category && updateData.category !== vehicle.category.toString()) {
+        const categoryExists = await Category.findById(updateData.category);
+        if (!categoryExists) {
+          return res.status(400).json({
+            success: false,
+            error: 'Selected Category does not exist'
+          });
+        }
+      }
     }
 
     // Update allowed fields
@@ -254,6 +282,7 @@ export const updateVehicle = async (req: AuthRequest, res: Response) => {
 
     await vehicle.save();
     await vehicle.populate('ownerId', 'firstName lastName email phoneNumber avatarUrl');
+    await vehicle.populate('category');
 
     res.json({
       success: true,
@@ -334,6 +363,7 @@ export const getOwnerVehicles = async (req: AuthRequest, res: Response) => {
 
     const vehicles = await Vehicle.find({ ownerId })
       .populate('ownerId', 'firstName lastName email phoneNumber')
+      .populate('category')
       .sort('-createdAt')
       .lean();
 
@@ -414,6 +444,7 @@ export const updateVehicleStatus = async (req: AuthRequest, res: Response) => {
     vehicle.status = status;
     await vehicle.save();
     await vehicle.populate('ownerId', 'firstName lastName email phoneNumber');
+    await vehicle.populate('category');
 
     // Tạo thông báo cho Chủ xe nếu xe được phê duyệt hoặc thay đổi tình trạng hoạt động
     try {
@@ -509,5 +540,262 @@ export const checkLowAvailabilityAlert = async (vehicleModel: string, ownerId: a
     }
   } catch (err) {
     console.error('Error checking low availability alert:', err);
+  }
+};
+
+/**
+ * Reset vehicle maintenance status (Admin/Staff/Owner of vehicle)
+ * PUT /api/vehicles/:id/maintenance-reset
+ */
+export const resetMaintenance = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const userRoles = req.user?.roles || [];
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'ID xe không hợp lệ' });
+    }
+
+    const vehicle = await Vehicle.findById(id);
+    if (!vehicle) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy xe máy' });
+    }
+
+    // Check authorization: Admin, Staff, or Owner of the vehicle
+    const isOwner = vehicle.ownerId.toString() === userId;
+    const isAdminOrStaff = userRoles.includes('Admin') || userRoles.includes('Staff');
+
+    if (!isOwner && !isAdminOrStaff) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện hành động này' });
+    }
+
+    // Reset cờ bảo dưỡng
+    vehicle.lastMaintenanceOdometer = vehicle.odometer;
+    vehicle.requiresMaintenance = false;
+    
+    // Nếu xe đang ở trạng thái Bảo trì, tự động cho hoạt động trở lại
+    if (vehicle.status === 'Maintenance') {
+      vehicle.status = 'Available';
+    }
+
+    await vehicle.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Đặt lại chu kỳ bảo dưỡng và tắt cảnh báo thành công',
+      data: vehicle
+    });
+  } catch (error: any) {
+    console.error('Error resetting maintenance:', error);
+    res.status(500).json({ success: false, error: 'Thao tác đặt lại bảo dưỡng thất bại' });
+  }
+};
+
+/**
+ * Get recommended vehicles for current user based on preferences/rental history,
+ * or general popular/top rated vehicles for new users.
+ * GET /api/vehicles/recommendations
+ */
+export const getRecommendations = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    
+    let recommendedVehicles: any[] = [];
+    let reason = 'Được nhiều người dùng yêu thích';
+
+    if (userId) {
+      // 1. Tìm lịch sử đơn thuê Completed hoặc Ongoing của user
+      const userBookings = await Booking.find({
+        userId,
+        status: { $in: ['Completed', 'Ongoing'] }
+      }).populate('vehicleId');
+
+      if (userBookings && userBookings.length > 0) {
+        // Gom các Category và TransmissionType của các xe đã thuê
+        const categoriesCount: Record<string, number> = {};
+        const transmissionCount: Record<string, number> = {};
+        let totalRentalPrice = 0;
+        let rentedCount = 0;
+
+        for (const booking of userBookings) {
+          const v = booking.vehicleId as any;
+          if (v) {
+            const catId = v.category ? v.category.toString() : '';
+            if (catId) categoriesCount[catId] = (categoriesCount[catId] || 0) + 1;
+            
+            const trans = v.transmissionType;
+            if (trans) transmissionCount[trans] = (transmissionCount[trans] || 0) + 1;
+            
+            totalRentalPrice += v.rentalPrice || 0;
+            rentedCount++;
+          }
+        }
+
+        // Tìm Category và Transmission Type thuê nhiều nhất
+        let favCategory = '';
+        let maxCat = 0;
+        for (const cat in categoriesCount) {
+          if (categoriesCount[cat] > maxCat) {
+            maxCat = categoriesCount[cat];
+            favCategory = cat;
+          }
+        }
+
+        let favTransmission = '';
+        let maxTrans = 0;
+        for (const trans in transmissionCount) {
+          if (transmissionCount[trans] > maxTrans) {
+            maxTrans = transmissionCount[trans];
+            favTransmission = trans;
+          }
+        }
+
+        // Truy vấn các xe phù hợp sở thích:
+        // Cùng category hoặc cùng loại hộp số, đang Available, không phải của chính mình (nếu mình là owner),
+        // và loại trừ các xe đang thuê
+        const rentedVehicleIds = userBookings.map(b => b.vehicleId.toString());
+
+        const query: any = {
+          status: 'Available',
+          _id: { $nin: rentedVehicleIds }
+        };
+
+        // Ưu tiên sở thích
+        const orConditions: any[] = [];
+        if (favCategory) orConditions.push({ category: favCategory });
+        if (favTransmission) orConditions.push({ transmissionType: favTransmission });
+        
+        if (orConditions.length > 0) {
+          query.$or = orConditions;
+        }
+
+        recommendedVehicles = await Vehicle.find(query)
+          .populate('category', 'name')
+          .limit(5);
+
+        if (favTransmission) {
+          const transLabel = favTransmission === 'Manual' ? 'xe số' : favTransmission === 'Automatic' ? 'xe ga' : 'xe côn tay';
+          reason = `Gợi ý theo sở thích chạy ${transLabel} của bạn`;
+        } else if (favCategory) {
+          reason = `Dòng xe tương tự các chuyến đi trước của bạn`;
+        }
+      }
+    }
+
+    // 2. Fallback: Nếu không tìm được đề xuất theo sở thích (hoặc khách chưa đăng nhập / khách mới)
+    if (recommendedVehicles.length === 0) {
+      // Đề xuất các xe phổ biến nhất: Tìm các xe có lượt thuê nhiều nhất trong Booking
+      const popularVehiclesGroup = await Booking.aggregate([
+        { $match: { status: 'Completed' } },
+        { $group: { _id: '$vehicleId', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]);
+
+      const popularIds = popularVehiclesGroup.map(g => g._id);
+
+      if (popularIds.length > 0) {
+        recommendedVehicles = await Vehicle.find({
+          _id: { $in: popularIds },
+          status: 'Available'
+        })
+        .populate('category', 'name')
+        .limit(5);
+        
+        reason = 'Dòng xe phổ biến có lượt thuê cao nhất';
+      }
+
+      // Nếu vẫn chưa có (ví dụ hệ thống chưa có booking nào), lấy các xe có điểm đánh giá rating cao nhất hoặc xe ngẫu nhiên
+      if (recommendedVehicles.length === 0) {
+        // Tìm xe Available ngẫu nhiên/mới nhất
+        recommendedVehicles = await Vehicle.find({ status: 'Available' })
+          .populate('category', 'name')
+          .sort({ createdAt: -1 })
+          .limit(5);
+
+        reason = 'Các dòng xe máy mới nổi bật của hệ thống';
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      reason,
+      vehicles: recommendedVehicles
+    });
+  } catch (error: any) {
+    console.error('Error fetching recommended vehicles:', error);
+    res.status(500).json({ success: false, error: 'Không thể lấy danh sách đề xuất xe' });
+  }
+};
+
+// Tính khoảng cách Haversine (km)
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // Bán kính Trái Đất (km)
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Khoảng cách (km)
+};
+
+// Lấy danh sách xe máy gần vị trí khách hàng
+export const getNearbyVehicles = async (req: AuthRequest, res: Response) => {
+  try {
+    const { lat, lng, radius } = req.query;
+    const latitude = parseFloat(lat as string);
+    const longitude = parseFloat(lng as string);
+    const radiusInMeters = radius ? parseInt(radius as string) : 5000; // Mặc định 5km
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      return res.status(400).json({ success: false, message: 'Tọa độ vị trí khách hàng không hợp lệ' });
+    }
+
+    // Tìm các xe Available gần nhất trong bán kính bằng GeoJSON $near
+    const vehicles = await Vehicle.find({
+      status: 'Available',
+      location: {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [longitude, latitude] // [longitude, latitude]
+          },
+          $maxDistance: radiusInMeters
+        }
+      }
+    })
+    .populate('ownerId', 'firstName lastName email phoneNumber avatarUrl')
+    .populate('category')
+    .lean();
+
+    // Map thêm khoảng cách thực tế tính bằng km
+    const formattedVehicles = vehicles.map((v: any) => {
+      const vLng = v.location?.coordinates?.[0] ?? 108.22;
+      const vLat = v.location?.coordinates?.[1] ?? 16.068;
+      const distance = getDistance(latitude, longitude, vLat, vLng);
+      return {
+        ...v,
+        distance: parseFloat(distance.toFixed(2)) // làm tròn 2 số thập phân
+      };
+    });
+
+    // Sắp xếp khoảng cách tăng dần
+    formattedVehicles.sort((a, b) => a.distance - b.distance);
+
+    res.status(200).json({
+      success: true,
+      data: formattedVehicles,
+      count: formattedVehicles.length
+    });
+  } catch (error: any) {
+    console.error('Lỗi khi lấy danh sách xe máy gần nhất:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tìm kiếm danh sách xe máy gần đây.',
+      error: error.message
+    });
   }
 };

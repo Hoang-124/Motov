@@ -26,6 +26,7 @@ export const Bookings = () => {
   // State cho Modal trả xe
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [activeReturnBooking, setActiveReturnBooking] = useState<Booking | null>(null);
+  const [endOdometerInput, setEndOdometerInput] = useState('');
 
   // State cho Modal hủy đơn
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -149,6 +150,7 @@ export const Bookings = () => {
   // Hàm mở Modal trả xe
   const openReturnModal = (booking: Booking) => {
     setActiveReturnBooking(booking);
+    setEndOdometerInput(booking.startOdometer ? booking.startOdometer.toString() : '');
     setShowReturnModal(true);
   };
 
@@ -156,9 +158,41 @@ export const Bookings = () => {
   const handleReturnBookingSubmit = async () => {
     if (!activeReturnBooking) return;
 
+    if (!endOdometerInput.trim()) {
+      showToast(
+        language === 'vi' 
+          ? 'Vui lòng nhập số Odometer hiện tại của xe máy!' 
+          : 'Please enter the current Odometer of the motorbike!', 
+        'warning'
+      );
+      return;
+    }
+
+    const endOdoVal = Number(endOdometerInput);
+    if (isNaN(endOdoVal) || endOdoVal < 0) {
+      showToast(
+        language === 'vi' 
+          ? 'Số Odometer không hợp lệ (phải là số không âm)!' 
+          : 'Invalid Odometer reading (must be a non-negative number)!', 
+        'warning'
+      );
+      return;
+    }
+
+    const startOdoVal = activeReturnBooking.startOdometer || 0;
+    if (endOdoVal < startOdoVal) {
+      showToast(
+        language === 'vi' 
+          ? `Số Odometer trả xe (${endOdoVal} km) không được nhỏ hơn số Odometer lúc nhận (${startOdoVal} km)!` 
+          : `End Odometer (${endOdoVal} km) cannot be smaller than start Odometer (${startOdoVal} km)!`, 
+        'warning'
+      );
+      return;
+    }
+
     try {
       setLoading(true);
-      await bookingService.returnMotorbike(activeReturnBooking.id, new Date().toISOString());
+      await bookingService.returnMotorbike(activeReturnBooking.id, new Date().toISOString(), endOdoVal);
       showToast(t('myBookingsPage.returnSuccess'), 'success');
       setShowReturnModal(false);
       // Tải lại danh sách mới từ Server
@@ -569,6 +603,26 @@ export const Bookings = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Nhập số Odometer khi trả xe */}
+                  <div className="space-y-2 bg-black/20 p-4 rounded-xl border border-white/5">
+                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wide block">
+                      {language === 'vi' ? 'Số Odometer hiện tại (km)' : 'Current Odometer (km)'} <span className="text-neon">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={activeReturnBooking.startOdometer || 0}
+                      placeholder={language === 'vi' ? `Nhập số km hiện tại (>= ${activeReturnBooking.startOdometer || 0} km)` : `Enter current km (>= ${activeReturnBooking.startOdometer || 0} km)`}
+                      value={endOdometerInput}
+                      onChange={(e) => setEndOdometerInput(e.target.value)}
+                      className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-2.5 outline-none transition-all font-mono"
+                    />
+                    <div className="flex justify-between text-[10px] text-gray-500 font-mono">
+                      <span>{language === 'vi' ? 'Odometer lúc nhận:' : 'Odometer at pickup:'}</span>
+                      <span>{activeReturnBooking.startOdometer || 0} km</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5 mt-5">

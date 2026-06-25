@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare, Globe } from 'lucide-react';
+import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare, Globe, Folder, Archive } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { notificationService, NotificationItem } from '../services/notificationService.js';
 import { useLanguage } from '../hooks/useLanguage';
@@ -265,45 +265,8 @@ export const Header = () => {
     window.location.reload();
   };
 
-  const handleBecomeOwner = async () => {
-    const confirmBecome = window.confirm(
-      "Bạn có chắc chắn muốn gửi yêu cầu đăng ký làm chủ xe đối tác của Motov không? Yêu cầu của bạn sẽ được nhân viên xét duyệt."
-    );
-    if (!confirmBecome) return;
-
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) return;
-      
-      const { token } = JSON.parse(storedUser);
-
-      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${apiBaseUrl}/auth/become-owner`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const data = await response.json();
-      if (response.ok && data.success) {
-        alert("Đăng ký làm đối tác chủ xe thành công! Vui lòng chờ nhân viên phê duyệt.");
-        
-        // Cập nhật trạng thái chờ duyệt vào user local
-        const parsedUser = JSON.parse(storedUser);
-        parsedUser.ownerRequestStatus = 'Pending';
-        localStorage.setItem('user', JSON.stringify(parsedUser));
-        setUser(parsedUser);
-        
-        window.location.reload();
-      } else {
-        alert(data.message || "Có lỗi xảy ra trong quá trình đăng ký.");
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
-    }
+  const handleBecomeOwner = () => {
+    navigate('/profile', { state: { scrollToOwner: true } });
   };
 
   const isActive = (path: string) => location.pathname === path;
@@ -322,6 +285,8 @@ export const Header = () => {
       return [
         { path: '/admin/dashboard', label: t('nav.dashboard') },
         { path: '/admin/bikes', label: t('nav.manageBikes') },
+        { path: '/admin/categories', label: t('nav.manageCategories') || 'Quản lý danh mục' },
+        { path: '/admin/inventory', label: t('nav.manageInventory') || 'Quản lý kho' },
         { path: '/admin/bookings', label: t('nav.allBookings') },
         { path: '/admin/users', label: t('nav.roles') },
         { path: '/admin/promotions', label: t('nav.promotions') },
@@ -334,6 +299,7 @@ export const Header = () => {
       return [
         { path: '/staff/bookings', label: t('nav.approveBookings') },
         { path: '/staff/bikes', label: t('nav.bikeStatus') },
+        { path: '/admin/inventory', label: t('nav.manageInventory') || 'Quản lý kho' },
       ];
     }
 
@@ -780,6 +746,10 @@ export const Header = () => {
                             <BookOpen size={15} />
                             <span>{t('nav.bikeStatus')}</span>
                           </Link>
+                          <Link to="/admin/inventory" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <Archive size={15} />
+                            <span>Quản lý kho</span>
+                          </Link>
                         </>
                       )}
 
@@ -793,6 +763,10 @@ export const Header = () => {
                           <Link to="/admin/bikes" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <BookOpen size={15} />
                             <span>{t('nav.manageBikes')}</span>
+                          </Link>
+                          <Link to="/admin/categories" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <Folder size={15} />
+                            <span>Quản lý danh mục</span>
                           </Link>
                           <Link to="/admin/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <ClipboardList size={15} />
@@ -809,6 +783,10 @@ export const Header = () => {
                           <Link to="/admin/feedbacks" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                             <MessageSquare size={15} />
                             <span>{t('nav.feedbacks')}</span>
+                          </Link>
+                          <Link to="/admin/inventory" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
+                            <Archive size={15} />
+                            <span>Quản lý kho</span>
                           </Link>
                         </>
                       )}

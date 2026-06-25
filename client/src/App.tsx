@@ -6,6 +6,7 @@ import { LanguageProvider } from './hooks/useLanguage';
 import { ToastProvider } from './hooks/useToast';
 import { Home } from './pages/Home';
 import { Bikes } from './pages/Bikes';
+import { BikesMap } from './pages/BikesMap';
 import { MotorbikeDetail } from './pages/MotorbikeDetail';
 import { MotorbikeForm } from './pages/MotorbikeForm';
 import { Booking } from './pages/Booking';
@@ -37,6 +38,8 @@ import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminPromotions } from './pages/admin/AdminPromotions';
 import { AdminFeedbacks } from './pages/admin/AdminFeedbacks';
 import { AdminSettings } from './pages/admin/AdminSettings';
+import { AdminCategories } from './pages/admin/AdminCategories';
+import { InventoryManagement } from './pages/admin/InventoryManagement';
 
 // Route Guard component
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: ('customer' | 'staff' | 'admin' | 'owner')[] }) => {
@@ -71,6 +74,7 @@ export default function App() {
               {/* Public Routes */}
               <Route path="/" element={<Home />} />
               <Route path="/bikes" element={<Bikes />} />
+              <Route path="/bikes-map" element={<BikesMap />} />
               <Route path="/motorbike/new" element={
                 <ProtectedRoute allowedRoles={['staff', 'admin']}>
                   <MotorbikeForm />
@@ -182,6 +186,16 @@ export default function App() {
               <Route path="/admin/settings" element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminSettings />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/categories" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminCategories />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/inventory" element={
+                <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                  <InventoryManagement />
                 </ProtectedRoute>
               } />
               <Route path="/promotions" element={<Promotions />} />

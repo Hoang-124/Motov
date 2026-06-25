@@ -5,8 +5,10 @@ import {
   updateMotorbike,
   deleteMotorbike,
   updateMotorbikeStatus,
+  resetMaintenance,
   Motorbike
 } from '../../services/vehicleService';
+import { getAllCategories, Category } from '../../services/categoryService';
 import { Plus, Edit2, Trash2, X, AlertCircle, Sparkles, User, Check, RefreshCw, Loader } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -22,7 +24,8 @@ export const AdminBikes = () => {
   // Form fields
   const [vehicleModel, setVehicleModel] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
-  const [category, setCategory] = useState('Scooter');
+  const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
   const [imageUrlsInput, setImageUrlsInput] = useState('');
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [featuresInput, setFeaturesInput] = useState('');
@@ -64,11 +67,23 @@ export const AdminBikes = () => {
     loadBikes();
   }, [filterStatus]);
 
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await getAllCategories();
+        setCategories(data);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   const openAddModal = () => {
     setCurrentBike(null);
     setVehicleModel('');
     setLicensePlate('');
-    setCategory('Scooter');
+    setCategory('');
     setImageUrls([DEFAULT_IMAGE]);
     setImageUrlsInput('');
     setFeatures(['Bảo hiểm dân sự', 'Smartkey', 'Cốp rộng']);
@@ -85,7 +100,7 @@ export const AdminBikes = () => {
     setCurrentBike(bike);
     setVehicleModel(bike.vehicleModel);
     setLicensePlate(bike.licensePlate);
-    setCategory(bike.category);
+    setCategory(typeof bike.category === 'object' && bike.category !== null ? (bike.category as any)._id : bike.category || '');
     setImageUrls(bike.imageUrls || []);
     setImageUrlsInput('');
     setFeatures(bike.features || []);
@@ -145,6 +160,25 @@ export const AdminBikes = () => {
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setErrorMessage(err.message || 'Lỗi khi phê duyệt xe. Vui lòng thử lại.');
+      setTimeout(() => setErrorMessage(null), 3000);
+    }
+  };
+
+  const handleResetMaintenance = async (id: string) => {
+    try {
+      const token = localStorage.getItem('token') || '';
+
+      if (!token) {
+        setErrorMessage('Bạn cần đăng nhập để thực hiện.');
+        return;
+      }
+
+      await resetMaintenance(id, token);
+      setSuccessMessage('Xác nhận bảo dưỡng xe thành công! Chu kỳ Odometer đã được đặt lại.');
+      await loadBikes();
+      setTimeout(() => setSuccessMessage(null), 3500);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Lỗi khi xác nhận bảo dưỡng xe.');
       setTimeout(() => setErrorMessage(null), 3000);
     }
   };
@@ -385,11 +419,18 @@ export const AdminBikes = () => {
                             </span>
                           )}
                         </div>
-                        <span className="text-[10px] text-gray-500 font-mono block mt-1">Biển số: {bike.licensePlate}</span>
+                        <span className="text-[10px] text-gray-500 font-mono block mt-1">
+                          Biển số: {bike.licensePlate} • Odo: {bike.odometer?.toLocaleString('vi-VN')} km
+                        </span>
+                        {bike.requiresMaintenance && (
+                          <span className="px-2 py-0.5 rounded text-[10px] bg-red-500/10 text-red-400 border border-red-500/25 font-bold shrink-0 inline-flex items-center gap-1 mt-1.5 animate-pulse">
+                            🚨 Cần bảo dưỡng
+                          </span>
+                        )}
                       </td>
                       <td className="py-4 px-6">
                         <span className="px-2.5 py-0.5 rounded text-xs bg-black text-neon border border-neon/15 whitespace-nowrap">
-                          {bike.category}
+                          {typeof bike.category === 'object' && bike.category !== null ? (bike.category as any).name : bike.category}
                         </span>
                       </td>
                       <td className="py-4 px-6">
@@ -429,6 +470,15 @@ export const AdminBikes = () => {
                               title="Phê duyệt xe hoạt động"
                             >
                               <Check size={14} />
+                            </button>
+                          )}
+                          {bike.requiresMaintenance && (
+                            <button
+                              onClick={() => handleResetMaintenance(bike._id!)}
+                              className="p-2 rounded bg-black hover:bg-neon/10 text-neon border border-gray-800 hover:border-neon/30 transition-all cursor-pointer"
+                              title="Xác nhận đã bảo dưỡng (Reset Odometer)"
+                            >
+                              <RefreshCw size={14} />
                             </button>
                           )}
                           <button
@@ -528,11 +578,12 @@ export const AdminBikes = () => {
                         onChange={e => setCategory(e.target.value)}
                         className="w-full bg-black/50 border border-gray-800 text-gray-300 rounded-lg p-3 outline-none focus:ring-1 focus:ring-neon focus:border-transparent transition-all cursor-pointer"
                       >
-                        <option value="Scooter">Scooter (Xe ga)</option>
-                        <option value="Classic">Classic (Cổ điển)</option>
-                        <option value="Sport">Sport (Thể thao)</option>
-                        <option value="Sport Cafe">Sport Cafe</option>
-                        <option value="Underbone">Underbone (Xe số côn tay)</option>
+                        <option value="" className="text-gray-500">-- Chọn phân loại --</option>
+                        {categories.map((cat) => (
+                          <option key={cat._id} value={cat._id} className="text-white bg-dark">
+                            {cat.name}
+                          </option>
+                        ))}
                       </select>
                     </div>
 

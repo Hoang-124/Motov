@@ -17,6 +17,9 @@ import promotionRoutes from './routes/promotionRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import inventoryRoutes from './routes/inventoryRoutes.js';
+import { Category } from './models/Category.js';
 import { authMiddleware } from './middlewares/authMiddleware.js';
 import { initBookingReminderScheduler } from './utils/bookingReminderScheduler.js';
 import { Discount } from './models/Discount.js';
@@ -75,6 +78,8 @@ app.use('/api/promotions', promotionRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/feedbacks', feedbackRoutes);
 app.use('/api/system', systemRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
 // Routes quản lý xe (Vehicle/Bike Management APIs)
 app.use('/api/vehicles', vehicleRoutes);
@@ -220,7 +225,9 @@ async function seedVehicles() {
       return;
     }
 
-    const seededVehicles = BIKES.map((bike, idx) => {
+    const seededVehicles = [];
+    for (let idx = 0; idx < BIKES.length; idx++) {
+      const bike = BIKES[idx];
       let transmissionType: 'Manual' | 'Automatic' | 'Semi-Automatic' = 'Automatic';
       if (bike.type === 'Xe Côn Tay' || bike.type === 'Sport' || bike.type === 'Cruiser' || bike.type === 'Classic' || bike.type === 'Sport Cafe') {
         transmissionType = 'Manual';
@@ -239,7 +246,15 @@ async function seedVehicles() {
         `${BASE_URL}/${num}_4.jpg.png`
       ];
 
-      return {
+      const catDoc = await Category.findOne({ name: bike.type });
+
+      // Tọa độ ngẫu nhiên xung quanh thành phố Đà Nẵng (lat 16.068, lng 108.22)
+      const baseLat = 16.068;
+      const baseLng = 108.22;
+      const latOffset = (Math.random() - 0.5) * 0.06; // ±0.03
+      const lngOffset = (Math.random() - 0.5) * 0.06; // ±0.03
+
+      seededVehicles.push({
         ownerId: ownerUser._id,
         vehicleModel: bike.name,
         licensePlate: `43-C1 ${String(10000 + idx).slice(0, 5)}`,
@@ -247,17 +262,114 @@ async function seedVehicles() {
         odometer: Math.floor(1000 + Math.random() * 10000),
         rentalPrice,
         status: 'Available',
-        category: bike.type,
+        category: catDoc ? catDoc._id : null,
         transmissionType,
         imageUrls,
-        features: bike.specs
-      };
-    });
+        features: bike.specs,
+        location: {
+          type: 'Point',
+          coordinates: [baseLng + lngOffset, baseLat + latOffset] // [longitude, latitude]
+        }
+      });
+    }
 
     await Vehicle.insertMany(seededVehicles);
     console.log(`✅ Seeded ${seededVehicles.length} vehicles successfully into MongoDB!`);
   } catch (err) {
     console.error('❌ Lỗi khi seed xe mẫu:', err);
+  }
+}
+
+async function seedCategories() {
+  try {
+    const staticCategories = Array.from(new Set(BIKES.map(b => b.type)));
+    
+    // Check if any existing vehicles have text categories to seed
+    const existingVehicles = await Vehicle.find();
+    const dbCategories: string[] = [];
+    for (const v of existingVehicles) {
+      if (typeof v.category === 'string' && !mongoose.Types.ObjectId.isValid(v.category)) {
+        dbCategories.push(v.category);
+      }
+    }
+    
+    const uniqueCategories = Array.from(new Set([...staticCategories, ...dbCategories]));
+    
+    for (const catName of uniqueCategories) {
+      if (!catName || catName.trim() === '') continue;
+      
+      const slug = catName
+        .toString()
+        .toLowerCase()
+        .trim()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .replace(/\s+/g, '-')
+        .replace(/[^\w\-]+/g, '')
+        .replace(/\-\-+/g, '-');
+      
+      const exists = await Category.findOne({ $or: [{ name: catName }, { slug }] });
+      if (!exists) {
+        await Category.create({
+          name: catName,
+          slug,
+          description: `Danh mục xe ${catName}`
+        });
+        console.log(`✅ Seeded category: ${catName}`);
+      }
+    }
+  } catch (err) {
+    console.error('❌ Lỗi khi seed danh mục mẫu:', err);
+  }
+}
+
+async function migrateVehicleCategories() {
+  try {
+    const db = mongoose.connection.db;
+    if (!db) return;
+    
+    const rawVehicles = await db.collection('vehicles').find().toArray();
+    let migratedCount = 0;
+    
+    for (const v of rawVehicles) {
+      if (typeof v.category === 'string' && !mongoose.Types.ObjectId.isValid(v.category)) {
+        const catName = v.category;
+        let categoryDoc = await db.collection('categories').findOne({ name: catName });
+        if (!categoryDoc) {
+          const slug = catName
+            .toLowerCase()
+            .trim()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[đĐ]/g, 'd')
+            .replace(/\s+/g, '-')
+            .replace(/[^\w\-]+/g, '')
+            .replace(/\-\-+/g, '-');
+            
+          const insertRes = await db.collection('categories').insertOne({
+            name: catName,
+            slug,
+            description: `Danh mục xe ${catName}`,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+          categoryDoc = { _id: insertRes.insertedId, name: catName } as any;
+          console.log(`✅ Tự động tạo danh mục thiếu khi migrate raw: ${catName}`);
+        }
+        
+        await db.collection('vehicles').updateOne(
+          { _id: v._id },
+          { $set: { category: categoryDoc._id } }
+        );
+        migratedCount++;
+      }
+    }
+    if (migratedCount > 0) {
+      console.log(`✅ Migrated raw ${migratedCount} vehicles to use Category ObjectId reference!`);
+    }
+  } catch (err) {
+    console.error('❌ Lỗi khi migration danh mục xe:', err);
   }
 }
 
@@ -309,7 +421,9 @@ mongoose.connect(MONGODB_URI)
   .then(async () => {
     console.log('✅ Connected to MongoDB successfully!');
     await seedUsers();
+    await seedCategories();
     await seedVehicles();
+    await migrateVehicleCategories();
     await seedDiscounts();
     initBookingReminderScheduler();
   })

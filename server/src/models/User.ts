@@ -35,6 +35,9 @@ export interface IUser extends Document {
   favoriteVehicles: mongoose.Types.ObjectId[];
   usedVouchers: IUserVoucher[];
   ownerRequestStatus?: 'None' | 'Pending' | 'Approved' | 'Rejected';
+  ownerContractSigned?: boolean;
+  ownerContractSignedAt?: Date;
+  ownerContractText?: string;
   citizenIdInfo?: ICitizenIdInfo;
   identityStatus: 'Unverified' | 'Pending' | 'Verified' | 'Rejected';
   identityRejectReason?: string;
@@ -66,6 +69,9 @@ const UserSchema = new Schema<IUser>({
   status: { type: String, enum: ['Active', 'Suspended', 'Unverified'], default: 'Active' },
   strikes: { type: Number, default: 0 },
   ownerRequestStatus: { type: String, enum: ['None', 'Pending', 'Approved', 'Rejected'], default: 'None' },
+  ownerContractSigned: { type: Boolean, default: false },
+  ownerContractSignedAt: { type: Date },
+  ownerContractText: { type: String },
   favoriteVehicles: [{ type: Schema.Types.ObjectId, ref: 'Vehicle' }],
   usedVouchers: [UserVoucherSchema],
   citizenIdInfo: {
