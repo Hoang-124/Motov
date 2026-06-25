@@ -728,3 +728,74 @@ export const getRecommendations = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ success: false, error: 'Không thể lấy danh sách đề xuất xe' });
   }
 };
+
+// Tính khoảng cách Haversine (km)
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // Bán kính Trái Đất (km)
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Khoảng cách (km)
+};
+
+// Lấy danh sách xe máy gần vị trí khách hàng
+export const getNearbyVehicles = async (req: AuthRequest, res: Response) => {
+  try {
+    const { lat, lng, radius } = req.query;
+    const latitude = parseFloat(lat as string);
+    const longitude = parseFloat(lng as string);
+    const radiusInMeters = radius ? parseInt(radius as string) : 5000; // Mặc định 5km
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      return res.status(400).json({ success: false, message: 'Tọa độ vị trí khách hàng không hợp lệ' });
+    }
+
+    // Tìm các xe Available gần nhất trong bán kính bằng GeoJSON $near
+    const vehicles = await Vehicle.find({
+      status: 'Available',
+      location: {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [longitude, latitude] // [longitude, latitude]
+          },
+          $maxDistance: radiusInMeters
+        }
+      }
+    })
+    .populate('ownerId', 'firstName lastName email phoneNumber avatarUrl')
+    .populate('category')
+    .lean();
+
+    // Map thêm khoảng cách thực tế tính bằng km
+    const formattedVehicles = vehicles.map((v: any) => {
+      const vLng = v.location?.coordinates?.[0] ?? 108.22;
+      const vLat = v.location?.coordinates?.[1] ?? 16.068;
+      const distance = getDistance(latitude, longitude, vLat, vLng);
+      return {
+        ...v,
+        distance: parseFloat(distance.toFixed(2)) // làm tròn 2 số thập phân
+      };
+    });
+
+    // Sắp xếp khoảng cách tăng dần
+    formattedVehicles.sort((a, b) => a.distance - b.distance);
+
+    res.status(200).json({
+      success: true,
+      data: formattedVehicles,
+      count: formattedVehicles.length
+    });
+  } catch (error: any) {
+    console.error('Lỗi khi lấy danh sách xe máy gần nhất:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tìm kiếm danh sách xe máy gần đây.',
+      error: error.message
+    });
+  }
+};

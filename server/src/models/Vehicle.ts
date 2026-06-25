@@ -17,6 +17,10 @@ export interface IVehicle extends Document {
   lastMaintenanceOdometer: number;
   maintenanceInterval: number;
   requiresMaintenance: boolean;
+  location?: {
+    type: string;
+    coordinates: number[]; // [longitude, latitude]
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,9 +41,15 @@ const VehicleSchema = new Schema<IVehicle>({
   features: [{ type: String }],
   lastMaintenanceOdometer: { type: Number, default: 0 },
   maintenanceInterval: { type: Number, default: 2000 },
-  requiresMaintenance: { type: Boolean, default: false, index: true }
+  requiresMaintenance: { type: Boolean, default: false, index: true },
+  location: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], default: [108.22, 16.068] } // [longitude, latitude] (Da Nang center)
+  }
 }, {
   timestamps: true
 });
+
+VehicleSchema.index({ location: '2dsphere' });
 
 export const Vehicle = mongoose.model<IVehicle>('Vehicle', VehicleSchema);

@@ -8,7 +8,8 @@ import {
   getOwnerVehicles,
   updateVehicleStatus,
   resetMaintenance,
-  getRecommendations
+  getRecommendations,
+  getNearbyVehicles
 } from '../controllers/vehicleController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
@@ -20,6 +21,7 @@ const router = Router();
 
 // Public routes (no auth required)
 router.get('/recommendations', getRecommendations as any);
+router.get('/nearby', getNearbyVehicles as any);
 router.get('/', getAllVehicles as any);
 router.get('/:id', getVehicleById as any);
 

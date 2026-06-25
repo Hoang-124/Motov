@@ -248,6 +248,12 @@ async function seedVehicles() {
 
       const catDoc = await Category.findOne({ name: bike.type });
 
+      // Tọa độ ngẫu nhiên xung quanh thành phố Đà Nẵng (lat 16.068, lng 108.22)
+      const baseLat = 16.068;
+      const baseLng = 108.22;
+      const latOffset = (Math.random() - 0.5) * 0.06; // ±0.03
+      const lngOffset = (Math.random() - 0.5) * 0.06; // ±0.03
+
       seededVehicles.push({
         ownerId: ownerUser._id,
         vehicleModel: bike.name,
@@ -259,7 +265,11 @@ async function seedVehicles() {
         category: catDoc ? catDoc._id : null,
         transmissionType,
         imageUrls,
-        features: bike.specs
+        features: bike.specs,
+        location: {
+          type: 'Point',
+          coordinates: [baseLng + lngOffset, baseLat + latOffset] // [longitude, latitude]
+        }
       });
     }
 
