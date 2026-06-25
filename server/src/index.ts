@@ -316,22 +316,47 @@ async function seedCategories() {
 
 async function migrateVehicleCategories() {
   try {
-    const vehicles = await Vehicle.find();
+    const db = mongoose.connection.db;
+    if (!db) return;
+    
+    const rawVehicles = await db.collection('vehicles').find().toArray();
     let migratedCount = 0;
     
-    for (const vehicle of vehicles) {
-      if (typeof vehicle.category === 'string' && !mongoose.Types.ObjectId.isValid(vehicle.category)) {
-        const catName = vehicle.category;
-        const categoryDoc = await Category.findOne({ name: catName });
-        if (categoryDoc) {
-          vehicle.category = categoryDoc._id as any;
-          await vehicle.save();
-          migratedCount++;
+    for (const v of rawVehicles) {
+      if (typeof v.category === 'string' && !mongoose.Types.ObjectId.isValid(v.category)) {
+        const catName = v.category;
+        let categoryDoc = await db.collection('categories').findOne({ name: catName });
+        if (!categoryDoc) {
+          const slug = catName
+            .toLowerCase()
+            .trim()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[đĐ]/g, 'd')
+            .replace(/\s+/g, '-')
+            .replace(/[^\w\-]+/g, '')
+            .replace(/\-\-+/g, '-');
+            
+          const insertRes = await db.collection('categories').insertOne({
+            name: catName,
+            slug,
+            description: `Danh mục xe ${catName}`,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+          categoryDoc = { _id: insertRes.insertedId, name: catName } as any;
+          console.log(`✅ Tự động tạo danh mục thiếu khi migrate raw: ${catName}`);
         }
+        
+        await db.collection('vehicles').updateOne(
+          { _id: v._id },
+          { $set: { category: categoryDoc._id } }
+        );
+        migratedCount++;
       }
     }
     if (migratedCount > 0) {
-      console.log(`✅ Migrated ${migratedCount} vehicles to use Category ObjectId reference!`);
+      console.log(`✅ Migrated raw ${migratedCount} vehicles to use Category ObjectId reference!`);
     }
   } catch (err) {
     console.error('❌ Lỗi khi migration danh mục xe:', err);

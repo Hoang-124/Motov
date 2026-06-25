@@ -457,6 +457,7 @@ export const StaffBookings = () => {
         onClose={() => setReturningBookingId(null)}
         bookingId={returningBookingId}
         pickupDateTime={returningPickupTime}
+        startOdometer={bookings.find(b => (b.id === returningBookingId || (b as any)._id === returningBookingId))?.startOdometer || 0}
         onSuccess={handleReturnSuccess}
       />
     </div>

@@ -10,7 +10,9 @@ import {
   updateVehicle, 
   deleteVehicle,
   getOwnerVehicles,
-  updateVehicleStatus
+  updateVehicleStatus,
+  resetMaintenance,
+  getRecommendations
 } from '../controllers/vehicleController.js';
 
 describe('Vehicle Controller Tests', () => {
@@ -330,6 +332,105 @@ describe('Vehicle Controller Tests', () => {
       const callArgs = mockResponse.json.mock.calls[0][0];
       expect(callArgs.success).toBe(true);
       expect(Array.isArray(callArgs.data)).toBe(true);
+    });
+  });
+
+  describe('resetMaintenance', () => {
+    it('should reset maintenance requirements and update lastMaintenanceOdometer', async () => {
+      // Create a vehicle that requires maintenance
+      const vehicle = new Vehicle({
+        ownerId: testUserId,
+        vehicleModel: 'Maintenance Test Bike',
+        licensePlate: 'MAINT001',
+        category: testCategoryId,
+        transmissionType: 'Automatic',
+        rentalPrice: 130000,
+        odometer: 5000,
+        lastMaintenanceOdometer: 2000,
+        requiresMaintenance: true,
+        status: 'Maintenance'
+      });
+      const savedVehicle = await vehicle.save();
+      const vehicleId = savedVehicle._id?.toString() || '';
+
+      mockRequest.params = { id: vehicleId };
+      mockRequest.user = {
+        id: testUserId,
+        roles: ['Staff']
+      };
+
+      await resetMaintenance(mockRequest, mockResponse);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const callArgs = mockResponse.json.mock.calls[0][0];
+      expect(callArgs.success).toBe(true);
+      expect(callArgs.data.requiresMaintenance).toBe(false);
+      expect(callArgs.data.lastMaintenanceOdometer).toBe(5000);
+      expect(callArgs.data.status).toBe('Available');
+    });
+
+    it('should block non-authorized users from resetting maintenance', async () => {
+      const vehicle = new Vehicle({
+        ownerId: new mongoose.Types.ObjectId().toString(), // not testUserId
+        vehicleModel: 'Auth Test Bike',
+        licensePlate: 'AUTH001',
+        category: testCategoryId,
+        transmissionType: 'Automatic',
+        rentalPrice: 130000,
+        odometer: 1000,
+        lastMaintenanceOdometer: 0,
+        requiresMaintenance: true
+      });
+      const savedVehicle = await vehicle.save();
+
+      mockRequest.params = { id: savedVehicle._id?.toString() };
+      mockRequest.user = {
+        id: testUserId, // not owner
+        roles: ['Customer'] // not Admin or Staff
+      };
+
+      await resetMaintenance(mockRequest, mockResponse);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(403);
+    });
+  });
+
+  describe('getRecommendations', () => {
+    it('should return recommended vehicles with a reason', async () => {
+      // Create a few available vehicles
+      const bike1 = new Vehicle({
+        ownerId: testUserId,
+        vehicleModel: 'Rec Bike 1',
+        licensePlate: 'REC001',
+        category: testCategoryId,
+        transmissionType: 'Automatic',
+        rentalPrice: 100000,
+        status: 'Available'
+      });
+      const bike2 = new Vehicle({
+        ownerId: testUserId,
+        vehicleModel: 'Rec Bike 2',
+        licensePlate: 'REC002',
+        category: testCategoryId,
+        transmissionType: 'Manual',
+        rentalPrice: 100000,
+        status: 'Available'
+      });
+      await bike1.save();
+      await bike2.save();
+
+      mockRequest.user = {
+        id: testUserId
+      };
+
+      await getRecommendations(mockRequest, mockResponse);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const callArgs = mockResponse.json.mock.calls[0][0];
+      expect(callArgs.success).toBe(true);
+      expect(callArgs.vehicles).toBeDefined();
+      expect(callArgs.vehicles.length).toBeGreaterThan(0);
+      expect(callArgs.reason).toBeDefined();
     });
   });
 });

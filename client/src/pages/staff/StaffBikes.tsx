@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, ShieldAlert, Wrench, RefreshCw, Layers, Check, X, Search, User, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
-import { getAllMotorbikes, updateMotorbikeStatus, deleteMotorbike, Motorbike } from '../../services/vehicleService.js';
+import { getAllMotorbikes, updateMotorbikeStatus, deleteMotorbike, resetMaintenance, Motorbike } from '../../services/vehicleService.js';
 
 export const StaffBikes = () => {
   const [bikes, setBikes] = useState<Motorbike[]>([]);
@@ -94,6 +94,24 @@ export const StaffBikes = () => {
       await loadMotorbikes();
     } catch (err: any) {
       window.alert(err.message || 'Lỗi khi từ chối xe!');
+      setLoading(false);
+    }
+  };
+
+  const handleResetMaintenance = async (id: string) => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    const confirm = window.confirm('Xác nhận chiếc xe này đã được bảo dưỡng, thay dầu xong và muốn đặt lại chu kỳ Odometer mới?');
+    if (!confirm) return;
+
+    try {
+      setLoading(true);
+      await resetMaintenance(id, token);
+      window.alert('Đã xác nhận bảo dưỡng xe thành công!');
+      await loadMotorbikes();
+    } catch (err: any) {
+      window.alert(err.message || 'Lỗi khi xác nhận bảo dưỡng xe!');
       setLoading(false);
     }
   };
@@ -238,11 +256,19 @@ export const StaffBikes = () => {
                     {/* Specs & Info */}
                     <div className="p-3 bg-black/40 border border-gray-900 rounded-xl mb-4 space-y-1 text-xs text-gray-400">
                       <div>Biển số: <span className="text-white font-mono font-bold">{bike.licensePlate}</span></div>
+                      <div>Odometer: <span className="text-white font-mono font-bold">{bike.odometer?.toLocaleString('vi-VN')} km</span></div>
                       <div className="flex items-center gap-1">
                         <User size={12} /> Chủ xe: <span className="text-gray-300 font-medium">{ownerName}</span>
                       </div>
                       {owner?.phoneNumber && (
                         <div className="text-[11px]">SĐT: <span className="text-gray-400 font-mono">{owner.phoneNumber}</span></div>
+                      )}
+                      {bike.requiresMaintenance && (
+                        <div className="pt-1.5">
+                          <span className="px-2 py-0.5 rounded text-[10px] bg-red-500/10 text-red-400 border border-red-500/25 font-bold inline-flex items-center gap-1 animate-pulse">
+                            🚨 Cần bảo dưỡng
+                          </span>
+                        </div>
                       )}
                     </div>
 
@@ -294,6 +320,15 @@ export const StaffBikes = () => {
                               <Wrench size={12} /> Bảo Trì
                             </button>
                           </div>
+                          {bike.requiresMaintenance && (
+                            <button
+                              type="button"
+                              onClick={() => handleResetMaintenance(bike._id!)}
+                              className="w-full mt-2 py-2 bg-neon/10 hover:bg-neon hover:text-dark border border-neon/20 hover:border-neon text-neon text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <RefreshCw size={12} /> Đã bảo dưỡng xong (Reset Odo)
+                            </button>
+                          )}
                           {currentStatus === 'Rented' && (
                             <p className="text-[10px] text-gray-500 mt-2 text-center italic">
                               * Không thể đổi trạng thái khi xe đang được thuê
