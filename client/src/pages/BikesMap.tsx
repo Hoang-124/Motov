@@ -128,8 +128,8 @@ export const BikesMap = () => {
         if (!mapRef.current) {
           const map = L.map('bikes-leaflet-map').setView(coords, 14);
 
-          // Add CartoDB Dark Matter tile layer for premium Dark Mode Look
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          // Add CartoDB Voyager tile layer for highly readable and premium look
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             subdomains: 'abcd',
             maxZoom: 20
