@@ -24,6 +24,9 @@ export interface Motorbike {
   regCertificateUrl?: string;
   imageUrls: string[];
   features: string[];
+  lastMaintenanceOdometer?: number;
+  maintenanceInterval?: number;
+  requiresMaintenance?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -202,6 +205,56 @@ export async function updateMotorbikeStatus(
     throw new Error('No data returned');
   } catch (error) {
     console.error('Error updating motorbike status:', error);
+    throw error;
+  }
+}
+
+// Reset vehicle maintenance
+export async function resetMaintenance(id: string, token: string): Promise<Motorbike> {
+  try {
+    const response = await fetch(`${API_URL}/vehicles/${id}/maintenance-reset`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to reset maintenance');
+    }
+
+    const result: ApiResponse<Motorbike> = await response.json();
+    if (result.data) return result.data;
+    throw new Error('No data returned');
+  } catch (error) {
+    console.error('Error resetting maintenance:', error);
+    throw error;
+  }
+}
+
+// Get recommended vehicles
+export async function getRecommendations(token?: string): Promise<{ vehicles: Motorbike[], reason: string }> {
+  try {
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_URL}/vehicles/recommendations`, {
+      method: 'GET',
+      headers
+    });
+
+    if (!response.ok) throw new Error('Failed to fetch recommendations');
+
+    const result: { success: boolean; vehicles: Motorbike[]; reason: string } = await response.json();
+    return {
+      vehicles: result.vehicles || [],
+      reason: result.reason || 'Đề xuất dựa trên hoạt động hệ thống'
+    };
+  } catch (error) {
+    console.error('Error fetching recommendations:', error);
     throw error;
   }
 }

@@ -1090,7 +1090,7 @@ export const getBookingTracking = async (req: AuthRequest, res: Response) => {
 export const returnMotorbike = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { actualReturnTime, returnReason } = req.body;
+    const { actualReturnTime, returnReason, endOdometer } = req.body;
     const userId = req.user?.id;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -1115,6 +1115,23 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: `Không thể trả xe cho booking đang ở trạng thái ${booking.status}` });
     }
 
+    // Bắt buộc nhập số Odometer kết thúc
+    if (endOdometer === undefined || endOdometer === null) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp số Odometer hiện tại (endOdometer) của xe máy khi trả.' });
+    }
+
+    const endOdoVal = Number(endOdometer);
+    if (isNaN(endOdoVal) || endOdoVal < 0) {
+      return res.status(400).json({ success: false, message: 'Số Odometer không hợp lệ (phải là số không âm).' });
+    }
+
+    const vehicle = booking.vehicleId as any;
+    const startOdoVal = booking.startOdometer || (vehicle ? vehicle.odometer : 0);
+
+    if (endOdoVal < startOdoVal) {
+      return res.status(400).json({ success: false, message: `Số Odometer khi trả (${endOdoVal} km) không thể nhỏ hơn số Odometer lúc nhận xe (${startOdoVal} km).` });
+    }
+
     const returnedTime = actualReturnTime ? new Date(actualReturnTime) : new Date();
     
     if (isNaN(returnedTime.getTime())) {
@@ -1129,7 +1146,6 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
     const pickupTime = new Date(booking.pickupDateTime);
     
     // Vehicle rental price for fee calculation
-    const vehicle = booking.vehicleId as any;
     const dailyRate = vehicle?.rentalPrice || 0;
     const hourlyRate = dailyRate / 24;
 
@@ -1184,14 +1200,61 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
     }
 
     booking.status = 'Completed';
+    booking.endOdometer = endOdoVal;
     if (returnReason) {
       booking.returnReason = returnReason;
     }
     await booking.save();
 
-    // Set vehicle status to Available
+    // Set vehicle status to Available, update odometer and check maintenance
     if (vehicle) {
-      await Vehicle.findByIdAndUpdate(vehicle._id, { status: 'Available' });
+      const dbVehicle = await Vehicle.findById(vehicle._id);
+      if (dbVehicle) {
+        dbVehicle.odometer = endOdoVal;
+        dbVehicle.status = 'Available';
+
+        // Tính toán khoảng cách kể từ lần bảo dưỡng gần nhất
+        const mileageSinceLast = dbVehicle.odometer - dbVehicle.lastMaintenanceOdometer;
+        if (mileageSinceLast >= dbVehicle.maintenanceInterval) {
+          dbVehicle.requiresMaintenance = true;
+
+          // Gửi thông báo in-app cho chủ xe và nhân viên
+          try {
+            // 1. Tạo thông báo cho chủ xe
+            await Notification.create({
+              userId: dbVehicle.ownerId,
+              title: `Cảnh báo bảo dưỡng xe máy ${dbVehicle.licensePlate} 🚨`,
+              message: `Xe ${dbVehicle.vehicleModel} (Biển số: ${dbVehicle.licensePlate}) đã đi được ${mileageSinceLast} km kể từ lần bảo dưỡng gần nhất (ngưỡng: ${dbVehicle.maintenanceInterval} km). Vui lòng mang xe đi thay dầu, bảo dưỡng.`,
+              type: 'System',
+              relatedId: dbVehicle._id,
+              createdAt: new Date()
+            });
+
+            // 2. Tạo thông báo cho Admin/Staff
+            const staffList = await User.find({
+              roles: { $in: ['Admin', 'Staff'] },
+              status: 'Active'
+            }, '_id');
+
+            const notiPromises = staffList.map(st => {
+              // Tránh gửi trùng nếu chủ xe có cả role Admin/Staff
+              if (st._id.toString() === dbVehicle.ownerId.toString()) return Promise.resolve();
+              return Notification.create({
+                userId: st._id,
+                title: `Cảnh báo bảo dưỡng xe máy ${dbVehicle.licensePlate} 🚨`,
+                message: `Xe ${dbVehicle.vehicleModel} (Biển số: ${dbVehicle.licensePlate}) cần được mang đi bảo dưỡng do đã vượt chu kỳ Odometer ${dbVehicle.maintenanceInterval} km.`,
+                type: 'System',
+                relatedId: dbVehicle._id,
+                createdAt: new Date()
+              });
+            });
+            await Promise.all(notiPromises);
+          } catch (notiError) {
+            console.error('Lỗi khi gửi thông báo bảo dưỡng xe:', notiError);
+          }
+        }
+        await dbVehicle.save();
+      }
     }
 
     res.status(200).json({
@@ -1396,6 +1459,12 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
       return res.status(404).json({ success: false, message: 'Đơn hàng không tồn tại' });
     }
 
+    // Tìm xe tương ứng để lấy Odometer hiện tại
+    const vehicle = await Vehicle.findById(booking.vehicleId);
+    if (!vehicle) {
+      return res.status(404).json({ success: false, message: 'Xe liên quan đến đơn hàng không tồn tại' });
+    }
+
     // 3. Kiểm tra điều kiện: Đơn hàng phải ở trạng thái 'Confirmed' thì mới được pickup
     if (booking.status !== 'Confirmed') {
       return res.status(400).json({
@@ -1406,6 +1475,7 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
 
     // 4. Cập nhật trạng thái Đơn hàng sang 'Ongoing' (Đang đi)
     booking.status = 'Ongoing'; // Hoặc 'Renting' tùy thuộc vào Enum trong Model Booking của bạn
+    booking.startOdometer = vehicle.odometer; // Ghi nhận số km lúc nhận xe
     
     if (notes) {
       booking.surcharges.push({
@@ -1419,8 +1489,8 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
     const updatedBooking = await booking.save();
 
     // 5. Cập nhật trạng thái Xe sang 'Rented' (Đang cho thuê) để đồng bộ hệ thống
-    const vehicleId = (booking.vehicleId as any)._id || booking.vehicleId;
-    await Vehicle.findByIdAndUpdate(vehicleId, { status: 'Rented' });
+    vehicle.status = 'Rented';
+    await vehicle.save();
 
     // 6. Tạo thông báo in-app cho Khách hàng biết xe đã được bàn giao
     try {
