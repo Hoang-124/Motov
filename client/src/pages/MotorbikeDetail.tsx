@@ -336,19 +336,7 @@ export const MotorbikeDetail = () => {
           </div>
         </div>
 
-        {/* Images Gallery */}
-        {motorbike.imageUrls && motorbike.imageUrls.length > 1 && (
-          <div className="mt-8">
-            <h2 className="text-xl font-bold text-white mb-4">More Images</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {motorbike.imageUrls.map((url, idx) => (
-                <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-gray-800 hover:border-neon transition-colors cursor-pointer">
-                  <img src={url} alt={`${motorbike.vehicleModel} ${idx}`} className="w-full h-full object-cover" />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+
 
         {/* Related Motorbikes Section */}
         {relatedBikes.length > 0 && (
