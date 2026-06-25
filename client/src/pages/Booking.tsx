@@ -678,9 +678,10 @@ export const Booking = () => {
                 <img src={activeImage} alt={bike.vehicleModel} className="w-full h-full object-cover" />
               </div>
             </div>
-
             <div>
-              <span className="text-xs text-neon font-semibold uppercase px-2.5 py-1 rounded bg-neon/10 border border-neon/30">{translateCategory(bike.category, t)}</span>
+              <span className="text-xs text-neon font-semibold uppercase px-2.5 py-1 rounded bg-neon/10 border border-neon/30">
+                {translateCategory(typeof bike.category === 'object' && bike.category !== null ? (bike.category as any).name : bike.category, t)}
+              </span>
               <h2 className="font-display font-black text-2xl text-white mt-3">{bike.vehicleModel}</h2>
               <p className="text-neon font-semibold text-lg mt-1">{bike.rentalPrice ? bike.rentalPrice.toLocaleString() : '0'} VNĐ / {t('bookingPage.billingUnit').replace('đ/', '')}</p>
             </div>
@@ -688,7 +689,9 @@ export const Booking = () => {
             <div className="border-t border-gray-800 pt-4 space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">{t('bookingPage.bikeType')}</span>
-                <span className="text-white font-medium">{translateCategory(bike.category, t)}</span>
+                <span className="text-white font-medium">
+                  {translateCategory(typeof bike.category === 'object' && bike.category !== null ? (bike.category as any).name : bike.category, t)}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">{t('bookingPage.insurance')}</span>

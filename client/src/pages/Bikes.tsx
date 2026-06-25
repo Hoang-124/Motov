@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { BikeCard } from '../components/BikeCard';
-import { SlidersHorizontal, Search, AlertCircle, Loader, ChevronDown } from 'lucide-react';
-import { getAllMotorbikes, Motorbike } from '../services/vehicleService';
+import { SlidersHorizontal, Search, AlertCircle, Loader, ChevronDown, MapPin } from 'lucide-react';
+import { getAllMotorbikes, getRecommendations, Motorbike } from '../services/vehicleService';
 import { useLanguage } from '../hooks/useLanguage';
 
 export const Bikes = () => {
+  const navigate = useNavigate();
   const { language, t } = useLanguage();
   const [searchParams] = useSearchParams();
   const initialLocation = searchParams.get('location') || '';
@@ -42,7 +43,12 @@ export const Bikes = () => {
 
   // Available bike categories
   const categories = useMemo(() => {
-    const allCategories = bikes.map(bike => bike.category);
+    const allCategories = bikes.map(bike => {
+      if (typeof bike.category === 'object' && bike.category !== null) {
+        return (bike.category as any).name;
+      }
+      return bike.category;
+    }).filter(Boolean);
     return ['All', ...Array.from(new Set(allCategories))];
   }, [bikes]);
 
@@ -52,16 +58,24 @@ export const Bikes = () => {
 
     // Search query filter
     if (searchQuery.trim() !== '') {
-      result = result.filter(bike => 
-        bike.vehicleModel.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bike.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bike.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      result = result.filter(bike => {
+        const catName = typeof bike.category === 'object' && bike.category !== null
+          ? (bike.category as any).name
+          : bike.category;
+        return bike.vehicleModel.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (catName && catName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          bike.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      });
     }
 
     // Category filter
     if (selectedCategory !== 'All') {
-      result = result.filter(bike => bike.category === selectedCategory);
+      result = result.filter(bike => {
+        const catName = typeof bike.category === 'object' && bike.category !== null
+          ? (bike.category as any).name
+          : bike.category;
+        return catName === selectedCategory;
+      });
     }
 
     // Sort by price
@@ -94,6 +108,11 @@ export const Bikes = () => {
             <AlertCircle size={20} className="text-red-500" />
             <p className="text-red-300">{error}</p>
           </div>
+        )}
+
+        {/* Personalized recommendations */}
+        {searchQuery === '' && selectedCategory === 'All' && (
+          <BikesRecommendations />
         )}
 
         {/* Filter and Search Bar */}
@@ -196,6 +215,16 @@ export const Bikes = () => {
                   )}
                 </div>
               </div>
+
+              {/* Nút xem bản đồ xe máy */}
+              <button
+                onClick={() => navigate('/bikes-map')}
+                className="flex items-center gap-2 bg-neon/10 border border-neon/20 hover:bg-neon hover:text-dark text-neon text-xs font-bold rounded-lg px-4 py-3.5 transition-all duration-300 cursor-pointer whitespace-nowrap shadow-[0_0_10px_rgba(204,255,0,0.1)]"
+                title="Xem các xe máy gần bạn trên bản đồ"
+              >
+                <MapPin size={14} />
+                <span>Bản đồ xe</span>
+              </button>
             </div>
           </div>
         )}
@@ -228,6 +257,50 @@ export const Bikes = () => {
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+const BikesRecommendations = () => {
+  const [recommended, setRecommended] = useState<Motorbike[]>([]);
+  const [reason, setReason] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRecs = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        let token = undefined;
+        if (storedUser) {
+          token = JSON.parse(storedUser).token;
+        }
+        const res = await getRecommendations(token);
+        setRecommended(res.vehicles);
+        setReason(res.reason);
+      } catch (err) {
+        console.error('Error loading recommendations on bikes page:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecs();
+  }, []);
+
+  if (loading || recommended.length === 0) return null;
+
+  return (
+    <div className="bg-surface border border-gray-800 rounded-2xl p-6 mb-10 bg-gradient-to-r from-neon/0 via-neon/5 to-transparent shadow-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-6">
+        <span className="text-neon text-[10px] font-bold uppercase tracking-widest font-mono border border-neon/20 px-3 py-1.5 rounded-full bg-neon/5 w-fit">
+          ✨ Gợi ý cá nhân hóa
+        </span>
+        <span className="text-xs text-gray-400 font-mono">({reason})</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        {recommended.slice(0, 3).map(bike => (
+          <BikeCard key={bike._id} bike={bike} />
+        ))}
       </div>
     </div>
   );

@@ -4,7 +4,8 @@ import {
   getVehicleFeedbacks,
   getAllFeedbacksForAdmin,
   blockFeedback,
-  unblockFeedback
+  unblockFeedback,
+  deleteFeedback
 } from '../controllers/feedbackController.js';
 import { authMiddleware, restrictTo } from '../middlewares/authMiddleware.js';
 
@@ -20,5 +21,6 @@ router.post('/', authMiddleware as any, createFeedback as any);
 router.get('/admin', authMiddleware as any, restrictTo('Admin') as any, getAllFeedbacksForAdmin as any);
 router.put('/:id/block', authMiddleware as any, restrictTo('Admin') as any, blockFeedback as any);
 router.put('/:id/unblock', authMiddleware as any, restrictTo('Admin') as any, unblockFeedback as any);
+router.delete('/:id', authMiddleware as any, restrictTo('Admin') as any, deleteFeedback as any);
 
 export default router;

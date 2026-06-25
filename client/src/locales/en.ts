@@ -63,6 +63,8 @@ export const en: TranslationKeys = {
     myBookings: 'My Bookings',
     dashboard: 'Dashboard',
     manageBikes: 'Manage Bikes',
+    manageCategories: 'Manage Categories',
+    manageInventory: 'Manage Inventory',
     allBookings: 'All Bookings',
     roles: 'Roles',
     feedbacks: 'Feedbacks',

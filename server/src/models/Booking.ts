@@ -43,6 +43,8 @@ export interface IBooking extends Document {
   promoCodeUsed?: string;
   isPickupReminded?: boolean;
   isReturnReminded?: boolean;
+  startOdometer: number;
+  endOdometer?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -89,7 +91,9 @@ const BookingSchema = new Schema<IBooking>({
   discountAmount: { type: Number, default: 0 },
   promoCodeUsed: { type: String },
   isPickupReminded: { type: Boolean, default: false, index: true },
-  isReturnReminded: { type: Boolean, default: false, index: true }
+  isReturnReminded: { type: Boolean, default: false, index: true },
+  startOdometer: { type: Number, default: 0 },
+  endOdometer: { type: Number }
 }, {
   timestamps: true
 });

@@ -87,5 +87,11 @@ export const feedbackService = {
   unblockFeedback: async (id: string) => {
     const res = await axios.put(`${BASE_URL}/${id}/unblock`);
     return res.data;
+  },
+
+  // 6. Delete a review completely (Admin only)
+  deleteFeedback: async (id: string) => {
+    const res = await axios.delete(`${BASE_URL}/${id}`);
+    return res.data;
   }
 };

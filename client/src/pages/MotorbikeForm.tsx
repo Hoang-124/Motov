@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, AlertCircle, Loader, Check, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Motorbike, createMotorbike, updateMotorbike, getMotorbikeById } from '../services/vehicleService';
+import { getAllCategories, Category } from '../services/categoryService';
 
 export const MotorbikeForm = () => {
   const { id } = useParams<{ id?: string }>();
@@ -17,6 +18,7 @@ export const MotorbikeForm = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successBikeId, setSuccessBikeId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const [formData, setFormData] = useState({
     vehicleModel: '',
@@ -36,8 +38,18 @@ export const MotorbikeForm = () => {
   const [imageInput, setImageInput] = useState('');
   const [featureInput, setFeatureInput] = useState('');
 
-  // Load existing motorbike if editing
+  // Load categories and existing motorbike if editing
   useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await getAllCategories();
+        setCategories(data);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    };
+    fetchCategories();
+
     if (isEditMode && id) {
       const fetchMotorbike = async () => {
         try {
@@ -49,7 +61,7 @@ export const MotorbikeForm = () => {
             seats: data.seats,
             odometer: data.odometer,
             rentalPrice: data.rentalPrice,
-            category: data.category,
+            category: typeof data.category === 'object' && data.category !== null ? (data.category as any)._id : data.category,
             transmissionType: (data.transmissionType || 'Manual') as 'Manual' | 'Automatic' | 'Semi-Automatic',
             description: data.description || '',
             imageUrls: data.imageUrls || [],
@@ -283,16 +295,21 @@ export const MotorbikeForm = () => {
                   <label className="block text-sm font-semibold text-gray-300 mb-2">
                     Category *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
-                    placeholder="e.g., Sport, Scooter, Underbone"
-                    className={`w-full bg-black/50 border rounded-lg px-4 py-2 text-gray-300 placeholder-gray-600 focus:ring-2 focus:ring-neon focus:border-transparent outline-none transition-all ${
+                    className={`w-full bg-black/50 border rounded-lg px-4 py-2 text-gray-300 focus:ring-2 focus:ring-neon focus:border-transparent outline-none transition-all cursor-pointer ${
                       formErrors.category ? 'border-red-500' : 'border-gray-700'
                     }`}
-                  />
+                  >
+                    <option value="" className="text-gray-500">-- Select Category --</option>
+                    {categories.map((cat) => (
+                      <option key={cat._id} value={cat._id} className="text-white bg-dark">
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
                   {formErrors.category && (
                     <p className="text-red-400 text-sm mt-1">{formErrors.category}</p>
                   )}

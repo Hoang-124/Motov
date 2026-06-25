@@ -9,11 +9,18 @@ export interface IVehicle extends Document {
   rentalPrice: number;
   status: 'Available' | 'Rented' | 'Maintenance' | 'PendingApproval';
   description?: string;
-  category: string;
+  category: mongoose.Types.ObjectId | string;
   transmissionType: 'Manual' | 'Automatic' | 'Semi-Automatic';
   regCertificateUrl?: string;
   imageUrls: string[];
   features: string[];
+  lastMaintenanceOdometer: number;
+  maintenanceInterval: number;
+  requiresMaintenance: boolean;
+  location?: {
+    type: string;
+    coordinates: number[]; // [longitude, latitude]
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,13 +34,22 @@ const VehicleSchema = new Schema<IVehicle>({
   rentalPrice: { type: Number, required: true },
   status: { type: String, enum: ['Available', 'Rented', 'Maintenance', 'PendingApproval'], default: 'PendingApproval' },
   description: { type: String },
-  category: { type: String, required: true, index: true },
+  category: { type: Schema.Types.ObjectId, ref: 'Category', required: true, index: true },
   transmissionType: { type: String, enum: ['Manual', 'Automatic', 'Semi-Automatic'], required: true },
   regCertificateUrl: { type: String },
   imageUrls: [{ type: String }],
-  features: [{ type: String }]
+  features: [{ type: String }],
+  lastMaintenanceOdometer: { type: Number, default: 0 },
+  maintenanceInterval: { type: Number, default: 2000 },
+  requiresMaintenance: { type: Boolean, default: false, index: true },
+  location: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], default: [108.22, 16.068] } // [longitude, latitude] (Da Nang center)
+  }
 }, {
   timestamps: true
 });
+
+VehicleSchema.index({ location: '2dsphere' });
 
 export const Vehicle = mongoose.model<IVehicle>('Vehicle', VehicleSchema);

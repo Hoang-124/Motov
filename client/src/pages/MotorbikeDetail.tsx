@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, AlertCircle, Loader, Edit2, Trash2, MapPin, Users, Zap, Check, X, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getMotorbikeById, Motorbike, deleteMotorbike } from '../services/vehicleService';
+import { getMotorbikeById, Motorbike, deleteMotorbike, getAllMotorbikes } from '../services/vehicleService';
 import { feedbackService, FeedbackItem } from '../services/feedbackService';
+import { BikeCard } from '../components/BikeCard';
 import { useLanguage } from '../hooks/useLanguage';
 
 export const MotorbikeDetail = () => {
@@ -12,6 +13,7 @@ export const MotorbikeDetail = () => {
   const { language, t } = useLanguage();
   const [motorbike, setMotorbike] = useState<Motorbike | null>(null);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const [relatedBikes, setRelatedBikes] = useState<Motorbike[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -56,6 +58,20 @@ export const MotorbikeDetail = () => {
         // Fetch feedbacks
         const fbData = await feedbackService.getVehicleFeedbacks(id);
         setFeedbacks(fbData);
+
+        // Fetch related motorbikes of the same category that are Available, excluding current motorbike
+        if (data.category) {
+          try {
+            const catId = typeof data.category === 'object' && data.category !== null ? (data.category as any)._id : data.category;
+            const allBikes = await getAllMotorbikes({ category: catId });
+            const filtered = allBikes
+              .filter(bike => bike._id !== data._id && bike.status === 'Available')
+              .slice(0, 3);
+            setRelatedBikes(filtered);
+          } catch (relErr) {
+            console.error('Error fetching related motorbikes:', relErr);
+          }
+        }
       } catch (err) {
         setError('Failed to load motorbike details. Please try again later.');
         console.error(err);
@@ -169,7 +185,7 @@ export const MotorbikeDetail = () => {
                   {motorbike.status}
                 </div>
                 <div className="bg-dark/70 backdrop-blur-md px-4 py-1.5 rounded-full font-semibold text-xs text-neon border border-neon/30">
-                  {motorbike.category}
+                  {typeof motorbike.category === 'object' && motorbike.category !== null ? (motorbike.category as any).name : motorbike.category}
                 </div>
               </div>
 
@@ -320,6 +336,33 @@ export const MotorbikeDetail = () => {
           </div>
         </div>
 
+        {/* Images Gallery */}
+        {motorbike.imageUrls && motorbike.imageUrls.length > 1 && (
+          <div className="mt-8">
+            <h2 className="text-xl font-bold text-white mb-4">More Images</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {motorbike.imageUrls.map((url, idx) => (
+                <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-gray-800 hover:border-neon transition-colors cursor-pointer">
+                  <img src={url} alt={`${motorbike.vehicleModel} ${idx}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Related Motorbikes Section */}
+        {relatedBikes.length > 0 && (
+          <div className="mt-12">
+            <h2 className="font-display font-black text-2xl text-neon uppercase mb-6 tracking-tight flex items-center gap-2">
+              🏍️ Xe tương tự
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {relatedBikes.map((bike) => (
+                <BikeCard key={bike._id} bike={bike} />
+              ))}
+            </div>
+          </div>
+        )}
         {/* Customer Feedbacks Section */}
         <div className="mt-12 bg-surface border border-gray-800 rounded-2xl p-6 md:p-8">
           <h2 className="font-display font-black text-2xl text-neon uppercase mb-6 tracking-tight flex items-center gap-2">
@@ -446,7 +489,7 @@ export const MotorbikeDetail = () => {
                 <div className="bg-black/35 p-3 rounded-lg border border-white/5">
                   <div className="font-bold text-white text-sm mb-1">{motorbike.vehicleModel}</div>
                   <div className="text-xs text-gray-400 font-mono">License Plate: {motorbike.licensePlate}</div>
-                  <div className="text-xs text-gray-400 font-mono">Category: {motorbike.category}</div>
+                  <div className="text-xs text-gray-400 font-mono">Category: {typeof motorbike.category === 'object' && motorbike.category !== null ? (motorbike.category as any).name : motorbike.category}</div>
                 </div>
               </div>
 

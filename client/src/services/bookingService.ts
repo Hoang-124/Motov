@@ -52,6 +52,8 @@ export interface Booking {
   statusLabel: string;   // Nhãn tiếng Việt có icon do BE tạo sẵn (ví dụ: "⏳ Chờ xác nhận")
   cancelReason?: string;
   returnReason?: string;
+  startOdometer?: number;
+  endOdometer?: number;
   createdAt: string;
 }
 
@@ -106,8 +108,8 @@ export const bookingService = {
   },
 
   // 7. Hoàn trả xe -> PUT /api/bookings/:id/return
-  returnMotorbike: async (id: string, actualReturnTime: string, returnReason?: string) => {
-    const res = await axios.put(`${API_URL}/${id}/return`, { actualReturnTime, returnReason });
+  returnMotorbike: async (id: string, actualReturnTime: string, endOdometer?: number, returnReason?: string) => {
+    const res = await axios.put(`${API_URL}/${id}/return`, { actualReturnTime, endOdometer, returnReason });
     return res.data;
   },
 
