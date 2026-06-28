@@ -23,6 +23,7 @@ import { Category } from './models/Category.js';
 import { authMiddleware } from './middlewares/authMiddleware.js';
 import { initBookingReminderScheduler } from './utils/bookingReminderScheduler.js';
 import { Discount } from './models/Discount.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -83,6 +84,9 @@ app.use('/api/inventory', inventoryRoutes);
 
 // Routes quản lý xe (Vehicle/Bike Management APIs)
 app.use('/api/vehicles', vehicleRoutes);
+
+// Admin Routes
+app.use('/api/admin', adminRoutes);
 
 // Cấu hình Multer để lưu trữ ảnh tải lên
 const storage = multer.diskStorage({
@@ -354,15 +358,17 @@ async function migrateVehicleCategories() {
             createdAt: new Date(),
             updatedAt: new Date()
           });
-          categoryDoc = { _id: insertRes.insertedId, name: catName } as any;
+          categoryDoc = { _id: insertRes.insertedId, name: catName };
           console.log(`✅ Tự động tạo danh mục thiếu khi migrate raw: ${catName}`);
         }
         
-        await db.collection('vehicles').updateOne(
-          { _id: v._id },
-          { $set: { category: categoryDoc._id } }
-        );
-        migratedCount++;
+        if (categoryDoc && categoryDoc._id) {
+          await db.collection('vehicles').updateOne(
+            { _id: v._id },
+            { $set: { category: categoryDoc._id } }
+          );
+          migratedCount++;
+        }
       }
     }
     if (migratedCount > 0) {
