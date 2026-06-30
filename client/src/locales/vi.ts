@@ -21,6 +21,10 @@ export const vi = {
     railway: 'Ga Đà Nẵng',
     sontra: 'Bán đảo Sơn Trà',
     mykhe: 'Khách sạn khu vực Mỹ Khê',
+    hoangSa: 'Quần đảo Hoàng Sa',
+    truongSa: 'Quần đảo Trường Sa',
+    vietnam: 'Việt Nam',
+    sovereigntyClaim: 'thuộc chủ quyền Việt Nam'
   },
   notifications: {
     newPendingTitle: 'Đơn đặt xe mới đang chờ duyệt',

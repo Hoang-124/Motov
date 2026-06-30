@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { CalendarDays, MapPin, ClipboardList, Trash2, RefreshCw, Star, X, AlertCircle, Clock, ShieldAlert, CheckCircle, HelpCircle, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { bookingService, Booking } from '../services/bookingService'; // Import Service
@@ -32,6 +32,9 @@ export const Bookings = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [activeCancelBookingId, setActiveCancelBookingId] = useState<string | null>(null);
   const [cancelReasonInput, setCancelReasonInput] = useState('');
+  const [searchParams] = useSearchParams();
+  const initialStatus = searchParams.get('status') || 'All';
+  const [filterStatus, setFilterStatus] = useState<string>(initialStatus);
 
   const handleOpenFeedbackModal = (bookingId: string) => {
     setSelectedBookingId(bookingId);
@@ -74,6 +77,13 @@ export const Bookings = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const status = searchParams.get('status');
+    if (status) {
+      setFilterStatus(status);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     loadMyBookings();
@@ -213,6 +223,11 @@ export const Bookings = () => {
     return label;
   };
 
+  const filteredBookings = bookings.filter(b => {
+    if (filterStatus === 'All') return true;
+    return b.status === filterStatus;
+  });
+
   return (
     <div className="pt-28 pb-20 min-h-screen bg-dark">
       <div className="max-w-5xl mx-auto px-4 lg:px-8">
@@ -244,132 +259,156 @@ export const Bookings = () => {
           </div>
         )}
 
+        {/* Tabs để phân loại đơn đặt xe */}
+        {bookings.length > 0 && (
+          <div className="flex gap-2 border-b border-gray-800 mb-8 overflow-x-auto pb-1 no-scrollbar">
+            {[
+              { key: 'All', label: language === 'vi' ? 'Tất cả đơn' : 'All Bookings' },
+              { key: 'Pending', label: language === 'vi' ? 'Chờ duyệt' : 'Pending' },
+              { key: 'Confirmed', label: language === 'vi' ? 'Đã xác nhận' : 'Confirmed' },
+              { key: 'Ongoing', label: language === 'vi' ? 'Đang thuê' : 'Ongoing' },
+              { key: 'Completed', label: language === 'vi' ? 'Hoàn thành' : 'Completed' },
+              { key: 'Cancelled', label: language === 'vi' ? 'Đã hủy' : 'Cancelled' },
+            ].map((tab) => {
+              const isActive = filterStatus === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setFilterStatus(tab.key)}
+                  className={`px-4 py-2.5 font-display font-bold text-xs uppercase tracking-wider transition-all border-b-2 whitespace-nowrap cursor-pointer ${
+                    isActive
+                      ? 'text-neon border-neon bg-neon/5'
+                      : 'text-gray-400 border-transparent hover:text-white hover:border-gray-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Loading State */}
         {loading && bookings.length === 0 ? (
           <div className="text-center py-20 text-gray-400">{t('myBookingsPage.loadingData')}</div>
         ) : bookings.length > 0 ? (
-          <div className="space-y-6">
-            {bookings.map(booking => (
-              <motion.div 
-                key={booking.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-surface border border-gray-800 rounded-2xl p-6 flex flex-col md:flex-row gap-6 items-center shadow-lg relative overflow-hidden"
-              >
-                {/* Image xe từ Snapshot */}
-                <div className="w-full md:w-48 aspect-video rounded-xl overflow-hidden bg-black border border-gray-800 flex-shrink-0">
-                  <img src={booking.vehicleImage} alt={booking.vehicleModel} loading="lazy" className="w-full h-full object-cover" />
-                </div>
-
-                {/* Details */}
-                <div className="flex-grow space-y-3 w-full">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
-                        {t('myBookingsPage.bookingCode', { code: booking.bookingCode })}
-                      </span>
-                      <h3 className="font-display font-bold text-xl text-white">{booking.vehicleModel}</h3>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                      booking.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30' :
-                      booking.status === 'Confirmed' ? 'bg-neon/10 text-neon border-neon/30 shadow-[0_0_10px_rgba(204,255,0,0.1)]' :
-                      booking.status === 'Ongoing' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' :
-                      booking.status === 'Completed' ? 'bg-white/5 text-gray-300 border-white/20' :
-                      'bg-red-500/10 text-red-500 border-red-500/30' // Cancelled
-                    }`}>
-                      {translateStatusLabel(booking.status, booking.statusLabel)}
-                    </span>
+          filteredBookings.length > 0 ? (
+            <div className="space-y-6">
+              {filteredBookings.map(booking => (
+                <motion.div 
+                  key={booking.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-surface border border-gray-800 rounded-2xl p-6 flex flex-col md:flex-row gap-6 items-center shadow-lg relative overflow-hidden"
+                >
+                  {/* Image xe từ Snapshot */}
+                  <div className="w-full md:w-48 aspect-video rounded-xl overflow-hidden bg-black border border-gray-800 flex-shrink-0">
+                    <img src={booking.vehicleImage} alt={booking.vehicleModel} loading="lazy" className="w-full h-full object-cover" />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-400">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <CalendarDays size={16} className="text-neon" />
-                        <span className="text-xs">{t('myBookingsPage.pickup', { time: new Date(booking.pickupDateTime).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') })}</span>
+                  {/* Details */}
+                  <div className="flex-grow space-y-3 w-full">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
+                          {t('myBookingsPage.bookingCode', { code: booking.bookingCode })}
+                        </span>
+                        <h3 className="font-display font-bold text-xl text-white">{booking.vehicleModel}</h3>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CalendarDays size={16} className="text-gray-600" />
-                        <span className="text-xs">{t('myBookingsPage.return', { time: new Date(booking.returnDateTime).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') })}</span>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                        booking.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30' :
+                        booking.status === 'Confirmed' ? 'bg-neon/10 text-neon border-neon/30 shadow-[0_0_10px_rgba(204,255,0,0.1)]' :
+                        booking.status === 'Ongoing' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' :
+                        booking.status === 'Completed' ? 'bg-white/5 text-gray-300 border-white/20' :
+                        'bg-red-500/10 text-red-500 border-red-500/30' // Cancelled
+                      }`}>
+                        {translateStatusLabel(booking.status, booking.statusLabel)}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-400">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <CalendarDays size={16} className="text-neon" />
+                          <span className="text-xs">{t('myBookingsPage.pickup', { time: new Date(booking.pickupDateTime).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') })}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CalendarDays size={16} className="text-gray-600" />
+                          <span className="text-xs">{t('myBookingsPage.return', { time: new Date(booking.returnDateTime).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') })}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 items-start sm:items-center">
+                        <MapPin size={16} className="text-neon mt-1 sm:mt-0" />
+                        <span className="text-xs line-clamp-2">{t('myBookingsPage.pickupLoc', { loc: booking.pickupLocation?.address || 'N/A' })}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 items-start sm:items-center">
-                      <MapPin size={16} className="text-neon mt-1 sm:mt-0" />
-                      <span className="text-xs line-clamp-2">{t('myBookingsPage.pickupLoc', { loc: booking.pickupLocation?.address || 'N/A' })}</span>
+
+                    {booking.cancelReason && (
+                      <div className="p-2 bg-red-500/5 border border-red-500/10 rounded-lg text-xs text-red-400/80">
+                        {t('myBookingsPage.cancelReason', { reason: booking.cancelReason })}
+                      </div>
+                    )}
+
+                    <div className="pt-2 border-t border-gray-800/50 flex flex-wrap gap-4 text-xs text-gray-500 justify-between items-center">
+                      <div>
+                        {t('myBookingsPage.rentalDays', { days: booking.rentalDays })}
+                      </div>
+                      <div className="text-neon font-semibold text-sm">
+                        {t('myBookingsPage.totalPay', { amount: booking.totalAmount?.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') })}
+                      </div>
                     </div>
                   </div>
 
-                  {booking.cancelReason && (
-                    <div className="p-2 bg-red-500/5 border border-red-500/10 rounded-lg text-xs text-red-400/80">
-                      {t('myBookingsPage.cancelReason', { reason: booking.cancelReason })}
-                    </div>
-                  )}
-
-                  <div className="pt-2 border-t border-gray-800/50 flex flex-wrap gap-4 text-xs text-gray-500 justify-between items-center">
-                    <div>
-                      {t('myBookingsPage.rentalDays', { days: booking.rentalDays })}
-                    </div>
-                    <div className="text-neon font-semibold text-sm">
-                      {t('myBookingsPage.totalPay', { amount: booking.totalAmount?.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') })}
-                    </div>
-                  </div>
-                  
-                  <div className="pt-2">
-                    <button
-                      onClick={() => {
-                        setTrackingBookingId(booking.id);
-                        setTrackingBooking(booking);
-                      }}
-                      className="text-xs text-blue-400 hover:text-blue-300 underline"
-                    >
-                      {t('myBookingsPage.detailSchedule')}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Nút hủy đơn liên kết API */}
-                <div className="w-full md:w-auto flex justify-end md:self-center border-t md:border-t-0 pt-4 md:pt-0 border-gray-800/50">
-                  {booking.status === 'Pending' ? (
-                    <button 
-                      onClick={() => openCancelModal(booking.id)}
-                      disabled={loading}
-                      className="flex items-center justify-center gap-2 text-red-500 hover:bg-red-500/10 border border-red-500/20 hover:border-red-500/40 px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-medium cursor-pointer disabled:opacity-50"
-                    >
-                      <Trash2 size={16} />
-                      {t('myBookingsPage.cancelReq')}
-                    </button>
-                  ) : booking.status === 'Ongoing' ? (
-                    <button 
-                      onClick={() => openReturnModal(booking)}
-                      disabled={loading}
-                      className="flex items-center justify-center gap-2 bg-neon text-dark hover:bg-[#bbf000] px-4 py-2.5 rounded-xl transition-all text-sm w-full md:w-auto font-bold cursor-pointer disabled:opacity-50 shadow-[0_0_10px_rgba(204,255,0,0.2)]"
-                    >
-                      {t('myBookingsPage.returnBtn')}
-                    </button>
-                  ) : booking.status === 'Completed' ? (
-                    reviewedBookingIds.includes(booking.id) ? (
-                      <span className="text-xs text-neon font-medium bg-neon/10 px-3 py-1.5 rounded-md border border-neon/20">
-                        ✓ {t('myBookingsPage.reviewed')}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleOpenFeedbackModal(booking.id)}
+                  {/* Nút hủy đơn liên kết API */}
+                  <div className="w-full md:w-auto flex justify-end md:self-center border-t md:border-t-0 pt-4 md:pt-0 border-gray-800/50">
+                    {booking.status === 'Pending' ? (
+                      <button 
+                        onClick={() => openCancelModal(booking.id)}
                         disabled={loading}
-                        className="flex items-center justify-center gap-2 bg-neon text-dark hover:bg-[#bbf000] px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-bold cursor-pointer disabled:opacity-50 shadow-[0_0_10px_rgba(204,255,0,0.2)]"
+                        className="flex items-center justify-center gap-2 text-red-500 hover:bg-red-500/10 border border-red-500/20 hover:border-red-500/40 px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-medium cursor-pointer disabled:opacity-50"
                       >
-                        <Star size={16} className="fill-dark text-dark" />
-                        {t('myBookingsPage.reviewBtn')}
+                        <Trash2 size={16} />
+                        {t('myBookingsPage.cancelReq')}
                       </button>
-                    )
-                  ) : (
-                    <span className="text-xs text-gray-500 font-medium bg-black/30 px-3 py-1.5 rounded-md border border-gray-900">
-                      {booking.status === 'Cancelled' ? t('myBookingsPage.closed') : t('myBookingsPage.locked')}
-                    </span>
-                  )}
-                </div>
+                    ) : booking.status === 'Ongoing' ? (
+                      <button 
+                        onClick={() => openReturnModal(booking)}
+                        disabled={loading}
+                        className="flex items-center justify-center gap-2 bg-neon text-dark hover:bg-[#bbf000] px-4 py-2.5 rounded-xl transition-all text-sm w-full md:w-auto font-bold cursor-pointer disabled:opacity-50 shadow-[0_0_10px_rgba(204,255,0,0.2)]"
+                      >
+                        {t('myBookingsPage.returnBtn')}
+                      </button>
+                    ) : booking.status === 'Completed' ? (
+                      reviewedBookingIds.includes(booking.id) ? (
+                        <span className="text-xs text-neon font-medium bg-neon/10 px-3 py-1.5 rounded-md border border-neon/20">
+                          ✓ {t('myBookingsPage.reviewed')}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleOpenFeedbackModal(booking.id)}
+                          disabled={loading}
+                          className="flex items-center justify-center gap-2 bg-neon text-dark hover:bg-[#bbf000] px-4 py-2.5 rounded-lg transition-all text-sm w-full md:w-auto font-bold cursor-pointer disabled:opacity-50 shadow-[0_0_10px_rgba(204,255,0,0.2)]"
+                        >
+                          <Star size={16} className="fill-dark text-dark" />
+                          {t('myBookingsPage.reviewBtn')}
+                        </button>
+                      )
+                    ) : (
+                      <span className="text-xs text-gray-500 font-medium bg-black/30 px-3 py-1.5 rounded-md border border-gray-900">
+                        {booking.status === 'Cancelled' ? t('myBookingsPage.closed') : t('myBookingsPage.locked')}
+                      </span>
+                    )}
+                  </div>
 
-              </motion.div>
-            ))}
-          </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 border border-dashed border-gray-800 rounded-3xl bg-surface/30 text-gray-400">
+              <ClipboardList size={40} className="text-gray-600 mx-auto mb-3" />
+              <p className="text-sm font-medium">Không có đơn thuê xe nào ở trạng thái này.</p>
+            </div>
+          )
         ) : (
           <div className="text-center py-24 border border-dashed border-gray-800 rounded-3xl bg-surface/30">
             <ClipboardList size={48} className="text-gray-600 mx-auto mb-4" />

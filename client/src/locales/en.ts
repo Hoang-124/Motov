@@ -23,6 +23,10 @@ export const en: TranslationKeys = {
     railway: 'Da Nang Railway Station',
     sontra: 'Son Tra Peninsula',
     mykhe: 'My Khe Area Hotel',
+    hoangSa: 'Paracel Islands',
+    truongSa: 'Spratly Islands',
+    vietnam: 'Vietnam',
+    sovereigntyClaim: 'under Vietnam sovereignty'
   },
   notifications: {
     newPendingTitle: 'New Booking Pending Approval',
