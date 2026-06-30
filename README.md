@@ -2,7 +2,15 @@
 
 Motov is a modern motorcycle rental web application built with a React frontend (Vite, TypeScript, Tailwind CSS, Lucide React, Framer Motion) and an Express backend (Node.js, TypeScript, TSX, MongoDB, Mongoose).
 
+## 🌐 Live Demo & Cloud Links
+- **Frontend Client (Vercel):** [👉 Click here to visit live app](https://motov-client.vercel.app)
+- **Backend Server API (Render):** [👉 Click here to check server status](https://motov.onrender.com)
+
+---
+
+
 ## Core Modules
+
 
 ### 1. Admin User Management Module
 Administrators can securely manage system users (Admins, Staff, Owners, and Customers) from the Admin panel:
@@ -604,3 +612,55 @@ Upon connecting to MongoDB, the backend automatically seeds the database with th
 - **Staff**: `nhanvien@motov.com` / Password: `admin123`
 - **Owner**: `owner@motov.com` / Password: `admin123`
 - **Customer**: `khachhang@motov.com` / Password: `admin123`
+
+---
+
+## ☁️ Hướng Dẫn Triển Khai Lên Cloud (Step-by-Step Cloud Deployment Guide)
+
+Để đưa dự án Motov lên môi trường Cloud, bạn cần triển khai 3 thành phần chính: **Cơ sở dữ liệu (MongoDB Atlas)**, **Backend API (Render hoặc Railway)**, và **Frontend Client (Vercel hoặc Netlify)**. Dưới đây là các bước chi tiết:
+
+### Bước 1: Khởi tạo Cơ sở dữ liệu MongoDB Atlas (Miễn phí)
+1. Đăng ký/Đăng nhập tài khoản tại [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
+2. Tạo một **Cluster** mới (chọn gói **M0 FREE**).
+3. Tại mục **Security > Database Access**, tạo một user truy cập DB (lưu lại username và password).
+4. Tại mục **Security > Network Access**, nhấn **Add IP Address** và chọn **Allow Access From Anywhere (0.0.0.0/0)** để Backend từ cloud có thể kết nối được.
+5. Vào **Database > Cluster > Connect**, chọn **Drivers (Node.js)** và sao chép chuỗi kết nối (Connection String). Dạng của nó sẽ là:
+   `mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/Motov?retryWrites=true&w=majority`
+
+### Bước 2: Triển khai Backend API lên Render.com (Miễn phí & Cực kì dễ)
+1. Đẩy mã nguồn dự án của bạn lên một kho lưu trữ Git cá nhân (GitHub/GitLab).
+2. Đăng nhập vào [Render.com](https://render.com/) bằng tài khoản GitHub.
+3. Chọn **New > Web Service**. Kết nối với repository Git của bạn.
+4. Cấu hình dịch vụ như sau:
+   - **Name:** `motov-backend` (hoặc tên tùy ý)
+   - **Region:** Chọn region gần Việt Nam nhất (như `Singapore`)
+   - **Branch:** `main` (hoặc branch chính của bạn)
+   - **Root Directory:** `server`
+   - **Runtime:** `Node`
+   - **Build Command:** `npm install && npm run build`
+   - **Start Command:** `npm start`
+5. Nhấp vào **Advanced** và thêm các biến môi trường (**Environment Variables**):
+   - `NODE_ENV` = `production`
+   - `PORT` = `10000` (Render tự động cấp phát, hoặc bỏ trống)
+   - `MONGODB_URI` = *(Điền Connection String từ Bước 1 đã thay thế username/password)*
+   - `JWT_SECRET` = *(Một chuỗi ký tự bí mật dài ngẫu nhiên)*
+   - `JWT_EXPIRES_IN` = `7d`
+   - `CLIENT_ORIGIN` = *(Địa chỉ web Frontend của bạn trên Vercel sau khi deploy ở Bước 3, ví dụ: `https://your-frontend.vercel.app`)*
+6. Nhấn **Create Web Service** và đợi Render build và deploy xong. Sao chép link URL của Web Service (ví dụ: `https://motov-backend.onrender.com`).
+
+### Bước 3: Triển khai Frontend Client lên Vercel (Miễn phí & Tối ưu cho React/Vite)
+1. Đăng nhập vào [Vercel](https://vercel.com/) bằng tài khoản GitHub.
+2. Nhấn **Add New > Project**, chọn repository chứa mã nguồn dự án của bạn.
+3. Cấu hình dự án trên Vercel:
+   - **Framework Preset:** `Vite`
+   - **Root Directory:** `client`
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+4. Cấu hình biến môi trường (**Environment Variables**):
+   - `VITE_API_URL` = `https://your-backend-api.onrender.com/api` (Địa chỉ URL của Backend ở Bước 2 + `/api`)
+5. Nhấn **Deploy** và đợi quá trình hoàn tất. Vercel sẽ cung cấp cho bạn một tên miền miễn phí dạng `https://your-project.vercel.app`.
+
+### Bước 4: Hoàn tất & Cập nhật README
+1. Sau khi đã có link của Frontend và Backend, hãy mở file `README.md` ra.
+2. Tìm đến phần **Live Demo & Cloud Links** ở đầu trang và thay thế các URL mẫu bằng liên kết thực tế của bạn.
+3. Chia sẻ tài liệu này cho giáo viên/cô giáo của bạn kiểm tra trực tiếp dự án!
