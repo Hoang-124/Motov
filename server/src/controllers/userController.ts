@@ -393,3 +393,113 @@ export const unbanUser = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+// [POST] Add vehicle to favorites
+export const addFavoriteVehicle = async (req: AuthRequest, res: Response): Promise<any> => {
+  try {
+    const userId = req.user?.id; // Lấy ID user từ token qua AuthRequest
+    const { vehicleId } = req.body;
+
+    if (!vehicleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp mã xe (vehicleId).',
+      });
+    }
+
+    // Tận dụng Model User sẵn có trong file của bạn
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $addToSet: { favoriteVehicles: vehicleId } }, // Thêm vào mảng không trùng lặp
+      { new: true }
+    ).select('favoriteVehicles');
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy thông tin thành viên',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Đã thêm xe vào danh sách yêu thích thành công',
+      favoriteVehicles: updatedUser.favoriteVehicles,
+    });
+  } catch (error: any) {
+    console.error('Error adding favorite vehicle:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi máy chủ khi thêm xe vào danh sách yêu thích',
+      error: error.message,
+    });
+  }
+};
+
+// [DELETE] Remove vehicle from favorites
+export const removeFavoriteVehicle = async (req: AuthRequest, res: Response): Promise<any> => {
+  try {
+    const userId = req.user?.id;
+    const { vehicleId } = req.params; // Lấy từ URL params theo chuẩn RESTful
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $pull: { favoriteVehicles: vehicleId } }, // Xóa phần tử khỏi mảng
+      { new: true }
+    ).select('favoriteVehicles');
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy thông tin thành viên',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Đã xóa xe khỏi danh sách yêu thích thành công',
+      favoriteVehicles: updatedUser.favoriteVehicles,
+    });
+  } catch (error: any) {
+    console.error('Error removing favorite vehicle:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi máy chủ khi xóa xe khỏi danh sách yêu thích',
+      error: error.message,
+    });
+  }
+};
+
+// [GET] Get all favorite vehicles of current user
+export const getFavoriteVehicles = async (req: AuthRequest, res: Response): Promise<any> => {
+  try {
+    const userId = req.user?.id;
+
+    // Tách select ra hoặc truyền trực tiếp vào làm tham số thứ 2 của findById để an toàn
+    const userWithFavorites = await User.findById(userId, 'favoriteVehicles')
+      .populate({
+        path: 'favoriteVehicles',
+        // Nếu muốn chắc chắn lấy đủ các trường từ bảng Vehicle, bạn có thể select rõ ràng ở đây (tùy chọn)
+        select: 'vehicleModel licensePlate rentalPrice imageUrls status transmissionType seats features ownerId'
+      });
+
+    if (!userWithFavorites) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy thông tin thành viên',
+      });
+    }
+
+    // Trả về mảng dữ liệu đã được populate đầy đủ object thông tin xe
+    res.status(200).json({
+      success: true,
+      data: userWithFavorites.favoriteVehicles || [],
+    });
+  } catch (error: any) {
+    console.error('Error fetching favorite vehicles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi máy chủ khi tải danh sách xe yêu thích',
+      error: error.message,
+    });
+  }
+};
