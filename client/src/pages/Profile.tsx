@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Mail, Phone, Calendar, Shield, Award, Briefcase, UserCheck, Check, Save, ArrowLeft, Camera, Lock, Key, X, RefreshCw, AlertCircle, FileText, Eye, ShieldCheck, Activity, QrCode } from 'lucide-react';
 import { motion } from 'motion/react';
+import { FavoriteMotorbikes } from '../components/favoriteMotorbikes'; // Đảm bảo đúng đường dẫn tới component bạn vừa tạo
 
 export const Profile = () => {
   const navigate = useNavigate();
@@ -1682,6 +1683,9 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
                 </button>
               </form>
             </motion.div>
+
+            <FavoriteMotorbikes API_BASE_URL={API_BASE_URL} />
+
             {/* Modal Xem & Ký hợp đồng đối tác */}
             {isContractModalOpen && (
               <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
