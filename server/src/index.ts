@@ -42,10 +42,10 @@ const ALLOWED_ORIGINS = [
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    
-    const isAllowed = 
-      ALLOWED_ORIGINS.includes(origin) || 
-      /^http:\/\/localhost:\d+$/.test(origin) || 
+
+    const isAllowed =
+      ALLOWED_ORIGINS.includes(origin) ||
+      /^http:\/\/localhost:\d+$/.test(origin) ||
       /^http:\/\/127\.0\.0\.1:\d+$/.test(origin) ||
       /^http:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin) ||
       /^http:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+:\d+$/.test(origin) ||
@@ -54,7 +54,7 @@ app.use(cors({
     if (isAllowed) {
       return callback(null, true);
     }
-    
+
     console.error(`[CORS Blocked] Origin: ${origin}`);
     return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
@@ -105,7 +105,7 @@ const upload = multer({
     const filetypes = /jpeg|jpg|png|webp/;
     const mimetype = filetypes.test(file.mimetype);
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    
+
     if (mimetype && extname) {
       return cb(null, true);
     }
@@ -283,7 +283,7 @@ async function seedVehicles() {
 async function seedCategories() {
   try {
     const staticCategories = Array.from(new Set(BIKES.map(b => b.type)));
-    
+
     // Check if any existing vehicles have text categories to seed
     const existingVehicles = await Vehicle.find();
     const dbCategories: string[] = [];
@@ -292,12 +292,12 @@ async function seedCategories() {
         dbCategories.push(v.category);
       }
     }
-    
+
     const uniqueCategories = Array.from(new Set([...staticCategories, ...dbCategories]));
-    
+
     for (const catName of uniqueCategories) {
       if (!catName || catName.trim() === '') continue;
-      
+
       const slug = catName
         .toString()
         .toLowerCase()
@@ -308,7 +308,7 @@ async function seedCategories() {
         .replace(/\s+/g, '-')
         .replace(/[^\w\-]+/g, '')
         .replace(/\-\-+/g, '-');
-      
+
       const exists = await Category.findOne({ $or: [{ name: catName }, { slug }] });
       if (!exists) {
         await Category.create({
@@ -328,10 +328,10 @@ async function migrateVehicleCategories() {
   try {
     const db = mongoose.connection.db;
     if (!db) return;
-    
+
     const rawVehicles = await db.collection('vehicles').find().toArray();
     let migratedCount = 0;
-    
+
     for (const v of rawVehicles) {
       if (typeof v.category === 'string' && !mongoose.Types.ObjectId.isValid(v.category)) {
         const catName = v.category;
@@ -346,7 +346,7 @@ async function migrateVehicleCategories() {
             .replace(/\s+/g, '-')
             .replace(/[^\w\-]+/g, '')
             .replace(/\-\-+/g, '-');
-            
+
           const insertRes = await db.collection('categories').insertOne({
             name: catName,
             slug,
@@ -357,10 +357,10 @@ async function migrateVehicleCategories() {
           categoryDoc = { _id: insertRes.insertedId, name: catName } as any;
           console.log(`✅ Tự động tạo danh mục thiếu khi migrate raw: ${catName}`);
         }
-        
+
         await db.collection('vehicles').updateOne(
           { _id: v._id },
-          { $set: { category: categoryDoc._id } }
+          { $set: { category: categoryDoc?._id } } // Chỉ dùng ?. thôi bạn nhé
         );
         migratedCount++;
       }
