@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare, Globe, Folder, Archive } from 'lucide-react';
+import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare, Globe, Folder, Archive, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { notificationService, NotificationItem } from '../services/notificationService.js';
 import { useLanguage } from '../hooks/useLanguage';
+import { getUserFavorites, removeFromFavorites } from '../services/vehicleService';
 
 const translateNotificationTitle = (title: string, t: any) => {
   const tLower = (title || '').toLowerCase().trim();
@@ -72,6 +73,8 @@ export const Header = () => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotiOpen, setIsNotiOpen] = useState(false);
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const [notiFilter, setNotiFilter] = useState<'all' | 'unread'>('all');
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [activeToast, setActiveToast] = useState<{ id: string; title: string; message: string } | null>(null);
@@ -106,6 +109,48 @@ export const Header = () => {
       console.error('Lỗi khi lấy thông báo:', err);
     }
   };
+
+  const fetchFavorites = async () => {
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) return;
+    try {
+      const { token } = JSON.parse(storedUser);
+      const res = await getUserFavorites(token);
+      if (res.success && res.data) {
+        setFavorites(res.data);
+      }
+    } catch (err) {
+      console.error('Error fetching favorites in Header:', err);
+    }
+  };
+
+  const handleRemoveFavorite = async (e: React.MouseEvent, bikeId: string) => {
+    e.stopPropagation();
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) return;
+    try {
+      const { token } = JSON.parse(storedUser);
+      const res = await removeFromFavorites(token, bikeId);
+      if (res.success) {
+        setFavorites(prev => prev.filter(b => b._id !== bikeId));
+        window.dispatchEvent(new Event('favoritesUpdated'));
+      }
+    } catch (err) {
+      console.error('Error removing favorite in Header:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchFavorites();
+
+    const handleUpdate = () => {
+      fetchFavorites();
+    };
+    window.addEventListener('favoritesUpdated', handleUpdate);
+    return () => {
+      window.removeEventListener('favoritesUpdated', handleUpdate);
+    };
+  }, [user]);
 
   // Thiết lập kết nối SSE (Server-Sent Events) thời gian thực
   useEffect(() => {
@@ -361,7 +406,6 @@ export const Header = () => {
       { path: '/bikes', label: t('nav.bikes') },
       { path: '/bookings', label: t('nav.myBookings') },
       { path: '/promotions', label: t('nav.promotions') },
-      { path: '/profile?tab=favorites', label: t('nav.favoriteBikes') || 'Xe Yêu Thích' },
     ];
   };
 
@@ -643,6 +687,110 @@ export const Header = () => {
                     )}
                   </AnimatePresence>
                 </div>
+
+                {/* Favorite Bikes Dropdown */}
+                {user.role === 'customer' && (
+                  <div
+                    className="relative"
+                    onMouseEnter={() => {
+                      setIsFavoritesOpen(true);
+                      setIsNotiOpen(false);
+                      setIsDropdownOpen(false);
+                    }}
+                    onMouseLeave={() => {
+                      setIsFavoritesOpen(false);
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        setIsFavoritesOpen(!isFavoritesOpen);
+                        setIsNotiOpen(false);
+                        setIsDropdownOpen(false);
+                      }}
+                      className="relative p-2 rounded-full bg-surface border border-gray-800 hover:border-neon hover:text-white text-gray-400 transition-all duration-300 cursor-pointer flex items-center justify-center"
+                    >
+                      <Heart size={18} className={favorites.length > 0 ? "fill-neon text-neon" : ""} />
+                      {favorites.length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center bg-neon text-dark text-[10px] font-bold rounded-full border border-dark">
+                          {favorites.length}
+                        </span>
+                      )}
+                    </button>
+
+                    <AnimatePresence>
+                      {isFavoritesOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40 bg-transparent md:hidden" onClick={() => setIsFavoritesOpen(false)} />
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl w-[320px] md:w-[360px] overflow-hidden text-gray-300 font-sans pb-2 animate-none"
+                          >
+                            {/* Top Neon line */}
+                            <div className="absolute top-0 inset-x-0 h-[3px] bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+
+                            {/* Header */}
+                            <div className="p-4 border-b border-white/5 pb-2">
+                              <span className="font-bold text-white text-base">Xe máy yêu thích ({favorites.length})</span>
+                            </div>
+
+                            {/* List content */}
+                            <div className="max-h-[320px] overflow-y-auto py-2 space-y-0.5 custom-scrollbar">
+                              {favorites.length === 0 ? (
+                                <div className="p-8 text-center text-gray-500 text-xs italic">
+                                  Chưa có xe máy yêu thích nào.
+                                </div>
+                              ) : (
+                                favorites.map((bike) => {
+                                  const bikeImage = bike.imageUrls && bike.imageUrls.length > 0
+                                    ? bike.imageUrls[0]
+                                    : 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&q=80&w=800';
+
+                                  return (
+                                    <div
+                                      key={bike._id}
+                                      onClick={() => {
+                                        navigate(`/motorbike/${bike._id}`);
+                                        setIsFavoritesOpen(false);
+                                      }}
+                                      className="group p-3 flex gap-3 text-left transition-all duration-200 cursor-pointer rounded-lg mx-2 hover:bg-white/5"
+                                    >
+                                      {/* Left side: bike image */}
+                                      <div className="w-14 h-10 rounded overflow-hidden bg-black/40 border border-white/5 shrink-0">
+                                        <img src={bikeImage} alt={bike.vehicleModel} className="w-full h-full object-cover" />
+                                      </div>
+
+                                      {/* Middle Content */}
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-white font-bold leading-relaxed truncate uppercase">
+                                          {bike.vehicleModel}
+                                        </p>
+                                        <p className="text-[10px] text-neon mt-0.5 leading-relaxed">
+                                          {bike.rentalPrice?.toLocaleString('vi-VN')}đ / ngày
+                                        </p>
+                                      </div>
+
+                                      {/* Right side: Delete Button */}
+                                      <button
+                                        onClick={(e) => handleRemoveFavorite(e, bike._id)}
+                                        className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-all border-none bg-transparent cursor-pointer my-auto"
+                                        title="Xóa khỏi yêu thích"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
 
                 <div
                   className="relative animate-fade-in"
