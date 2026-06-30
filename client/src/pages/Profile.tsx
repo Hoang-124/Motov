@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { User, Mail, Phone, Calendar, Shield, Award, Briefcase, UserCheck, Check, Save, ArrowLeft, Camera, Lock, Key, X, RefreshCw, AlertCircle, FileText, Eye, ShieldCheck, Activity, QrCode } from 'lucide-react';
 import { motion } from 'motion/react';
 import { FavoriteMotorbikes } from '../components/favoriteMotorbikes'; // Đảm bảo đúng đường dẫn tới component bạn vừa tạo
@@ -7,6 +7,18 @@ import { FavoriteMotorbikes } from '../components/favoriteMotorbikes'; // Đảm
 export const Profile = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'favorites') {
+      setTimeout(() => {
+        const element = document.getElementById('favorites-section');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300);
+    }
+  }, [searchParams]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1684,7 +1696,9 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
               </form>
             </motion.div>
 
-            <FavoriteMotorbikes API_BASE_URL={API_BASE_URL} />
+            <div id="favorites-section">
+              <FavoriteMotorbikes API_BASE_URL={API_BASE_URL} />
+            </div>
 
             {/* Modal Xem & Ký hợp đồng đối tác */}
             {isContractModalOpen && (

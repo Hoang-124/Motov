@@ -65,6 +65,7 @@ export const en: TranslationKeys = {
     bikes: 'Bikes',
     promotions: 'Promotions',
     myBookings: 'My Bookings',
+    favoriteBikes: 'Favorite Bikes',
     dashboard: 'Dashboard',
     manageBikes: 'Manage Bikes',
     manageCategories: 'Manage Categories',

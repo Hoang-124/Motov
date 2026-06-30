@@ -361,6 +361,7 @@ export const Header = () => {
       { path: '/bikes', label: t('nav.bikes') },
       { path: '/bookings', label: t('nav.myBookings') },
       { path: '/promotions', label: t('nav.promotions') },
+      { path: '/profile?tab=favorites', label: t('nav.favoriteBikes') || 'Xe Yêu Thích' },
     ];
   };
 

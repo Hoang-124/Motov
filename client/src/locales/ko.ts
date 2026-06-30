@@ -61,6 +61,7 @@ export const ko: TranslationKeys = {
     bikes: '바이크',
     promotions: '프로모션',
     myBookings: '내 예약',
+    favoriteBikes: '선호하는 바이크',
     dashboard: '대시보드',
     manageBikes: '바이크 관리',
     manageCategories: '카테고리 관리',
