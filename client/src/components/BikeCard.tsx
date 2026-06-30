@@ -57,11 +57,17 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
       if (isFavorite) {
         // Nếu đã thích -> Bấm để xóa
         const res = await removeFromFavorites(token, bike._id);
-        if (res.success) setIsFavorite(false);
+        if (res.success) {
+          setIsFavorite(false);
+          window.dispatchEvent(new Event('favoritesUpdated'));
+        }
       } else {
         // Nếu chưa thích -> Bấm để thêm
         const res = await addToFavorites(token, bike._id);
-        if (res.success) setIsFavorite(true);
+        if (res.success) {
+          setIsFavorite(true);
+          window.dispatchEvent(new Event('favoritesUpdated'));
+        }
       }
     } catch (err) {
       console.error('Lỗi khi cập nhật danh sách yêu thích:', err);

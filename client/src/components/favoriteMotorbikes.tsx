@@ -50,6 +50,7 @@ export const FavoriteMotorbikes: React.FC<FavoriteMotorbikesProps> = () => {
       if (res.success) {
         // Cập nhật nhanh UI bằng cách lọc bỏ xe vừa xóa ra khỏi State
         setFavorites((prev) => prev.filter((bike) => bike._id !== bikeId));
+        window.dispatchEvent(new Event('favoritesUpdated'));
       }
     } catch (err) {
       console.error('Lỗi khi xóa xe yêu thích:', err);
