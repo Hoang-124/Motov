@@ -53,7 +53,7 @@ export const getAllVehicles = async (req: AuthRequest, res: Response) => {
   try {
     const { category, status, ownerId, sortBy = '-createdAt' } = req.query;
     
-    const filter: any = {};
+    const filter: any = { isDeleted: { $ne: true } };
     if (category) filter.category = category;
     if (status) filter.status = status;
     if (ownerId) filter.ownerId = ownerId;
@@ -92,7 +92,7 @@ export const getVehicleById = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const vehicle = await Vehicle.findById(id)
+    const vehicle = await Vehicle.findOne({ _id: id, isDeleted: { $ne: true } })
       .populate('ownerId', 'firstName lastName email phoneNumber avatarUrl')
       .populate('category');
 
@@ -272,8 +272,20 @@ export const updateVehicle = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Update allowed fields
-    const allowedFields = ['vehicleModel', 'seats', 'odometer', 'rentalPrice', 'description', 'status', 'imageUrls', 'features'];
+    // Update allowed fields, including fields that the admin UI edits directly.
+    const allowedFields = [
+      'vehicleModel',
+      'licensePlate',
+      'seats',
+      'odometer',
+      'rentalPrice',
+      'description',
+      'status',
+      'imageUrls',
+      'features',
+      'category',
+      'transmissionType'
+    ];
     Object.keys(updateData).forEach(key => {
       if (allowedFields.includes(key)) {
         (vehicle as any)[key] = updateData[key];
@@ -332,7 +344,9 @@ export const deleteVehicle = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    await Vehicle.findByIdAndDelete(id);
+    vehicle.isDeleted = true;
+    vehicle.status = 'Maintenance';
+    await vehicle.save();
 
     res.json({
       success: true,

@@ -250,6 +250,35 @@ describe('Vehicle Controller Tests', () => {
       expect(callArgs.success).toBe(true);
       expect(callArgs.data.rentalPrice).toBe(200000);
     });
+
+    it('should update category, license plate and transmission type for admin edits', async () => {
+      const vehicle = new Vehicle({
+        ownerId: testUserId,
+        vehicleModel: 'Edit Test Bike',
+        licensePlate: 'EDIT001',
+        category: testCategoryId,
+        transmissionType: 'Manual',
+        rentalPrice: 110000
+      });
+      const saved = await vehicle.save();
+
+      mockRequest.params = { id: saved._id?.toString() };
+      mockRequest.body = {
+        vehicleModel: 'Edited Bike',
+        licensePlate: 'EDIT999',
+        category: testCategoryId,
+        transmissionType: 'Automatic'
+      };
+
+      await updateVehicle(mockRequest, mockResponse);
+
+      expect(mockResponse.json).toHaveBeenCalled();
+      const callArgs = mockResponse.json.mock.calls[0][0];
+      expect(callArgs.success).toBe(true);
+      expect(callArgs.data.vehicleModel).toBe('Edited Bike');
+      expect(callArgs.data.licensePlate).toBe('EDIT999');
+      expect(callArgs.data.transmissionType).toBe('Automatic');
+    });
   });
 
   describe('deleteVehicle', () => {
@@ -273,9 +302,12 @@ describe('Vehicle Controller Tests', () => {
       const callArgs = mockResponse.json.mock.calls[0][0];
       expect(callArgs.success).toBe(true);
 
-      // Verify vehicle is deleted
+      // Verify vehicle is soft-deleted and hidden from normal queries
       const deletedVehicle = await Vehicle.findById(vehicleIdToDelete);
-      expect(deletedVehicle).toBeNull();
+      expect(deletedVehicle).not.toBeNull();
+      expect(deletedVehicle?.isDeleted).toBe(true);
+      const visibleVehicles = await Vehicle.find({ _id: vehicleIdToDelete, isDeleted: { $ne: true } });
+      expect(visibleVehicles).toHaveLength(0);
     });
   });
 
