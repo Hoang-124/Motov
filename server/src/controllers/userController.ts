@@ -474,9 +474,13 @@ export const getFavoriteVehicles = async (req: AuthRequest, res: Response): Prom
   try {
     const userId = req.user?.id;
 
-    const userWithFavorites = await User.findById(userId)
-      .populate('favoriteVehicles') // Nối dữ liệu để lấy thông tin xe chi tiết
-      .select('favoriteVehicles');
+    // Tách select ra hoặc truyền trực tiếp vào làm tham số thứ 2 của findById để an toàn
+    const userWithFavorites = await User.findById(userId, 'favoriteVehicles')
+      .populate({
+        path: 'favoriteVehicles',
+        // Nếu muốn chắc chắn lấy đủ các trường từ bảng Vehicle, bạn có thể select rõ ràng ở đây (tùy chọn)
+        select: 'vehicleModel licensePlate rentalPrice imageUrls status transmissionType seats features ownerId'
+      });
 
     if (!userWithFavorites) {
       return res.status(404).json({
@@ -485,6 +489,7 @@ export const getFavoriteVehicles = async (req: AuthRequest, res: Response): Prom
       });
     }
 
+    // Trả về mảng dữ liệu đã được populate đầy đủ object thông tin xe
     res.status(200).json({
       success: true,
       data: userWithFavorites.favoriteVehicles || [],
