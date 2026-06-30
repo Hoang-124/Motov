@@ -63,6 +63,7 @@ export const vi = {
     bikes: 'Dòng Xe',
     promotions: 'Khuyến Mãi',
     myBookings: 'Đơn Thuê Của Tôi',
+    favoriteBikes: 'Xe Yêu Thích',
     dashboard: 'Thống Kê',
     manageBikes: 'Quản Lý Xe',
     manageCategories: 'Quản Lý Danh Mục',
