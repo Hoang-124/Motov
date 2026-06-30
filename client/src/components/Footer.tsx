@@ -40,7 +40,7 @@ export const Footer = () => {
       <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-neon/5 rounded-full blur-[130px] pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto px-4 lg:px-8">
-        
+
         {/* Core Value Badges */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-12 border-b border-gray-800/60 mb-12">
           <div className="flex items-center gap-4 p-4 rounded-xl bg-dark/40 border border-gray-800/50 hover:border-neon/30 transition-colors duration-300">
@@ -74,7 +74,7 @@ export const Footer = () => {
 
         {/* Main Footer grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12 mb-12">
-          
+
           {/* Column 1: Brand Info */}
           <div className="lg:col-span-4">
             <Link to="/" className="font-display font-black text-3xl text-neon mb-6 block tracking-tight neon-text-glow">
@@ -115,8 +115,8 @@ export const Footer = () => {
                 { to: '#', label: t('footer.guide') }
               ].map((link, idx) => (
                 <li key={idx}>
-                  <Link 
-                    to={link.to} 
+                  <Link
+                    to={link.to}
                     className="group flex items-center hover:text-neon transition-colors duration-300"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-neon mr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -169,11 +169,11 @@ export const Footer = () => {
                     className="flex items-start gap-4 p-4 rounded-xl bg-neon/5 border border-neon/30 text-white text-xs relative overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_95%,rgba(204,255,0,0.15)_95%)] bg-[size:100%_20px] pointer-events-none opacity-20" />
-                    
+
                     <div className="w-9 h-9 rounded-lg bg-neon/15 border border-neon/40 flex items-center justify-center shrink-0 text-neon shadow-[0_0_15px_rgba(204,255,0,0.2)]">
                       <Check size={18} strokeWidth={3} className="neon-text-glow" />
                     </div>
-                    
+
                     <div className="flex flex-col gap-0.5">
                       <span className="font-display font-black text-neon tracking-wider text-xs uppercase neon-text-glow">
                         {t('footer.newsletterSuccessHeader')}
@@ -200,11 +200,10 @@ export const Footer = () => {
                         }}
                         disabled={status === 'loading'}
                         placeholder={t('footer.newsletterPlaceholder')}
-                        className={`w-full bg-dark/85 border rounded-lg py-2.5 pl-4 pr-12 text-xs text-white placeholder-gray-500 outline-none transition-all duration-300 ${
-                          status === 'error' 
-                            ? 'border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
+                        className={`w-full bg-dark/85 border rounded-lg py-2.5 pl-4 pr-12 text-xs text-white placeholder-gray-500 outline-none transition-all duration-300 ${status === 'error'
+                            ? 'border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500'
                             : 'border-gray-800 focus:border-neon focus:ring-1 focus:ring-neon'
-                        }`}
+                          }`}
                       />
                       <button
                         type="submit"
@@ -218,7 +217,7 @@ export const Footer = () => {
                         )}
                       </button>
                     </form>
-                    
+
                     {status === 'error' && (
                       <motion.p
                         initial={{ opacity: 0, y: -5 }}
@@ -235,7 +234,7 @@ export const Footer = () => {
           </div>
 
         </div>
-        
+
         {/* Bottom copyright row */}
         <div className="pt-8 border-t border-gray-800/80 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500">
           <p>&copy; {new Date().getFullYear()} - Motov Da Nang. {t('footer.rightsReserved')}</p>
