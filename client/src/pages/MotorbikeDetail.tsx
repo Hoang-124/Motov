@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertCircle, Loader, Edit2, Trash2, MapPin, Users, Zap, Check, X, Star } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Loader, Edit2, Trash2, MapPin, Users, Zap, Check, X, Star, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getMotorbikeById, Motorbike, deleteMotorbike, getAllMotorbikes } from '../services/vehicleService';
 import { feedbackService, FeedbackItem } from '../services/feedbackService';
@@ -325,6 +325,31 @@ export const MotorbikeDetail = () => {
                   {motorbike.status === 'Available' ? t('bikesPage.bookNowBtn') : t('bikesPage.notAvailable')}
                 </button>
               )}
+
+              {(() => {
+                const ownerId = motorbike && typeof motorbike.ownerId === 'object' && motorbike.ownerId !== null 
+                  ? (motorbike.ownerId as any)._id 
+                  : motorbike?.ownerId;
+                const isOwnBike = ownerId && currentUser && ownerId.toString() === (currentUser.id || currentUser._id || '').toString();
+
+                if (isOwnBike) return null;
+
+                return (
+                  <button
+                    onClick={() => {
+                      if (!currentUser) {
+                        navigate(`/auth?redirect=chat?with=${ownerId}`);
+                      } else {
+                        navigate(`/chat?with=${ownerId}`);
+                      }
+                    }}
+                    className="flex items-center justify-center gap-2 bg-black/40 border border-neon/30 hover:bg-neon hover:text-dark text-neon text-xs font-bold px-6 py-3 rounded-lg transition-all duration-300 cursor-pointer"
+                  >
+                    <MessageSquare size={14} />
+                    {language === 'vi' ? 'Chat với người cho thuê' : 'Chat with Owner'}
+                  </button>
+                );
+              })()}
 
               <button
                 onClick={() => navigate('/bikes')}
