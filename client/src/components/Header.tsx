@@ -393,6 +393,7 @@ export const Header = () => {
       return [
         { path: '/', label: t('nav.home') },
         { path: '/bikes', label: t('nav.bikes') },
+        { path: '/map', label: t('nav.bikesMap') },
         { path: '/promotions', label: t('nav.promotions') },
       ];
     }
@@ -404,6 +405,7 @@ export const Header = () => {
       return [
         { path: '/', label: t('nav.home') },
         { path: '/bikes', label: t('nav.bikes') },
+        { path: '/map', label: t('nav.bikesMap') },
         { path: '/promotions', label: t('nav.promotions') },
       ];
     }
@@ -428,6 +430,7 @@ export const Header = () => {
     return [
       { path: '/', label: t('nav.home') },
       { path: '/bikes', label: t('nav.bikes') },
+      { path: '/map', label: t('nav.bikesMap') },
       { path: '/bookings', label: t('nav.myBookings') },
       { path: '/promotions', label: t('nav.promotions') },
     ];

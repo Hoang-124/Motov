@@ -32,7 +32,9 @@ export const MotorbikeForm = () => {
     imageUrls: [] as string[],
     features: [] as string[],
     ownerId: '',
-    status: 'Available' as 'Available' | 'Rented' | 'Maintenance' | 'PendingApproval'
+    status: 'Available' as 'Available' | 'Rented' | 'Maintenance' | 'PendingApproval',
+    latitude: 16.068,
+    longitude: 108.22
   });
 
   const [imageInput, setImageInput] = useState('');
@@ -67,7 +69,9 @@ export const MotorbikeForm = () => {
             imageUrls: data.imageUrls || [],
             features: data.features || [],
             ownerId: typeof data.ownerId === 'string' ? data.ownerId : data.ownerId?._id || '',
-            status: data.status || 'Available'
+            status: data.status || 'Available',
+            latitude: data.location?.coordinates?.[1] || 16.068,
+            longitude: data.location?.coordinates?.[0] || 108.22
           });
         } catch (err) {
           setError('Failed to load motorbike data');
@@ -162,12 +166,22 @@ export const MotorbikeForm = () => {
         return;
       }
 
+      // Build GeoJSON location gửi lên server
+      const { latitude, longitude, ...bikeData } = formData;
+      const submitData = {
+        ...bikeData,
+        location: {
+          type: 'Point',
+          coordinates: [longitude, latitude]
+        }
+      };
+
       if (isEditMode && id) {
-        await updateMotorbike(id, formData, token);
+        await updateMotorbike(id, submitData, token);
         setSuccessMessage('Motorbike updated successfully!');
         setSuccessBikeId(id);
       } else {
-        const result = await createMotorbike(formData, token);
+        const result = await createMotorbike(submitData, token);
         setSuccessMessage('Motorbike created successfully!');
         setSuccessBikeId(result._id || null);
       }
@@ -392,6 +406,38 @@ export const MotorbikeForm = () => {
                   min="0"
                   className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-2 text-gray-300 placeholder-gray-600 focus:ring-2 focus:ring-neon focus:border-transparent outline-none transition-all"
                 />
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">
+                    Latitude (Vĩ độ) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    name="latitude"
+                    value={formData.latitude}
+                    onChange={handleChange}
+                    placeholder="e.g., 16.068"
+                    className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-2 text-gray-300 placeholder-gray-600 focus:ring-2 focus:ring-neon focus:border-transparent outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">
+                    Longitude (Kinh độ) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    name="longitude"
+                    value={formData.longitude}
+                    onChange={handleChange}
+                    placeholder="e.g., 108.22"
+                    className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-2 text-gray-300 placeholder-gray-600 focus:ring-2 focus:ring-neon focus:border-transparent outline-none transition-all"
+                  />
+                </div>
               </div>
             </div>
 
