@@ -4,6 +4,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Booking } from '../models/Booking.js';
 import { Vehicle } from '../models/Vehicle.js';
 import { User } from '../models/User.js';
+import { BookingReminder } from '../models/BookingReminder.js';
 
 let mongod: MongoMemoryServer | null = null;
 
@@ -25,6 +26,7 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
+  await BookingReminder.deleteMany({});
   await Booking.deleteMany({});
   await Vehicle.deleteMany({});
   await User.deleteMany({});
@@ -139,6 +141,50 @@ describe('getBookingTracking()', () => {
   });
 });
 
+describe('confirmBikePickupByStaff()', () => {
+  let confirmBikePickupByStaff: any;
+  beforeAll(async () => {
+    ({ confirmBikePickupByStaff } = await import('../controllers/bookingController.js'));
+  });
+
+  it('should schedule return reminders when staff confirms bike pickup', async () => {
+    const vehicle = await Vehicle.create({
+      ownerId: new mongoose.Types.ObjectId(),
+      rentalPrice: 100000,
+      status: 'Available',
+      licensePlate: '12-A3 45678',
+      transmissionType: 'Manual',
+      category: new mongoose.Types.ObjectId(),
+      vehicleModel: 'Honda Wave'
+    });
+
+    const booking = await Booking.create({
+      bookingCode: 'BK-REMINDER',
+      userId: new mongoose.Types.ObjectId(),
+      vehicleId: vehicle._id,
+      pickupDateTime: new Date(Date.now() + 2 * 60 * 60 * 1000),
+      returnDateTime: new Date(Date.now() + 30 * 60 * 60 * 1000),
+      totalAmount: 100000,
+      status: 'Confirmed',
+      vehicleSnapshot: { name: 'Test Bike', licensePlate: '12-A3 45678', rentalPrice: 100000, image: 'test.jpg' }
+    });
+
+    const req: any = {
+      params: { id: booking._id.toString() },
+      body: {},
+      user: { id: 'staff-1', roles: ['Staff'] }
+    };
+    const res = createMockRes();
+
+    await confirmBikePickupByStaff(req, res);
+
+    const reminders = await BookingReminder.find({ bookingId: booking._id });
+    expect(res._status).toBe(200);
+    expect(reminders.length).toBeGreaterThan(0);
+    expect(reminders.some(r => r.reminderType === '24h_before_return' || r.reminderType === '2h_before_return')).toBe(true);
+  });
+});
+
 describe('returnMotorbike()', () => {
   let returnMotorbike: any;
   beforeAll(async () => {
@@ -181,7 +227,7 @@ describe('returnMotorbike()', () => {
 
     const req: any = { 
       params: { id: booking._id.toString() }, 
-      body: { actualReturnTime: 'invalid-date' },
+      body: { actualReturnTime: 'invalid-date', endOdometer: 100 },
       user: { id: 'staff-1', roles: ['Staff'] } 
     };
     const res = createMockRes();
@@ -208,7 +254,7 @@ describe('returnMotorbike()', () => {
 
     const req: any = { 
       params: { id: booking._id.toString() }, 
-      body: { actualReturnTime: invalidReturnTime },
+      body: { actualReturnTime: invalidReturnTime, endOdometer: 100 },
       user: { id: 'staff-1', roles: ['Staff'] } 
     };
     const res = createMockRes();
@@ -246,7 +292,7 @@ describe('returnMotorbike()', () => {
 
     const req: any = { 
       params: { id: booking._id.toString() }, 
-      body: { actualReturnTime: new Date().toISOString() }, // Returned early/on time
+      body: { actualReturnTime: new Date().toISOString(), endOdometer: 100 }, // Returned early/on time
       user: { id: 'staff-1', roles: ['Staff'] } 
     };
     const res = createMockRes();
@@ -291,7 +337,7 @@ describe('returnMotorbike()', () => {
 
     const req: any = { 
       params: { id: booking._id.toString() }, 
-      body: { actualReturnTime: actualReturnTime.toISOString() },
+      body: { actualReturnTime: actualReturnTime.toISOString(), endOdometer: 100 },
       user: { id: 'staff-1', roles: ['Staff'] } 
     };
     const res = createMockRes();

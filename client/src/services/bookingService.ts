@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API URL chính xác theo Backend của bạn
-const API_URL = 'http://localhost:5000/api/bookings'; 
+const API_URL = `${import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api'}/bookings`; 
 
 // Tự động đính kèm Token lưu trong localStorage vào Header cho mọi request
 axios.interceptors.request.use((config) => {

@@ -15,15 +15,18 @@ import {
   CreditCard, 
   UserCheck,
   Key,
-  FileText
+  FileText,
+  Bell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { bookingService, Booking } from '../../services/bookingService';
 import axios from 'axios';
 import { ReturnMotorbikeModal } from '../../components/ReturnMotorbikeModal';
+import { BookingReminderModal } from '../../components/BookingReminderModal';
 import { useToast } from '../../hooks/useToast';
+import { useSearchParams } from 'react-router-dom';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
 
 interface OwnerRequest {
   id: string;
@@ -40,16 +43,20 @@ interface OwnerRequest {
 
 export const AdminBookings = () => {
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'bookings' | 'ownerRequests'>('bookings');
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as 'bookings' | 'ownerRequests') || 'bookings';
+  const initialStatus = searchParams.get('status') || 'All';
+  const [activeTab, setActiveTab] = useState<'bookings' | 'ownerRequests'>(initialTab);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [ownerRequests, setOwnerRequests] = useState<OwnerRequest[]>([]);
-  const [filterStatus, setFilterStatus] = useState<string>('All');
+  const [filterStatus, setFilterStatus] = useState<string>(initialStatus);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [returningBookingId, setReturningBookingId] = useState<string | null>(null);
   const [returningPickupTime, setReturningPickupTime] = useState<string | undefined>(undefined);
   const [viewingContractRequest, setViewingContractRequest] = useState<OwnerRequest | null>(null);
+  const [reminderBooking, setReminderBooking] = useState<Booking | null>(null);
 
   const getAuthHeaders = () => {
     let token = localStorage.getItem('token');
@@ -95,6 +102,17 @@ export const AdminBookings = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'ownerRequests' || tab === 'bookings') {
+      setActiveTab(tab);
+    }
+    const status = searchParams.get('status');
+    if (status) {
+      setFilterStatus(status);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (activeTab === 'bookings') {
@@ -398,6 +416,13 @@ export const AdminBookings = () => {
                                 Bàn giao
                               </button>
                               <button
+                                onClick={() => setReminderBooking(booking)}
+                                className="px-3 py-1.5 rounded-lg bg-surface border border-gray-800 hover:border-neon hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1 text-gray-300"
+                                title="Nhắc nhở nhận xe"
+                              >
+                                <Bell size={12} className="text-neon" /> Nhắc nhở
+                              </button>
+                              <button
                                 onClick={() => handleUpdateStatus(booking.id, 'Cancelled')}
                                 className="p-2 rounded bg-black hover:bg-red-950/40 text-red-500 border border-gray-800 hover:border-red-500/30 transition-all cursor-pointer"
                                 title="Hủy đơn hàng"
@@ -409,16 +434,25 @@ export const AdminBookings = () => {
 
                           {/* Nhận xe Ongoing (Thu hồi xe qua Modal) */}
                           {booking.status === 'Ongoing' && (
-                            <button
-                              onClick={() => {
-                                setReturningBookingId(booking.id);
-                                setReturningPickupTime(booking.pickupDateTime);
-                              }}
-                              className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                              title="Xác nhận khách trả xe"
-                            >
-                              <Key size={12} /> Thu hồi xe
-                            </button>
+                            <>
+                              <button
+                                onClick={() => {
+                                  setReturningBookingId(booking.id);
+                                  setReturningPickupTime(booking.pickupDateTime);
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                                title="Xác nhận khách trả xe"
+                              >
+                                <Key size={12} /> Thu hồi xe
+                              </button>
+                              <button
+                                onClick={() => setReminderBooking(booking)}
+                                className="px-3 py-1.5 rounded-lg bg-surface border border-gray-800 hover:border-neon hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1 text-gray-300"
+                                title="Nhắc nhở trả xe"
+                              >
+                                <Bell size={12} className="text-neon" /> Nhắc nhở
+                              </button>
+                            </>
                           )}
 
                           {/* Xóa đơn Completed/Cancelled */}
@@ -591,6 +625,11 @@ export const AdminBookings = () => {
         pickupDateTime={returningPickupTime}
         startOdometer={bookings.find(b => b.id === returningBookingId)?.startOdometer || 0}
         onSuccess={handleReturnSuccess}
+      />
+
+      <BookingReminderModal
+        booking={reminderBooking}
+        onClose={() => setReminderBooking(null)}
       />
     </div>
   );

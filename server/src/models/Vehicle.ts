@@ -17,6 +17,7 @@ export interface IVehicle extends Document {
   lastMaintenanceOdometer: number;
   maintenanceInterval: number;
   requiresMaintenance: boolean;
+  isDeleted?: boolean;
   location?: {
     type: string;
     coordinates: number[]; // [longitude, latitude]
@@ -42,6 +43,7 @@ const VehicleSchema = new Schema<IVehicle>({
   lastMaintenanceOdometer: { type: Number, default: 0 },
   maintenanceInterval: { type: Number, default: 2000 },
   requiresMaintenance: { type: Boolean, default: false, index: true },
+  isDeleted: { type: Boolean, default: false, index: true },
   location: {
     type: { type: String, enum: ['Point'], default: 'Point' },
     coordinates: { type: [Number], default: [108.22, 16.068] } // [longitude, latitude] (Da Nang center)

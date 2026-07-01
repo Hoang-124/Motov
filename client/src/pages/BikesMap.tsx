@@ -39,7 +39,7 @@ export const BikesMap = () => {
   const markersRef = useRef<any[]>([]);
   const userMarkerRef = useRef<any>(null);
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
 
   // Dynamic Loader for Leaflet JS & CSS
   const loadLeaflet = (): Promise<any> => {
@@ -72,7 +72,6 @@ export const BikesMap = () => {
   const getUserLocation = (): Promise<[number, number]> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
-        // Fallback to Da Nang center if not supported
         resolve([16.068, 108.22]);
         return;
       }
@@ -130,8 +129,8 @@ export const BikesMap = () => {
         if (!mapRef.current) {
           const map = L.map('bikes-leaflet-map').setView(coords, 14);
 
-          // Add CartoDB Dark Matter tile layer for premium Dark Mode Look
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          // Add CartoDB Voyager tile layer for highly readable and premium look
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             subdomains: 'abcd',
             maxZoom: 20
@@ -428,7 +427,7 @@ export const BikesMap = () => {
             )}
             
             {/* The Leaflet Map element */}
-            <div id="bikes-leaflet-map" className="w-full h-full min-h-[500px] lg:min-h-[600px] z-0"></div>
+            <div id="bikes-leaflet-map" className="w-full h-full min-h-[500px] lg:min-h-[600px] z-0" style={{ filter: 'brightness(0.65) contrast(1.35) saturate(0.8)' }}></div>
 
             {/* Float Recenter Button */}
             {!loading && (

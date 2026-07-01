@@ -1,3 +1,4 @@
+import axios from 'axios';
 import nodemailer from 'nodemailer';
 
 // Helper tạo SMTP Transporter dùng chung
@@ -54,6 +55,7 @@ export interface EmailBookingDetails {
   rentalDays: number;
   discountAmount?: number;
   cancelReason?: string;
+  customerName?: string;
 }
 
 // 1. Gửi email Reset mật khẩu (Đã có sẵn)
@@ -100,6 +102,74 @@ const formatDateTime = (date: Date) => {
     hour: '2-digit',
     minute: '2-digit'
   });
+};
+
+const getTwilioConfig = () => {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const smsFrom = process.env.TWILIO_SMS_FROM;
+
+  if (!accountSid || !authToken || !smsFrom) {
+    return null;
+  }
+
+  return { accountSid, authToken, smsFrom };
+};
+
+const normalizePhoneNumber = (phone: string) => {
+  let normalized = phone.trim();
+  if (normalized.startsWith('0')) {
+    normalized = '+84' + normalized.slice(1);
+  } else if (normalized.startsWith('84') && !normalized.startsWith('+84')) {
+    normalized = '+84' + normalized.slice(2);
+  }
+  return normalized;
+};
+
+export const sendSms = async (phoneNumber: string, message: string): Promise<string | boolean> => {
+  const config = getTwilioConfig();
+  if (!config) {
+    console.log(`[SMS] Twilio cấu hình chưa đầy đủ. Bỏ qua SMS tới ${phoneNumber}`);
+    return false;
+  }
+
+  const normalizedPhone = normalizePhoneNumber(phoneNumber);
+  const payload = new URLSearchParams({
+    From: config.smsFrom,
+    To: normalizedPhone,
+    Body: message,
+  });
+
+  const authHeader = Buffer.from(`${config.accountSid}:${config.authToken}`).toString('base64');
+
+  try {
+    const response = await axios.post(
+      `https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}/Messages.json`,
+      payload.toString(),
+      {
+        headers: {
+          Authorization: `Basic ${authHeader}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    );
+
+    console.log(`[SMS] Đã gửi SMS nhắc nhở đến ${normalizedPhone}`);
+    return response.data?.sid || true;
+  } catch (err: any) {
+    console.error(`[SMS] Lỗi khi gửi SMS nhắc nhở đến ${normalizedPhone}:`, err?.response?.data || err.message || err);
+    throw err;
+  }
+};
+
+export const sendPickupReminderSms = async (phoneNumber: string, booking: EmailBookingDetails): Promise<string | boolean> => {
+  const message = `Motov nhắc: mã ${booking.bookingCode} sẽ nhận xe vào ${formatDateTime(booking.pickupDateTime)} tại ${booking.pickupLocation}. Vui lòng chuẩn bị giấy tờ và đến đúng giờ.`;
+  return sendSms(phoneNumber, message);
+};
+
+export const sendReturnReminderSms = async (phoneNumber: string, booking: EmailBookingDetails): Promise<string | boolean> => {
+  const message = `Motov nhắc: mã ${booking.bookingCode} sẽ trả xe vào ${formatDateTime(booking.returnDateTime)} tại ${booking.pickupLocation}. Tránh trễ hạn để không bị phụ thu.`;
+  return sendSms(phoneNumber, message);
 };
 
 // 2. Gửi email xác nhận đặt xe thành công (chờ duyệt) cho khách hàng
@@ -414,58 +484,37 @@ export const sendEmailVerification = async (email: string, token: string): Promi
   return true;
 };
 
-// 6. Gửi email nhắc nhở nhận xe sắp tới cho khách hàng (trước 2 tiếng)
+// 6. Gửi email nhắc nhở nhận xe sắp tới cho khách hàng (trước 2 tiếng / 24 tiếng)
 export const sendPickupReminderEmail = async (email: string, booking: EmailBookingDetails): Promise<string | boolean> => {
   const transporter = await getTransporter();
+  const customerName = booking.customerName || 'Customer';
 
   const mailOptions = {
     from: '"Motov System" <noreply@motov.com>',
     to: email,
-    subject: `[Motov] Nhắc nhở: Sắp đến giờ nhận xe ${booking.bookingCode}`,
+    subject: 'Motorbike Pickup Reminder',
+    text: `Hello ${customerName},
+
+This is a reminder that your vehicle pickup is scheduled at:
+
+${formatDateTime(booking.pickupDateTime)}
+
+Vehicle:
+${booking.vehicleName}
+
+Thank you for using Motov.`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #27272a; border-radius: 12px; background-color: #09090b; color: #fff;">
-        <h2 style="color: #ccff00; border-bottom: 2px solid #ccff00; padding-bottom: 12px; text-align: center; font-weight: 900; letter-spacing: 1px; margin-top: 0;">NHẮC NHỞ NHẬN XE</h2>
-        
+        <h2 style="color: #ccff00; border-bottom: 2px solid #ccff00; padding-bottom: 12px; text-align: center; font-weight: 900; letter-spacing: 1px; margin-top: 0;">Motorbike Pickup Reminder</h2>
+        <p style="color: #e4e4e7; font-size: 14px;">Hello <strong>${customerName}</strong>,</p>
+        <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6;">This is a reminder that your vehicle pickup is scheduled at:</p>
         <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: center;">
-          <p style="color: #a1a1aa; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Mã Đơn Đặt Chỗ</p>
-          <p style="color: #ccff00; font-size: 24px; font-weight: bold; margin: 0; letter-spacing: 2px; font-family: monospace;">${booking.bookingCode}</p>
-          <p style="color: #ccff00; font-size: 13px; margin: 10px 0 0 0; font-weight: bold;">Thời gian nhận xe: ${formatDateTime(booking.pickupDateTime)}</p>
+          <p style="color: #ccff00; font-size: 18px; font-weight: bold; margin: 0;">${formatDateTime(booking.pickupDateTime)}</p>
+          <p style="color: #a1a1aa; font-size: 13px; margin: 5px 0 0 0;">Vehicle: ${booking.vehicleName}</p>
         </div>
-
-        <p style="color: #e4e4e7; font-size: 14px;">Xin chào,</p>
-        <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6;">Đơn đặt thuê xe máy của bạn sắp đến giờ nhận bàn giao. Vui lòng sắp xếp thời gian đến địa điểm đã đăng ký để nhận xe máy. Chi tiết lịch trình nhận xe:</p>
-        
-        <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; color: #e4e4e7;">
-          <tr style="border-bottom: 1px solid #27272a;">
-            <td style="padding: 10px 0; color: #71717a;">Dòng xe thuê:</td>
-            <td style="padding: 10px 0; text-align: right; font-weight: bold; color: #fff;">${booking.vehicleName}</td>
-          </tr>
-          <tr style="border-bottom: 1px solid #27272a;">
-            <td style="padding: 10px 0; color: #71717a;">Giờ nhận xe:</td>
-            <td style="padding: 10px 0; text-align: right; font-weight: bold; color: #ccff00;">${formatDateTime(booking.pickupDateTime)}</td>
-          </tr>
-          <tr style="border-bottom: 1px solid #27272a;">
-            <td style="padding: 10px 0; color: #71717a;">Địa điểm nhận xe:</td>
-            <td style="padding: 10px 0; text-align: right; color: #fff;">${booking.pickupLocation}</td>
-          </tr>
-          <tr style="border-bottom: 1px solid #27272a;">
-            <td style="padding: 10px 0; color: #71717a;">Tổng số tiền đơn hàng:</td>
-            <td style="padding: 10px 0; text-align: right; color: #fff; font-weight: bold;">${formatCurrency(booking.totalAmount)}</td>
-          </tr>
-        </table>
-
-        <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 15px; margin: 25px 0;">
-          <h4 style="color: #ccff00; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase;">Lưu ý quan trọng</h4>
-          <p style="color: #a1a1aa; font-size: 13px; line-height: 1.5; margin: 0 0 10px 0;">
-            - Đừng quên mang theo **Căn cước công dân (CCCD)** và **Bằng lái xe (GPLX)** bản gốc để nhân viên hỗ trợ làm thủ tục bàn giao xe nhanh chóng.
-          </p>
-          <p style="color: #a1a1aa; font-size: 13px; line-height: 1.5; margin: 0;">
-            - Nếu có bất kỳ thay đổi nào hoặc gặp khó khăn khi đến nhận xe, vui lòng liên hệ trực tiếp với bộ phận chăm sóc khách hàng hoặc Hotline của Motov để được hỗ trợ.
-          </p>
-        </div>
-
+        <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6;">Thank you for using Motov.</p>
         <hr style="border: 0; border-top: 1px solid #27272a; margin: 30px 0;" />
-        <p style="font-size: 11px; color: #52525b; text-align: center; margin: 0;">Hệ thống cho thuê xe máy cao cấp Motov - Đà Nẵng</p>
+        <p style="font-size: 11px; color: #52525b; text-align: center; margin: 0;">Premium Motorbike Rental - Motov</p>
       </div>
     `,
   };
@@ -474,54 +523,37 @@ export const sendPickupReminderEmail = async (email: string, booking: EmailBooki
   return logEtherealMail(info, email);
 };
 
-// 7. Gửi email nhắc nhở trả xe sắp tới cho khách hàng (trước 2 tiếng)
+// 7. Gửi email nhắc nhở trả xe sắp tới cho khách hàng (trước 2 tiếng / 24 tiếng)
 export const sendReturnReminderEmail = async (email: string, booking: EmailBookingDetails): Promise<string | boolean> => {
   const transporter = await getTransporter();
+  const customerName = booking.customerName || 'Customer';
 
   const mailOptions = {
     from: '"Motov System" <noreply@motov.com>',
     to: email,
-    subject: `[Motov] Nhắc nhở: Sắp đến giờ trả xe máy ${booking.bookingCode}`,
+    subject: 'Motorbike Return Reminder',
+    text: `Hello ${customerName},
+
+Your vehicle should be returned at:
+
+${formatDateTime(booking.returnDateTime)}
+
+Vehicle:
+${booking.vehicleName}
+
+Please avoid late-return penalties.`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #27272a; border-radius: 12px; background-color: #09090b; color: #fff;">
-        <h2 style="color: #ccff00; border-bottom: 2px solid #ccff00; padding-bottom: 12px; text-align: center; font-weight: 900; letter-spacing: 1px; margin-top: 0;">NHẮC NHỞ TRẢ XE</h2>
-        
+        <h2 style="color: #ccff00; border-bottom: 2px solid #ccff00; padding-bottom: 12px; text-align: center; font-weight: 900; letter-spacing: 1px; margin-top: 0;">Motorbike Return Reminder</h2>
+        <p style="color: #e4e4e7; font-size: 14px;">Hello <strong>${customerName}</strong>,</p>
+        <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6;">Your vehicle should be returned at:</p>
         <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: center;">
-          <p style="color: #a1a1aa; font-size: 13px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Mã Đơn Đặt Chỗ</p>
-          <p style="color: #ccff00; font-size: 24px; font-weight: bold; margin: 0; letter-spacing: 2px; font-family: monospace;">${booking.bookingCode}</p>
-          <p style="color: #fbbf24; font-size: 13px; margin: 10px 0 0 0; font-weight: bold;">Hạn trả xe: ${formatDateTime(booking.returnDateTime)}</p>
+          <p style="color: #fbbf24; font-size: 18px; font-weight: bold; margin: 0;">${formatDateTime(booking.returnDateTime)}</p>
+          <p style="color: #a1a1aa; font-size: 13px; margin: 5px 0 0 0;">Vehicle: ${booking.vehicleName}</p>
         </div>
-
-        <p style="color: #e4e4e7; font-size: 14px;">Xin chào,</p>
-        <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6;">Lịch thuê xe máy của bạn sắp đến hạn trả xe. Vui lòng sắp xếp thời gian di chuyển về điểm trả xe để làm thủ tục bàn giao lại xe đúng giờ, tránh phát sinh phí phụ thu trễ hạn. Chi tiết đơn thuê:</p>
-        
-        <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; color: #e4e4e7;">
-          <tr style="border-bottom: 1px solid #27272a;">
-            <td style="padding: 10px 0; color: #71717a;">Dòng xe thuê:</td>
-            <td style="padding: 10px 0; text-align: right; font-weight: bold; color: #fff;">${booking.vehicleName}</td>
-          </tr>
-          <tr style="border-bottom: 1px solid #27272a;">
-            <td style="padding: 10px 0; color: #71717a;">Thời gian trả xe:</td>
-            <td style="padding: 10px 0; text-align: right; font-weight: bold; color: #fbbf24;">${formatDateTime(booking.returnDateTime)}</td>
-          </tr>
-          <tr style="border-bottom: 1px solid #27272a;">
-            <td style="padding: 10px 0; color: #71717a;">Địa điểm trả xe:</td>
-            <td style="padding: 10px 0; text-align: right; color: #fff;">${booking.pickupLocation}</td>
-          </tr>
-        </table>
-
-        <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 15px; margin: 25px 0;">
-          <h4 style="color: #fbbf24; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase;">Quy định trả xe</h4>
-          <p style="color: #a1a1aa; font-size: 13px; line-height: 1.5; margin: 0 0 10px 0;">
-            1. Vui lòng trả xe với tình trạng vệ sinh sạch sẽ và mức nhiên liệu tương đương lúc nhận xe.
-          </p>
-          <p style="color: #a1a1aa; font-size: 13px; line-height: 1.5; margin: 0;">
-            2. Nếu bạn trả xe trễ hạn mà không thông báo trước, hệ thống có thể áp dụng mức phụ thu quá giờ theo quy định trong hợp đồng thuê xe.
-          </p>
-        </div>
-
+        <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6; color: #ef4444;">Please avoid late-return penalties.</p>
         <hr style="border: 0; border-top: 1px solid #27272a; margin: 30px 0;" />
-        <p style="font-size: 11px; color: #52525b; text-align: center; margin: 0;">Hệ thống cho thuê xe máy cao cấp Motov - Đà Nẵng</p>
+        <p style="font-size: 11px; color: #52525b; text-align: center; margin: 0;">Premium Motorbike Rental - Motov</p>
       </div>
     `,
   };

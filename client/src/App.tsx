@@ -66,154 +66,154 @@ export default function App() {
       <LanguageProvider>
         <ToastProvider>
           <div className="min-h-screen bg-dark text-white flex flex-col font-sans selection:bg-neon selection:text-dark">
-          {/* Header Navigation */}
-          <Header />
+            {/* Header Navigation */}
+            <Header />
 
-          {/* Main Content Pages */}
-          <main className="flex-grow">
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Home />} />
-              <Route path="/bikes" element={<Bikes />} />
-              <Route path="/bikes-map" element={<BikesMap />} />
-              <Route path="/motorbike/new" element={
-                <ProtectedRoute allowedRoles={['staff', 'admin']}>
-                  <MotorbikeForm />
-                </ProtectedRoute>
-              } />
-              <Route path="/motorbike/:id" element={<MotorbikeDetail />} />
-              <Route path="/motorbike/:id/edit" element={
-                <ProtectedRoute allowedRoles={['staff', 'admin', 'owner']}>
-                  <MotorbikeForm />
-                </ProtectedRoute>
-              } />
-              <Route path="/bike-add" element={
-                <ProtectedRoute allowedRoles={['owner']}>
-                  <MotorbikeForm />
-                </ProtectedRoute>
-              } />
-              <Route path="/bike-edit/:id" element={
-                <ProtectedRoute allowedRoles={['owner']}>
-                  <MotorbikeForm />
-                </ProtectedRoute>
-              } />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/verify-email" element={<VerifyEmail />} />
+            {/* Main Content Pages */}
+            <main className="flex-grow">
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<Home />} />
+                <Route path="/bikes" element={<Bikes />} />
+                <Route path="/bikes-map" element={<BikesMap />} />
+                <Route path="/motorbike/new" element={
+                  <ProtectedRoute allowedRoles={['staff', 'admin']}>
+                    <MotorbikeForm />
+                  </ProtectedRoute>
+                } />
+                <Route path="/motorbike/:id" element={<MotorbikeDetail />} />
+                <Route path="/motorbike/:id/edit" element={
+                  <ProtectedRoute allowedRoles={['staff', 'admin', 'owner']}>
+                    <MotorbikeForm />
+                  </ProtectedRoute>
+                } />
+                <Route path="/bike-add" element={
+                  <ProtectedRoute allowedRoles={['owner']}>
+                    <MotorbikeForm />
+                  </ProtectedRoute>
+                } />
+                <Route path="/bike-edit/:id" element={
+                  <ProtectedRoute allowedRoles={['owner']}>
+                    <MotorbikeForm />
+                  </ProtectedRoute>
+                } />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
 
-              {/* Customer Protected Route */}
-              <Route path="/booking/:bikeId" element={
-                <ProtectedRoute allowedRoles={['customer', 'staff', 'admin', 'owner']}>
-                  <Booking />
-                </ProtectedRoute>
-              } />
-              <Route path="/bookings" element={
-                <ProtectedRoute allowedRoles={['customer']}>
-                  <Bookings />
-                </ProtectedRoute>
-              } />
-              <Route path="/profile" element={
-                <ProtectedRoute allowedRoles={['customer', 'staff', 'admin', 'owner']}>
-                  <Profile />
-                </ProtectedRoute>
-              } />
-              <Route path="/chat" element={
-                <ProtectedRoute allowedRoles={['customer', 'staff', 'admin', 'owner']}>
-                  <Chat />
-                </ProtectedRoute>
-              } />
+                {/* Customer Protected Route */}
+                <Route path="/booking/:bikeId" element={
+                  <ProtectedRoute allowedRoles={['customer', 'staff', 'admin', 'owner']}>
+                    <Booking />
+                  </ProtectedRoute>
+                } />
+                <Route path="/bookings" element={
+                  <ProtectedRoute allowedRoles={['customer']}>
+                    <Bookings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                  <ProtectedRoute allowedRoles={['customer', 'staff', 'admin', 'owner']}>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/chat" element={
+                  <ProtectedRoute allowedRoles={['customer', 'staff', 'admin', 'owner']}>
+                    <Chat />
+                  </ProtectedRoute>
+                } />
 
-              {/* Staff Protected Routes */}
-              <Route path="/staff/bookings" element={
-                <ProtectedRoute allowedRoles={['staff']}>
-                  <StaffBookings />
-                </ProtectedRoute>
-              } />
-              <Route path="/staff/bikes" element={
-                <ProtectedRoute allowedRoles={['staff']}>
-                  <StaffBikes />
-                </ProtectedRoute>
-              } />
-              <Route path="/staff/schedule" element={
-                <ProtectedRoute allowedRoles={['staff']}>
-                  <StaffSchedule />
-                </ProtectedRoute>
-              } />
+                {/* Staff Protected Routes */}
+                <Route path="/staff/bookings" element={
+                  <ProtectedRoute allowedRoles={['staff']}>
+                    <StaffBookings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/staff/bikes" element={
+                  <ProtectedRoute allowedRoles={['staff']}>
+                    <StaffBikes />
+                  </ProtectedRoute>
+                } />
+                <Route path="/staff/schedule" element={
+                  <ProtectedRoute allowedRoles={['staff']}>
+                    <StaffSchedule />
+                  </ProtectedRoute>
+                } />
 
-              {/* Owner Protected Routes */}
-              <Route path="/owner/dashboard" element={
-                <ProtectedRoute allowedRoles={['owner']}>
-                  <OwnerDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/owner/bikes" element={
-                <ProtectedRoute allowedRoles={['owner']}>
-                  <OwnerBikes />
-                </ProtectedRoute>
-              } />
-              <Route path="/owner/bookings" element={
-                <ProtectedRoute allowedRoles={['owner']}>
-                  <OwnerBookings />
-                </ProtectedRoute>
-              } />
+                {/* Owner Protected Routes */}
+                <Route path="/owner/dashboard" element={
+                  <ProtectedRoute allowedRoles={['owner']}>
+                    <OwnerDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/owner/bikes" element={
+                  <ProtectedRoute allowedRoles={['owner']}>
+                    <OwnerBikes />
+                  </ProtectedRoute>
+                } />
+                <Route path="/owner/bookings" element={
+                  <ProtectedRoute allowedRoles={['owner']}>
+                    <OwnerBookings />
+                  </ProtectedRoute>
+                } />
 
-              {/* Admin Protected Routes */}
-              <Route path="/admin/dashboard" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/bikes" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminBikes />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/bookings" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminBookings />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/users" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminUsers />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/promotions" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminPromotions />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/feedbacks" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminFeedbacks />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/settings" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminSettings />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/categories" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminCategories />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/inventory" element={
-                <ProtectedRoute allowedRoles={['admin', 'staff']}>
-                  <InventoryManagement />
-                </ProtectedRoute>
-              } />
-              <Route path="/promotions" element={<Promotions />} />
-              <Route path="/vnpay-return" element={<VNPayReturn />} />
+                {/* Admin Protected Routes */}
+                <Route path="/admin/dashboard" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/bikes" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminBikes />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/bookings" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminBookings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/users" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminUsers />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/promotions" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminPromotions />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/feedbacks" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminFeedbacks />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/settings" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminSettings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/categories" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminCategories />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/inventory" element={
+                  <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                    <InventoryManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/promotions" element={<Promotions />} />
+                <Route path="/vnpay-return" element={<VNPayReturn />} />
 
-              {/* Fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </main>
 
-          {/* Footer */}
-          <Footer />
+            {/* Footer */}
+            <Footer />
           </div>
         </ToastProvider>
       </LanguageProvider>

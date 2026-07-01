@@ -151,7 +151,7 @@ export const Booking = () => {
         // Gọi API kiểm tra identityStatus của user
         const checkIdentity = async () => {
           try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/me`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api'}/auth/me`, {
               headers: {
                 'Authorization': `Bearer ${u.token}`
               }
