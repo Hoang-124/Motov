@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare, Globe, Folder, Archive, Heart } from 'lucide-react';
+import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare, Globe, Folder, Archive, Heart, Map } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { notificationService, NotificationItem } from '../services/notificationService.js';
 import { chatService } from '../services/chatService.js';
@@ -481,7 +481,7 @@ export const Header = () => {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-8 font-medium text-sm">
-            {navLinks.map((link) => (
+            {navLinks.filter(link => link.path !== '/bikes-map').map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
@@ -728,6 +728,17 @@ export const Header = () => {
                     )}
                   </AnimatePresence>
                 </div>
+
+                {/* Nút Bản đồ */}
+                {user.role === 'customer' && (
+                  <Link
+                    to="/bikes-map"
+                    className="relative p-2 rounded-full bg-surface border border-gray-800 hover:border-neon hover:text-white text-gray-400 transition-all duration-300 cursor-pointer flex items-center justify-center"
+                    title="Bản đồ xe"
+                  >
+                    <Map size={18} />
+                  </Link>
+                )}
 
                 {/* Favorite Bikes Dropdown */}
                 {user.role === 'customer' && (
@@ -1044,13 +1055,22 @@ export const Header = () => {
                 </div>
               </>
             ) : (
-              <Link
-                to="/auth"
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-surface border border-gray-800 text-sm font-medium text-gray-300 hover:border-neon hover:text-white transition-all duration-300"
-              >
-                <User size={16} />
-                {t('common.login')}
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/bikes-map"
+                  className="relative p-2 rounded-full bg-surface border border-gray-800 hover:border-neon hover:text-white text-gray-400 transition-all duration-300 cursor-pointer flex items-center justify-center"
+                  title="Bản đồ xe"
+                >
+                  <Map size={18} />
+                </Link>
+                <Link
+                  to="/auth"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-surface border border-gray-800 text-sm font-medium text-gray-300 hover:border-neon hover:text-white transition-all duration-300"
+                >
+                  <User size={16} />
+                  {t('common.login')}
+                </Link>
+              </div>
             )}
           </div>
 
