@@ -1,5 +1,5 @@
 // API service for motorbike categories management
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
 
 export interface Category {
   _id?: string;

@@ -73,11 +73,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [license, setLicense] = useState('');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
       setPickupDate(offsetDate(1));
       setReturnDate(offsetDate(4));
+      setErrorMsg(null);
       setPickupLocation(initialLocation || 'Sân bay Đà Nẵng');
       setPromoCode('');
       setPaymentMethod('Banking');
@@ -194,42 +196,39 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   };
 
   const handleConfirm = async () => {
+    setErrorMsg(null);
     if (!isVerified) {
-      Alert.alert(
-        'Chưa xác minh danh tính',
-        'Tài khoản của bạn chưa được xác minh eKYC. Vui lòng xác thực danh tính tại trang cá nhân.',
-        [{ text: 'Đồng ý', style: 'default' }]
-      );
+      setErrorMsg('Tài khoản của bạn chưa được xác minh eKYC. Vui lòng xác thực danh tính tại trang cá nhân.');
       return;
     }
     // Basic validation
     if (!pickupDate || !returnDate) {
-      Alert.alert('Lỗi', 'Vui lòng chọn ngày nhận xe và ngày trả xe.');
+      setErrorMsg('Vui lòng chọn ngày nhận xe và ngày trả xe.');
       return;
     }
     if (new Date(toISO(returnDate, returnTime)) <= new Date(toISO(pickupDate, pickupTime))) {
-      Alert.alert('Lỗi', 'Ngày trả xe phải sau ngày nhận xe.');
+      setErrorMsg('Ngày trả xe phải sau ngày nhận xe.');
       return;
     }
     if (!fullName.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập họ và tên khách hàng.');
+      setErrorMsg('Vui lòng nhập họ và tên khách hàng.');
       return;
     }
     if (!phone.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại liên lạc.');
+      setErrorMsg('Vui lòng nhập số điện thoại liên lạc.');
       return;
     }
     const phoneRegex = /^(03|05|07|08|09)+([0-9]{8})$/;
     if (!phoneRegex.test(phone.trim())) {
-      Alert.alert('Lỗi', 'Số điện thoại không đúng định dạng Việt Nam (10 chữ số, bắt đầu bằng 03, 05, 07, 08, 09).');
+      setErrorMsg('Số điện thoại không đúng định dạng Việt Nam (10 chữ số, bắt đầu bằng 03, 05, 07, 08, 09).');
       return;
     }
     if (!license.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập số giấy phép lái xe.');
+      setErrorMsg('Vui lòng nhập số giấy phép lái xe.');
       return;
     }
     if (license.trim().length < 6) {
-      Alert.alert('Lỗi', 'Số giấy phép lái xe không hợp lệ (tối thiểu 6 ký tự).');
+      setErrorMsg('Số giấy phép lái xe không hợp lệ (tối thiểu 6 ký tự).');
       return;
     }
 
@@ -302,7 +301,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       }
     } else {
       const errMsg = (result.payload as string) || 'Không thể tạo đặt xe. Vui lòng thử lại.';
-      Alert.alert('Đặt xe thất bại', errMsg);
+      setErrorMsg(errMsg);
     }
   };
 
@@ -625,6 +624,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               )}
             </View>
           </ScrollView>
+
+          {errorMsg && (
+            <View style={{
+              backgroundColor: COLORS.dangerBg,
+              borderColor: COLORS.dangerBorder,
+              borderWidth: 1,
+              padding: 12,
+              borderRadius: 8,
+              marginHorizontal: 20,
+              marginBottom: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}>
+              <Feather name="alert-circle" size={16} color={COLORS.danger} style={{ marginRight: 8, flexShrink: 0 }} />
+              <Text style={{ color: COLORS.danger, fontSize: 13, flex: 1, fontWeight: '500' }}>
+                {errorMsg}
+              </Text>
+            </View>
+          )}
 
           <TouchableOpacity
             style={[styles.confirmBtn, (loading || !isVerified) && styles.confirmBtnDisabled]}
