@@ -23,6 +23,10 @@ export const ko: TranslationKeys = {
     railway: '다낭 기차역',
     sontra: '선짜(손트라) 반도',
     mykhe: '미케해변 지역 호텔',
+    hoangSa: '호앙사 군도 (Paracel Islands)',
+    truongSa: '쯔엉사 군도 (Spratly Islands)',
+    vietnam: '베트남 (Vietnam)',
+    sovereigntyClaim: '호앙사와 쯔엉사는 베트남의 영토입니다',
   },
   notifications: {
     newPendingTitle: '신규 예약 승인 대기 중',

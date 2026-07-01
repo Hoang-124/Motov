@@ -20,6 +20,7 @@ interface NearbyBike {
     type: string;
     coordinates: number[];
   };
+  ownerId?: any;
 }
 
 
@@ -165,6 +166,15 @@ export const BikesMap = () => {
     const L = (window as any).L;
     if (!L) return;
 
+    // Lấy thông tin user hiện tại
+    const storedUser = localStorage.getItem('user');
+    let currentUserId = '';
+    if (storedUser) {
+      try {
+        currentUserId = JSON.parse(storedUser).id || JSON.parse(storedUser)._id || '';
+      } catch (e) {}
+    }
+
     // Clear old vehicle markers
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
@@ -202,6 +212,26 @@ export const BikesMap = () => {
         });
 
         const bikeImage = bike.imageUrls?.[0] || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=200';
+        
+        // Xác định ownerId
+        const ownerId = bike.ownerId?._id || bike.ownerId;
+        const isOwnBike = ownerId && currentUserId && ownerId.toString() === currentUserId.toString();
+        
+        let actionButtonsHtml = '';
+        if (isOwnBike) {
+          actionButtonsHtml = `
+            <a href="/bikes/${bike._id || bike.id}" style="display: block; text-align: center; background-color: #ccff00; color: #000; font-weight: bold; padding: 8px 0; border-radius: 6px; text-decoration: none; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; transition: opacity 0.2s;">Xem chi tiết</a>
+          `;
+        } else {
+          // Nút Chat chuyển hướng sang trang /chat?with={ownerId}
+          actionButtonsHtml = `
+            <div style="display: flex; gap: 8px;">
+              <a href="/bikes/${bike._id || bike.id}" style="flex: 1; text-align: center; background-color: #ccff00; color: #000; font-weight: bold; padding: 8px 0; border-radius: 6px; text-decoration: none; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; transition: opacity 0.2s;">Thuê ngay</a>
+              <a href="/chat?with=${ownerId}" style="flex: 1; text-align: center; background-color: #111; color: #00e5ff; border: 1px solid #00e5ff; font-weight: bold; padding: 8px 0; border-radius: 6px; text-decoration: none; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; transition: opacity 0.2s;">Chat</a>
+            </div>
+          `;
+        }
+
         const popupHtml = `
           <div style="font-family: sans-serif; width: 220px; color: #fff; background-color: #0d0d0d; border-radius: 8px; overflow: hidden; font-size: 13px; border: 1px solid #222;">
             <img src="${bikeImage}" style="width: 100%; height: 120px; object-fit: cover; display: block;" />
@@ -212,7 +242,7 @@ export const BikesMap = () => {
               <div style="color: #00e5ff; font-size: 12px; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 4px;">
                 <span>📍 Cách bạn ${bike.distance} km</span>
               </div>
-              <a href="/bikes/${bike._id || bike.id}" style="display: block; text-align: center; background-color: #ccff00; color: #000; font-weight: bold; padding: 8px 0; border-radius: 6px; text-decoration: none; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; transition: opacity 0.2s;">Thuê ngay</a>
+              ${actionButtonsHtml}
             </div>
           </div>
         `;

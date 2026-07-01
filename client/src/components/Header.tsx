@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, Menu, X, LogOut, Shield, Briefcase, Award, UserCheck, Settings, ClipboardList, BookOpen, Activity, Ticket, Bell, Check, Trash2, MessageSquare, Globe, Folder, Archive, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { notificationService, NotificationItem } from '../services/notificationService.js';
+import { chatService } from '../services/chatService.js';
 import { useLanguage } from '../hooks/useLanguage';
 import { getUserFavorites, removeFromFavorites } from '../services/vehicleService';
 
@@ -72,6 +73,7 @@ export const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadChatsCount, setUnreadChatsCount] = useState(0);
   const [isNotiOpen, setIsNotiOpen] = useState(false);
   const [favorites, setFavorites] = useState<any[]>([]);
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
@@ -107,6 +109,21 @@ export const Header = () => {
       }
     } catch (err) {
       console.error('Lỗi khi lấy thông báo:', err);
+    }
+  };
+
+  // Lấy số lượng cuộc trò chuyện có tin nhắn chưa đọc
+  const fetchUnreadChatsCount = async () => {
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) return;
+    try {
+      const res = await chatService.getConversations();
+      if (res.success) {
+        const count = res.data.reduce((sum, c) => sum + (c.unreadCount > 0 ? 1 : 0), 0);
+        setUnreadChatsCount(count);
+      }
+    } catch (err) {
+      console.error('Lỗi khi lấy số tin nhắn chưa đọc:', err);
     }
   };
 
@@ -158,6 +175,7 @@ export const Header = () => {
     if (!storedUser) return;
 
     fetchNotifications();
+    fetchUnreadChatsCount();
 
     let eventSource: EventSource | null = null;
     let reconnectTimeout: any = null;
@@ -171,7 +189,7 @@ export const Header = () => {
         const token = parsedUser.token;
 
         if (token) {
-          const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
+          const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
           const sseUrl = `${API_BASE_URL}/notifications/stream?token=${token}`;
           eventSource = new EventSource(sseUrl);
 
@@ -193,6 +211,9 @@ export const Header = () => {
                   title: translateNotificationTitle(newNoti.title, t),
                   message: translateNotificationMessage(newNoti.message, t)
                 });
+              } else if (data.type === 'CHAT_MESSAGE') {
+                // Cập nhật số tin nhắn chưa đọc thời gian thực
+                fetchUnreadChatsCount();
               }
             } catch (err) {
               console.error('Lỗi phân tích dữ liệu thông báo thời gian thực:', err);
@@ -214,8 +235,11 @@ export const Header = () => {
 
     connectSSE();
 
-    // Dự phòng: Poll dữ liệu mỗi 30 giây nếu SSE gặp sự cố
-    const interval = setInterval(fetchNotifications, 30000);
+    // Dự phòng: Poll dữ liệu mỗi 45 giây nếu SSE gặp sự cố
+    const interval = setInterval(() => {
+      fetchNotifications();
+      fetchUnreadChatsCount();
+    }, 45000);
 
     return () => {
       isDisposed = true;
@@ -516,6 +540,20 @@ export const Header = () => {
 
             {user ? (
               <>
+                {/* Nút Chat */}
+                <Link
+                  to="/chat"
+                  className="relative p-2 rounded-full bg-surface border border-gray-800 hover:border-neon hover:text-white text-gray-400 transition-all duration-300 cursor-pointer flex items-center justify-center"
+                  title="Tin nhắn"
+                >
+                  <MessageSquare size={18} />
+                  {unreadChatsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center bg-neon text-dark text-[10px] font-black rounded-full border border-dark animate-pulse shadow-[0_0_8px_rgba(204,255,0,0.3)]">
+                      {unreadChatsCount}
+                    </span>
+                  )}
+                </Link>
+
                 {/* Notification Bell Icon */}
                 <div
                   className="relative"
