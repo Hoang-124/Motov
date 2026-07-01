@@ -26,7 +26,7 @@ import { BookingReminderModal } from '../../components/BookingReminderModal';
 import { useToast } from '../../hooks/useToast';
 import { useSearchParams } from 'react-router-dom';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
 
 interface OwnerRequest {
   id: string;

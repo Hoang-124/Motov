@@ -66,7 +66,7 @@ export const AdminUsers = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
 
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'https://motov.onrender.com/api';
 
   const fetchEkycRequests = async () => {
     setLoadingEkyc(true);
