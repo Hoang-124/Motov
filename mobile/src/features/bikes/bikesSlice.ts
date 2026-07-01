@@ -25,7 +25,9 @@ const mapVehicleToBike = (vehicle: any, idx: number): Bike => {
     id: vehicle._id?.toString() ?? vehicle.id,  // ObjectId string — required by booking API
     name: vehicle.vehicleModel ?? vehicle.name ?? '',
     price: `${priceFormatted}`,
-    type: vehicle.category ?? vehicle.type ?? '',
+    type: (typeof vehicle.category === 'object' && vehicle.category)
+      ? (vehicle.category.name ?? '')
+      : (vehicle.category ?? vehicle.type ?? ''),
     specs: Array.isArray(vehicle.features) ? vehicle.features : (vehicle.specs ?? []),
     image: dbImages[0],
     images: dbImages,

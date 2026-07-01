@@ -1,11 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { User, Mail, Phone, Calendar, Shield, Award, Briefcase, UserCheck, Check, Save, ArrowLeft, Camera, Lock, Key, X, RefreshCw, AlertCircle, FileText, Eye, ShieldCheck, Activity, QrCode } from 'lucide-react';
 import { motion } from 'motion/react';
+import { FavoriteMotorbikes } from '../components/favoriteMotorbikes'; // Đảm bảo đúng đường dẫn tới component bạn vừa tạo
 
 export const Profile = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'favorites') {
+      setTimeout(() => {
+        const element = document.getElementById('favorites-section');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300);
+    }
+  }, [searchParams]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +102,7 @@ export const Profile = () => {
     }
   }, [location]);
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
 
   const loadHtml5Qrcode = (): Promise<any> => {
     return new Promise((resolve, reject) => {
@@ -1682,6 +1695,11 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
                 </button>
               </form>
             </motion.div>
+
+            <div id="favorites-section">
+              <FavoriteMotorbikes API_BASE_URL={API_BASE_URL} />
+            </div>
+
             {/* Modal Xem & Ký hợp đồng đối tác */}
             {isContractModalOpen && (
               <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">

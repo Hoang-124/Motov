@@ -283,7 +283,7 @@ export const Auth = () => {
     setSuccess(null);
     setLoading(true);
 
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
 
     try {
       const res = await fetch(`${API_BASE_URL}/auth/google`, {
@@ -360,7 +360,7 @@ export const Auth = () => {
     if (!email) return false;
     if (isManual) setCheckingStatus(true);
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
       const response = await fetch(`${API_BASE_URL}/auth/check-verification-status?email=${encodeURIComponent(email.trim())}`);
       const data = await response.json();
 
@@ -428,7 +428,7 @@ export const Auth = () => {
     setVerificationMailUrl(null);
     setLoading(true);
 
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
 
     try {
       if (isLogin) {

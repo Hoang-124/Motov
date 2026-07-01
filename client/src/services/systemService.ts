@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/system/settings';
+const API_URL = `${import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api'}/system/settings`;
 
 // Helper to get authorization token
 const getAuthHeaders = () => {

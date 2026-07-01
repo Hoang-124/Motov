@@ -8,6 +8,7 @@ import { User } from '../models/User.js';
 import { Discount } from '../models/Discount.js';
 import { Notification } from '../models/Notification.js';
 import { SystemSetting } from '../models/SystemSetting.js';
+import { handleBookingStatusTransitionReminders } from '../utils/bookingReminderScheduler.js';
 
 // Helper to get system setting value by key with fallback to env
 const getSettingVal = async (key: string, fallback: string): Promise<string> => {
@@ -641,6 +642,12 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
     // Update vehicle status based on booking status
     if (status === 'Confirmed') {
       await Vehicle.findByIdAndUpdate(booking.vehicleId._id, { status: 'Rented' });
+      await handleBookingStatusTransitionReminders(
+        booking._id,
+        'Confirmed',
+        booking.pickupDateTime,
+        booking.returnDateTime
+      );
       // Check low availability alert in background (non-blocking)
       checkLowAvailabilityAlert(booking.vehicleSnapshot.name, (booking.vehicleId as any).ownerId).catch(err => 
         console.error('Error running checkLowAvailabilityAlert in booking confirmed:', err)
@@ -648,6 +655,12 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
     } else if (status === 'Completed' || status === 'Cancelled') {
       // Kết thúc chuyến hoặc Huỷ đơn -> Xe rảnh lại
       await Vehicle.findByIdAndUpdate(vehicleId, { status: 'Available' });
+      await handleBookingStatusTransitionReminders(
+        booking._id,
+        status,
+        booking.pickupDateTime,
+        booking.returnDateTime
+      );
     }
 
     // Update booking
@@ -1476,6 +1489,7 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
     // 4. Cập nhật trạng thái Đơn hàng sang 'Ongoing' (Đang đi)
     booking.status = 'Ongoing'; // Hoặc 'Renting' tùy thuộc vào Enum trong Model Booking của bạn
     booking.startOdometer = vehicle.odometer; // Ghi nhận số km lúc nhận xe
+    await handleBookingStatusTransitionReminders(booking._id, 'Ongoing', booking.pickupDateTime, booking.returnDateTime);
     
     if (notes) {
       booking.surcharges.push({

@@ -1,6 +1,6 @@
 import { Category } from './categoryService';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
 
 export interface Motorbike {
   _id?: string;
@@ -255,6 +255,75 @@ export async function getRecommendations(token?: string): Promise<{ vehicles: Mo
     };
   } catch (error) {
     console.error('Error fetching recommendations:', error);
+    throw error;
+  }
+}
+
+// ==========================================
+// FAVORITE MOTORBIKES SERVICES
+// ==========================================
+
+// 1. Thêm xe vào danh sách yêu thích
+export async function addToFavorites(token: string, vehicleId: string): Promise<ApiResponse<any>> {
+  try {
+    const response = await fetch(`${API_URL}/users/favorites`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ vehicleId })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to add to favorites');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error adding to favorites:', error);
+    throw error;
+  }
+}
+
+// 2. Xóa xe khỏi danh sách yêu thích
+export async function removeFromFavorites(token: string, vehicleId: string): Promise<ApiResponse<any>> {
+  try {
+    const response = await fetch(`${API_URL}/users/favorites/${vehicleId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to remove from favorites');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error removing from favorites:', error);
+    throw error;
+  }
+}
+
+// 3. Lấy toàn bộ danh sách xe đã yêu thích của User
+export async function getUserFavorites(token: string): Promise<ApiResponse<Motorbike[]>> {
+  try {
+    const response = await fetch(`${API_URL}/users/favorites`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) throw new Error('Failed to fetch favorite motorbikes');
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching favorite motorbikes:', error);
     throw error;
   }
 }

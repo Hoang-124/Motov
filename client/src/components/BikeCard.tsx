@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Motorbike } from '../services/vehicleService';
-import { MapPin } from 'lucide-react';
+import { Motorbike, addToFavorites, removeFromFavorites, getUserFavorites } from '../services/vehicleService';
+import { MapPin, Heart } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage';
 
 interface BikeCardProps {
@@ -12,6 +12,68 @@ interface BikeCardProps {
 
 export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
   const { language, t } = useLanguage();
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  // 1. Kiểm tra xem xe này đã nằm trong danh sách yêu thích của người dùng chưa
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
+
+      try {
+        const { token } = JSON.parse(storedUser);
+        const res = await getUserFavorites(token);
+        
+        if (res.success && res.data) {
+          // Duyệt mảng để tìm xem ID xe hiện tại đã được tim chưa
+          const hasFavored = res.data.some((favBike) => favBike._id === bike._id);
+          setIsFavorite(hasFavored);
+        }
+      } catch (err) {
+        console.error('Lỗi khi kiểm tra trạng thái yêu thích:', err);
+      }
+    };
+
+    if (bike._id) {
+      checkFavoriteStatus();
+    }
+  }, [bike._id]);
+
+  // 2. Xử lý sự kiện click nút trái tim (Thêm / Xóa yêu thích)
+  const handleHeartClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // Ngăn chặn sự kiện lan truyền click làm nhảy trang /motorbike/:id
+
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+      alert(language === 'vi' ? 'Vui lòng đăng nhập để lưu xe yêu thích!' : 'Please log in to save favorite motorbikes!');
+      return;
+    }
+
+    if (!bike._id) return;
+
+    try {
+      const { token } = JSON.parse(storedUser);
+      if (isFavorite) {
+        // Nếu đã thích -> Bấm để xóa
+        const res = await removeFromFavorites(token, bike._id);
+        if (res.success) {
+          setIsFavorite(false);
+          window.dispatchEvent(new Event('favoritesUpdated'));
+        }
+      } else {
+        // Nếu chưa thích -> Bấm để thêm
+        const res = await addToFavorites(token, bike._id);
+        if (res.success) {
+          setIsFavorite(true);
+          window.dispatchEvent(new Event('favoritesUpdated'));
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi khi cập nhật danh sách yêu thích:', err);
+    }
+  };
+
   const ownerName = typeof bike.ownerId === 'string' 
     ? 'Unknown Owner' 
     : bike.ownerId && typeof bike.ownerId === 'object' && bike.ownerId.firstName
@@ -76,7 +138,7 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
       if (type === 'Semi-Automatic') return '세미오토';
       return type;
     }
-    return type; // English: Manual, Automatic, Semi-Automatic
+    return type;
   };
 
   return (
@@ -85,20 +147,33 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
       transition={{ duration: 0.3 }}
       className={`bg-surface neon-border rounded-xl p-5 flex flex-col h-full group ${large ? 'lg:col-span-2' : ''}`}
     >
-      <Link 
-        to={`/motorbike/${bike._id}`}
-        className={`relative mb-6 rounded-lg overflow-hidden bg-black block ${large ? 'aspect-video lg:aspect-[21/9]' : 'aspect-video'}`}
-      >
-        <img 
-          src={imageUrl} 
-          alt={bike.vehicleModel} 
-          loading="lazy"
-          className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500 group-hover:scale-105 cursor-pointer"
-        />
-        <div className="absolute top-3 left-3 bg-dark/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-neon border border-neon/30">
+      <div className={`relative mb-6 rounded-lg overflow-hidden bg-black ${large ? 'aspect-video lg:aspect-[21/9]' : 'aspect-video'}`}>
+        <Link to={`/motorbike/${bike._id}`} className="block w-full h-full">
+          <img 
+            src={imageUrl} 
+            alt={bike.vehicleModel} 
+            loading="lazy"
+            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500 group-hover:scale-105 cursor-pointer"
+          />
+        </Link>
+        
+        <div className="absolute top-3 left-3 bg-dark/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-neon border border-neon/30 pointer-events-none">
           {translateCategory(bike.category)}
         </div>
-        <div className="absolute top-3 right-3">
+
+        {/* 🟢 KHU VỰC NÚT TRÁI TIM ĐƯỢC CHÈN VÀO GÓC TRÊN BÊN PHẢI */}
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          <button
+            onClick={handleHeartClick}
+            className="p-2 rounded-lg bg-dark/70 backdrop-blur-md border border-white/10 text-gray-400 hover:text-red-500 hover:scale-110 transition-all cursor-pointer shadow-lg"
+            title={isFavorite ? "Xóa khỏi yêu thích" : "Thêm vào yêu thích"}
+          >
+            <Heart 
+              size={15} 
+              className={isFavorite ? "fill-red-500 text-red-500" : "text-white/80"} 
+            />
+          </button>
+
           <div className={`px-3 py-1 rounded-full text-xs font-semibold border ${
             bike.status === 'Available' 
               ? 'bg-green-500/20 text-green-400 border-green-500/30' 
@@ -107,7 +182,7 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
             {bike.status}
           </div>
         </div>
-      </Link>
+      </div>
       
       <div className="flex-grow flex flex-col">
         <div className="flex justify-between items-start mb-2">
