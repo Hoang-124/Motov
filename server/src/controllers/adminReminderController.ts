@@ -85,24 +85,47 @@ export const sendManualReminder = async (req: Request, res: Response) => {
     const channel = customer.phoneNumber ? 'Both' : 'Email';
 
     try {
+      const promises: Promise<void>[] = [];
+
       if (booking.status === 'Confirmed') {
         if (customer.email) {
-          await sendPickupReminderEmail(customer.email, emailDetails);
-          emailSent = true;
+          promises.push(
+            sendPickupReminderEmail(customer.email, emailDetails)
+              .then(() => { emailSent = true; })
+              .catch(err => { console.error('Error sending pickup reminder email:', err); })
+          );
         }
         if (customer.phoneNumber) {
-          await sendPickupReminderSms(customer.phoneNumber, emailDetails);
-          smsSent = true;
+          promises.push(
+            sendPickupReminderSms(customer.phoneNumber, emailDetails)
+              .then(() => { smsSent = true; })
+              .catch(err => { console.error('Error sending pickup reminder SMS:', err); })
+          );
         }
       } else {
         if (customer.email) {
-          await sendReturnReminderEmail(customer.email, emailDetails);
-          emailSent = true;
+          promises.push(
+            sendReturnReminderEmail(customer.email, emailDetails)
+              .then(() => { emailSent = true; })
+              .catch(err => { console.error('Error sending return reminder email:', err); })
+          );
         }
         if (customer.phoneNumber) {
-          await sendReturnReminderSms(customer.phoneNumber, emailDetails);
-          smsSent = true;
+          promises.push(
+            sendReturnReminderSms(customer.phoneNumber, emailDetails)
+              .then(() => { smsSent = true; })
+              .catch(err => { console.error('Error sending return reminder SMS:', err); })
+          );
         }
+      }
+
+      await Promise.all(promises);
+
+      // If at least one requested channel failed and nothing was sent successfully, throw error
+      const requestedEmail = !!customer.email;
+      const requestedSms = !!customer.phoneNumber;
+      if ((requestedEmail || requestedSms) && !emailSent && !smsSent) {
+        throw new Error('Không thể gửi nhắc nhở qua Email và SMS.');
       }
 
       // Save a reminder log to DB

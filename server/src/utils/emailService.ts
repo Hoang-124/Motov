@@ -2,11 +2,17 @@ import axios from 'axios';
 import nodemailer from 'nodemailer';
 
 // Helper tạo SMTP Transporter dùng chung
+let cachedTransporter: any = null;
+
 const getTransporter = async () => {
+  if (cachedTransporter) {
+    return cachedTransporter;
+  }
+
   const useSMTP = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
 
   if (useSMTP) {
-    return nodemailer.createTransport({
+    cachedTransporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587', 10),
       secure: process.env.SMTP_SECURE === 'true',
@@ -18,7 +24,7 @@ const getTransporter = async () => {
   } else {
     // Dynamic fallback to Ethereal Mail in development
     const testAccount = await nodemailer.createTestAccount();
-    return nodemailer.createTransport({
+    cachedTransporter = nodemailer.createTransport({
       host: 'smtp.ethereal.email',
       port: 587,
       secure: false,
@@ -28,6 +34,7 @@ const getTransporter = async () => {
       },
     });
   }
+  return cachedTransporter;
 };
 
 // Log thông báo test nếu dùng Ethereal Mail
@@ -421,32 +428,7 @@ export const sendBookingCancelledEmail = async (email: string, booking: EmailBoo
 };
 
 export const sendEmailVerification = async (email: string, token: string): Promise<string | boolean> => {
-  let transporter;
-
-  const useSMTP = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
-
-  if (useSMTP) {
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  } else {
-    const testAccount = await nodemailer.createTestAccount();
-    transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-  }
+  const transporter = await getTransporter();
 
   const frontendUrl = process.env.CLIENT_ORIGIN || 'http://localhost:3000';
   const verifyLink = `${frontendUrl}/verify-email?token=${token}`;
