@@ -47,6 +47,20 @@ export const sendRealtimeNotification = (userId: string, notificationData: any) 
   });
 };
 
+/**
+ * Gửi tin nhắn chat thời gian thực đến người dùng cụ thể
+ */
+export const sendRealtimeMessage = (userId: string, messageData: any) => {
+  const userClients = activeClients.filter(c => c.userId === userId.toString());
+  userClients.forEach(client => {
+    try {
+      client.res.write(`data: ${JSON.stringify({ type: 'CHAT_MESSAGE', data: messageData })}\n\n`);
+    } catch (error) {
+      console.error(`Lỗi khi đẩy tin nhắn SSE cho user ${userId}:`, error);
+    }
+  });
+};
+
 // Gửi tín hiệu giữ kết nối (ping) mỗi 30 giây để tránh timeout
 setInterval(() => {
   activeClients.forEach(client => {
@@ -57,3 +71,4 @@ setInterval(() => {
     }
   });
 }, 30000);
+
