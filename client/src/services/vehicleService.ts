@@ -27,6 +27,10 @@ export interface Motorbike {
   lastMaintenanceOdometer?: number;
   maintenanceInterval?: number;
   requiresMaintenance?: boolean;
+  location?: {
+    type: string;
+    coordinates: number[];
+  };
   createdAt?: string;
   updatedAt?: string;
 }
