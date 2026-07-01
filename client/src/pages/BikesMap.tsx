@@ -193,9 +193,18 @@ export const BikesMap = () => {
       iconAnchor: [10, 10]
     });
 
-    const userMarker = L.marker(userCoords, { icon: userIcon })
+    const userMarker = L.marker(userCoords, { icon: userIcon, draggable: true })
       .addTo(mapRef.current)
-      .bindPopup(`<div style="color: #00e5ff; font-weight: bold; text-align: center; font-size: 12px; font-family: sans-serif; padding: 4px;">Vị trí của bạn</div>`);
+      .bindPopup(`<div style="color: #00e5ff; font-weight: bold; text-align: center; font-size: 12px; font-family: sans-serif; padding: 4px;">Vị trí test của bạn<br/><span style="color:#aaa; font-size:10px; font-weight:normal;">(Kéo thả để di chuyển vị trí test)</span></div>`);
+    
+    userMarker.on('dragend', async (event: any) => {
+      const marker = event.target;
+      const position = marker.getLatLng();
+      const newCoords: [number, number] = [position.lat, position.lng];
+      setUserCoords(newCoords);
+      await fetchNearbyBikes(newCoords[0], newCoords[1], mapRadius);
+    });
+
     userMarkerRef.current = userMarker;
 
     // 2. Plot Bikes Markers
@@ -325,7 +334,8 @@ export const BikesMap = () => {
               Bản Đồ Định Vị Xe Gần Bạn
             </h1>
             <p className="text-gray-400 text-xs mt-1">
-              Xem trực quan vị trí các xe máy đối tác đang rảnh và khoảng cách để lựa chọn thuận tiện nhất
+              Xem trực quan vị trí các xe máy đối tác đang rảnh và khoảng cách để lựa chọn thuận tiện nhất.
+              <span className="text-neon ml-1">💡 Mẹo test: Bạn có thể kéo thả marker màu xanh Cyan (Vị trí của bạn) trên bản đồ để di chuyển vị trí test!</span>
             </p>
           </div>
 

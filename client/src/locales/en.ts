@@ -63,6 +63,7 @@ export const en: TranslationKeys = {
   nav: {
     home: 'Home',
     bikes: 'Bikes',
+    bikesMap: 'Bikes Map',
     promotions: 'Promotions',
     myBookings: 'My Bookings',
     favoriteBikes: 'Favorite Bikes',

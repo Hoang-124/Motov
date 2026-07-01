@@ -63,6 +63,7 @@ export const ko: TranslationKeys = {
   nav: {
     home: '홈',
     bikes: '바이크',
+    bikesMap: '바이크 지도',
     promotions: '프로모션',
     myBookings: '내 예약',
     favoriteBikes: '선호하는 바이크',
