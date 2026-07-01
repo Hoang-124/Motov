@@ -179,33 +179,31 @@ export const BikesMap = () => {
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
-    // Clear old user marker
+    // 1. Plot or Update User Marker
     if (userMarkerRef.current) {
-      userMarkerRef.current.remove();
-      userMarkerRef.current = null;
+      userMarkerRef.current.setLatLng(userCoords);
+    } else {
+      const userIcon = L.divIcon({
+        className: 'custom-user-marker',
+        html: `<div style="background-color: #00e5ff; width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 15px #00e5ff;"></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      });
+
+      const userMarker = L.marker(userCoords, { icon: userIcon, draggable: true })
+        .addTo(mapRef.current)
+        .bindPopup(`<div style="color: #00e5ff; font-weight: bold; text-align: center; font-size: 12px; font-family: sans-serif; padding: 4px;">Vị trí test của bạn<br/><span style="color:#aaa; font-size:10px; font-weight:normal;">(Kéo thả để di chuyển vị trí test)</span></div>`);
+      
+      userMarker.on('dragend', async (event: any) => {
+        const marker = event.target;
+        const position = marker.getLatLng();
+        const newCoords: [number, number] = [position.lat, position.lng];
+        setUserCoords(newCoords);
+        await fetchNearbyBikes(newCoords[0], newCoords[1], mapRadius);
+      });
+
+      userMarkerRef.current = userMarker;
     }
-
-    // 1. Plot User Marker
-    const userIcon = L.divIcon({
-      className: 'custom-user-marker',
-      html: `<div style="background-color: #00e5ff; width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 15px #00e5ff;"></div>`,
-      iconSize: [20, 20],
-      iconAnchor: [10, 10]
-    });
-
-    const userMarker = L.marker(userCoords, { icon: userIcon, draggable: true })
-      .addTo(mapRef.current)
-      .bindPopup(`<div style="color: #00e5ff; font-weight: bold; text-align: center; font-size: 12px; font-family: sans-serif; padding: 4px;">Vị trí test của bạn<br/><span style="color:#aaa; font-size:10px; font-weight:normal;">(Kéo thả để di chuyển vị trí test)</span></div>`);
-    
-    userMarker.on('dragend', async (event: any) => {
-      const marker = event.target;
-      const position = marker.getLatLng();
-      const newCoords: [number, number] = [position.lat, position.lng];
-      setUserCoords(newCoords);
-      await fetchNearbyBikes(newCoords[0], newCoords[1], mapRadius);
-    });
-
-    userMarkerRef.current = userMarker;
 
     // 2. Plot Bikes Markers
     bikes.forEach(bike => {
