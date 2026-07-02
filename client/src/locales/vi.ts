@@ -61,6 +61,7 @@ export const vi = {
   nav: {
     home: 'Trang Chủ',
     bikes: 'Dòng Xe',
+    bikesMap: 'Bản Đồ Xe',
     promotions: 'Khuyến Mãi',
     myBookings: 'Đơn Thuê Của Tôi',
     favoriteBikes: 'Xe Yêu Thích',

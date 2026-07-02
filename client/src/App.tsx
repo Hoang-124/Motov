@@ -16,6 +16,7 @@ import { Profile } from './pages/Profile';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
 import { VerifyEmail } from './pages/VerifyEmail';
+import { Chat } from './pages/Chat';
 
 // Staff pages
 import { StaffBookings } from './pages/staff/StaffBookings';
@@ -115,6 +116,11 @@ export default function App() {
                 <Route path="/profile" element={
                   <ProtectedRoute allowedRoles={['customer', 'staff', 'admin', 'owner']}>
                     <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/chat" element={
+                  <ProtectedRoute allowedRoles={['customer', 'staff', 'admin', 'owner']}>
+                    <Chat />
                   </ProtectedRoute>
                 } />
 

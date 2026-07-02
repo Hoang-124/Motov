@@ -20,6 +20,7 @@ interface NearbyBike {
     type: string;
     coordinates: number[];
   };
+  ownerId?: any;
 }
 
 
@@ -128,11 +129,10 @@ export const BikesMap = () => {
         if (!mapRef.current) {
           const map = L.map('bikes-leaflet-map').setView(coords, 14);
 
-          // Add CartoDB Voyager tile layer for highly readable and premium look
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 20
+          // Add OpenStreetMap tile layer to support correct localized names (Vietnamese)
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
           }).addTo(map);
 
           mapRef.current = map;
@@ -165,28 +165,44 @@ export const BikesMap = () => {
     const L = (window as any).L;
     if (!L) return;
 
+    // Lấy thông tin user hiện tại
+    const storedUser = localStorage.getItem('user');
+    let currentUserId = '';
+    if (storedUser) {
+      try {
+        currentUserId = JSON.parse(storedUser).id || JSON.parse(storedUser)._id || '';
+      } catch (e) {}
+    }
+
     // Clear old vehicle markers
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
-    // Clear old user marker
+    // 1. Plot or Update User Marker
     if (userMarkerRef.current) {
-      userMarkerRef.current.remove();
-      userMarkerRef.current = null;
+      userMarkerRef.current.setLatLng(userCoords);
+    } else {
+      const userIcon = L.divIcon({
+        className: 'custom-user-marker',
+        html: `<div style="background-color: #00e5ff; width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 15px #00e5ff;"></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      });
+
+      const userMarker = L.marker(userCoords, { icon: userIcon, draggable: true })
+        .addTo(mapRef.current)
+        .bindPopup(`<div style="color: #00e5ff; font-weight: bold; text-align: center; font-size: 12px; font-family: sans-serif; padding: 4px;">Vị trí test của bạn<br/><span style="color:#aaa; font-size:10px; font-weight:normal;">(Kéo thả để di chuyển vị trí test)</span></div>`);
+      
+      userMarker.on('dragend', async (event: any) => {
+        const marker = event.target;
+        const position = marker.getLatLng();
+        const newCoords: [number, number] = [position.lat, position.lng];
+        setUserCoords(newCoords);
+        await fetchNearbyBikes(newCoords[0], newCoords[1], mapRadius);
+      });
+
+      userMarkerRef.current = userMarker;
     }
-
-    // 1. Plot User Marker
-    const userIcon = L.divIcon({
-      className: 'custom-user-marker',
-      html: `<div style="background-color: #00e5ff; width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 15px #00e5ff;"></div>`,
-      iconSize: [20, 20],
-      iconAnchor: [10, 10]
-    });
-
-    const userMarker = L.marker(userCoords, { icon: userIcon })
-      .addTo(mapRef.current)
-      .bindPopup(`<div style="color: #00e5ff; font-weight: bold; text-align: center; font-size: 12px; font-family: sans-serif; padding: 4px;">Vị trí của bạn</div>`);
-    userMarkerRef.current = userMarker;
 
     // 2. Plot Bikes Markers
     bikes.forEach(bike => {
@@ -202,6 +218,26 @@ export const BikesMap = () => {
         });
 
         const bikeImage = bike.imageUrls?.[0] || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=200';
+        
+        // Xác định ownerId
+        const ownerId = bike.ownerId?._id || bike.ownerId;
+        const isOwnBike = ownerId && currentUserId && ownerId.toString() === currentUserId.toString();
+        
+        let actionButtonsHtml = '';
+        if (isOwnBike) {
+          actionButtonsHtml = `
+            <a href="/bikes/${bike._id || bike.id}" style="display: block; text-align: center; background-color: #ccff00; color: #000; font-weight: bold; padding: 8px 0; border-radius: 6px; text-decoration: none; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; transition: opacity 0.2s;">Xem chi tiết</a>
+          `;
+        } else {
+          // Nút Chat chuyển hướng sang trang /chat?with={ownerId}
+          actionButtonsHtml = `
+            <div style="display: flex; gap: 8px;">
+              <a href="/bikes/${bike._id || bike.id}" style="flex: 1; text-align: center; background-color: #ccff00; color: #000; font-weight: bold; padding: 8px 0; border-radius: 6px; text-decoration: none; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; transition: opacity 0.2s;">Thuê ngay</a>
+              <a href="/chat?with=${ownerId}" style="flex: 1; text-align: center; background-color: #111; color: #00e5ff; border: 1px solid #00e5ff; font-weight: bold; padding: 8px 0; border-radius: 6px; text-decoration: none; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; transition: opacity 0.2s;">Chat</a>
+            </div>
+          `;
+        }
+
         const popupHtml = `
           <div style="font-family: sans-serif; width: 220px; color: #fff; background-color: #0d0d0d; border-radius: 8px; overflow: hidden; font-size: 13px; border: 1px solid #222;">
             <img src="${bikeImage}" style="width: 100%; height: 120px; object-fit: cover; display: block;" />
@@ -212,7 +248,7 @@ export const BikesMap = () => {
               <div style="color: #00e5ff; font-size: 12px; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 4px;">
                 <span>📍 Cách bạn ${bike.distance} km</span>
               </div>
-              <a href="/bikes/${bike._id || bike.id}" style="display: block; text-align: center; background-color: #ccff00; color: #000; font-weight: bold; padding: 8px 0; border-radius: 6px; text-decoration: none; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; transition: opacity 0.2s;">Thuê ngay</a>
+              ${actionButtonsHtml}
             </div>
           </div>
         `;
@@ -295,7 +331,8 @@ export const BikesMap = () => {
               Bản Đồ Định Vị Xe Gần Bạn
             </h1>
             <p className="text-gray-400 text-xs mt-1">
-              Xem trực quan vị trí các xe máy đối tác đang rảnh và khoảng cách để lựa chọn thuận tiện nhất
+              Xem trực quan vị trí các xe máy đối tác đang rảnh và khoảng cách để lựa chọn thuận tiện nhất.
+              <span className="text-neon ml-1">💡 Mẹo test: Bạn có thể kéo thả marker màu xanh Cyan (Vị trí của bạn) trên bản đồ để di chuyển vị trí test!</span>
             </p>
           </div>
 
