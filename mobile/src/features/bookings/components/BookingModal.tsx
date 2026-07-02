@@ -11,13 +11,17 @@ import {
   Alert,
   ActivityIndicator,
   Linking,
+  SafeAreaView,
+  Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Bike } from '../../../types';
 import { COLORS } from '../../../theme/colors';
 import { useAppDispatch, useAppSelector } from '../../../app/store';
 import { createBookingApi } from '../bookingsSlice';
+import { DatePickerModal } from '../../../components/DatePickerModal';
 import { API_BASE_URL } from '../../../constants/api';
+import { WebView } from 'react-native-webview';
 
 interface BookingModalProps {
   visible: boolean;
@@ -58,6 +62,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [returnDate, setReturnDate] = useState('');
   const [returnTime, setReturnTime] = useState('08:00');
 
+  const [showPickupDatePicker, setShowPickupDatePicker] = useState(false);
+  const [showReturnDatePicker, setShowReturnDatePicker] = useState(false);
+
   const [pickupLocation, setPickupLocation] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Banking'>('Banking');
@@ -74,9 +81,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [phone, setPhone] = useState('');
   const [license, setLicense] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
+      setPaymentUrl(null);
       setPickupDate(offsetDate(1));
       setReturnDate(offsetDate(4));
       setErrorMsg(null);
@@ -196,39 +207,50 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   };
 
   const handleConfirm = async () => {
+    if (isSubmitting || loading) return;
+    setIsSubmitting(true);
+    const showAlert = (Alert as any).nativeAlert || Alert.alert;
     setErrorMsg(null);
     if (!isVerified) {
       setErrorMsg('Tài khoản của bạn chưa được xác minh eKYC. Vui lòng xác thực danh tính tại trang cá nhân.');
+      setIsSubmitting(false);
       return;
     }
     // Basic validation
     if (!pickupDate || !returnDate) {
       setErrorMsg('Vui lòng chọn ngày nhận xe và ngày trả xe.');
+      setIsSubmitting(false);
       return;
     }
     if (new Date(toISO(returnDate, returnTime)) <= new Date(toISO(pickupDate, pickupTime))) {
       setErrorMsg('Ngày trả xe phải sau ngày nhận xe.');
+      setIsSubmitting(false);
       return;
     }
     if (!fullName.trim()) {
       setErrorMsg('Vui lòng nhập họ và tên khách hàng.');
+      setIsSubmitting(false);
       return;
     }
     if (!phone.trim()) {
       setErrorMsg('Vui lòng nhập số điện thoại liên lạc.');
+      setIsSubmitting(false);
       return;
     }
     const phoneRegex = /^(03|05|07|08|09)+([0-9]{8})$/;
     if (!phoneRegex.test(phone.trim())) {
       setErrorMsg('Số điện thoại không đúng định dạng Việt Nam (10 chữ số, bắt đầu bằng 03, 05, 07, 08, 09).');
+      setIsSubmitting(false);
       return;
     }
     if (!license.trim()) {
       setErrorMsg('Vui lòng nhập số giấy phép lái xe.');
+      setIsSubmitting(false);
       return;
     }
     if (license.trim().length < 6) {
       setErrorMsg('Số giấy phép lái xe không hợp lệ (tối thiểu 6 ký tự).');
+      setIsSubmitting(false);
       return;
     }
 
@@ -255,45 +277,34 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       
       if (paymentMethod === 'Banking') {
         const createdBooking = result.payload as any;
-        Alert.alert(
-          'Thanh Toán Đặt Cọc (VNPAY)',
-          `Đơn hàng đã được tạo thành công.\nSố tiền cọc cần trả (30%): ${depositAmount.toLocaleString()} VNĐ.\n\nBạn muốn thanh toán online ngay qua VNPAY chứ?`,
-          [
-            {
-              text: 'Để sau (Không cọc)',
-              style: 'cancel',
-              onPress: () => {
-                onConfirmSuccess();
-              }
-            },
-            {
-              text: 'Thanh toán ngay',
-              style: 'default',
-              onPress: async () => {
-                try {
-                  const resUrl = await fetch(`${API_BASE_URL}/bookings/${createdBooking.id}/vnpay-url`, {
-                    method: 'POST',
-                    headers: { 
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${token}`
-                    }
-                  });
-                  const urlData = await resUrl.json();
-                  if (urlData.success && urlData.paymentUrl) {
-                    Linking.openURL(urlData.paymentUrl);
-                  } else {
-                    Alert.alert('Lỗi', 'Không thể khởi tạo liên kết thanh toán VNPAY.');
-                  }
-                } catch (e) {
-                  Alert.alert('Lỗi', 'Không thể kết nối đến cổng thanh toán VNPAY.');
-                }
-                onConfirmSuccess();
-              }
+        try {
+          const resUrl = await fetch(`${API_BASE_URL}/bookings/${createdBooking.id}/vnpay-url?origin=mobile`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
             }
-          ]
-        );
+          });
+          const urlData = await resUrl.json();
+          if (urlData.success && urlData.paymentUrl) {
+            if (Platform.OS === 'web') {
+              Linking.openURL(urlData.paymentUrl);
+              onConfirmSuccess();
+            } else {
+              setPaymentUrl(urlData.paymentUrl);
+              setIsSubmitting(false);
+            }
+            return;
+          } else {
+            showAlert('Lỗi', 'Không thể khởi tạo liên kết thanh toán VNPAY.');
+            onConfirmSuccess();
+          }
+        } catch (e) {
+          showAlert('Lỗi', 'Không thể kết nối đến cổng thanh toán VNPAY.');
+          onConfirmSuccess();
+        }
       } else {
-        Alert.alert(
+        showAlert(
           'Đặt Xe Thành Công 🎉',
           'Bạn đã đăng ký đặt xe bằng Tiền mặt.\nVui lòng đến trực tiếp cửa hàng Motov để nhận xe và thanh toán.'
         );
@@ -303,6 +314,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       const errMsg = (result.payload as string) || 'Không thể tạo đặt xe. Vui lòng thử lại.';
       setErrorMsg(errMsg);
     }
+    setIsSubmitting(false);
   };
 
   return (
@@ -340,17 +352,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <View style={styles.modalForm}>
               {/* Pickup date */}
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalInputLabel}>Ngày nhận xe (YYYY-MM-DD)</Text>
-                <View style={styles.modalInputWithIcon}>
+                <Text style={styles.modalInputLabel}>Ngày nhận xe</Text>
+                <TouchableOpacity 
+                  style={styles.modalInputWithIcon}
+                  onPress={() => setShowPickupDatePicker(true)}
+                >
                   <Feather name="calendar" size={16} color="#888" style={styles.modalInputIcon} />
-                  <TextInput
-                    style={styles.modalTextInput}
-                    placeholder="2026-06-25"
-                    placeholderTextColor="#666"
-                    value={pickupDate}
-                    onChangeText={setPickupDate}
-                  />
-                </View>
+                  <Text style={[styles.modalTextInput, { paddingVertical: 14, color: pickupDate ? COLORS.text : '#666' }]}>
+                    {pickupDate || 'Chọn ngày nhận xe'}
+                  </Text>
+                  <Feather name="chevron-down" size={16} color="#888" style={{ marginRight: 10 }} />
+                </TouchableOpacity>
               </View>
 
               {/* Pickup time */}
@@ -370,17 +382,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
               {/* Return date */}
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalInputLabel}>Ngày trả xe (YYYY-MM-DD)</Text>
-                <View style={styles.modalInputWithIcon}>
+                <Text style={styles.modalInputLabel}>Ngày trả xe</Text>
+                <TouchableOpacity 
+                  style={styles.modalInputWithIcon}
+                  onPress={() => setShowReturnDatePicker(true)}
+                >
                   <Feather name="calendar" size={16} color="#888" style={styles.modalInputIcon} />
-                  <TextInput
-                    style={styles.modalTextInput}
-                    placeholder="2026-06-28"
-                    placeholderTextColor="#666"
-                    value={returnDate}
-                    onChangeText={setReturnDate}
-                  />
-                </View>
+                  <Text style={[styles.modalTextInput, { paddingVertical: 14, color: returnDate ? COLORS.text : '#666' }]}>
+                    {returnDate || 'Chọn ngày trả xe'}
+                  </Text>
+                  <Feather name="chevron-down" size={16} color="#888" style={{ marginRight: 10 }} />
+                </TouchableOpacity>
               </View>
 
               {/* Return time */}
@@ -643,11 +655,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </Text>
             </View>
           )}
-
           <TouchableOpacity
-            style={[styles.confirmBtn, (loading || !isVerified) && styles.confirmBtnDisabled]}
+            style={[styles.confirmBtn, loading && styles.confirmBtnDisabled]}
             onPress={handleConfirm}
-            disabled={loading || !isVerified}
+            disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color={COLORS.accentDark} />
@@ -655,6 +666,93 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               <Text style={styles.confirmBtnText}>XÁC NHẬN ĐẶT XE</Text>
             )}
           </TouchableOpacity>
+
+          {/* Date Pickers */}
+          <DatePickerModal
+            visible={showPickupDatePicker}
+            onClose={() => setShowPickupDatePicker(false)}
+            selectedDate={pickupDate || offsetDate(1)}
+            onSelectDate={(date) => setPickupDate(date)}
+            minDate={offsetDate(0)}
+            title="Chọn ngày nhận xe"
+          />
+
+          <DatePickerModal
+            visible={showReturnDatePicker}
+            onClose={() => setShowReturnDatePicker(false)}
+            selectedDate={returnDate || offsetDate(4)}
+            onSelectDate={(date) => setReturnDate(date)}
+            minDate={pickupDate || offsetDate(1)}
+            title="Chọn ngày trả xe"
+          />
+
+          {/* VNPAY Webview Modal (Native only) */}
+          {Platform.OS !== 'web' && (
+            <Modal
+              visible={paymentUrl !== null}
+              animationType="slide"
+              onRequestClose={() => setPaymentUrl(null)}
+            >
+              <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
+                {/* Header */}
+                <View style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: COLORS.border,
+                  backgroundColor: COLORS.card
+                }}>
+                  <Text style={{ color: COLORS.text, fontWeight: 'bold', fontSize: 16 }}>Thanh toán VNPAY cọc</Text>
+                  <TouchableOpacity onPress={() => setPaymentUrl(null)} style={{ padding: 4 }}>
+                    <Feather name="x" size={20} color={COLORS.text} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* WebView */}
+                {paymentUrl && (
+                  <WebView
+                    source={{ uri: paymentUrl }}
+                    style={{ flex: 1 }}
+                    onNavigationStateChange={(navState) => {
+                      const { url } = navState;
+                      console.log('WebView URL changed:', url);
+                      if (url.includes('vnpay-return')) {
+                        setPaymentUrl(null);
+                        
+                        const queryString = url.split('?')[1] || '';
+                        const params: Record<string, string> = {};
+                        queryString.split('&').forEach((param: string) => {
+                          const [key, val] = param.split('=');
+                          if (key && val) {
+                            params[decodeURIComponent(key)] = decodeURIComponent(val);
+                          }
+                        });
+
+                        const responseCode = params.vnp_ResponseCode;
+                        const showAlert = (Alert as any).nativeAlert || Alert.alert;
+
+                        if (responseCode === '00') {
+                          showAlert(
+                            'Thanh Toán Thành Công 🎉',
+                            'Đơn hàng của bạn đã được đặt cọc thành công qua cổng VNPAY!'
+                          );
+                        } else {
+                          showAlert(
+                            'Thanh Toán Thất Bại ❌',
+                            'Giao dịch thanh toán VNPAY không thành công hoặc đã bị hủy bỏ.'
+                          );
+                        }
+                        onConfirmSuccess();
+                      }
+                    }}
+                  />
+                )}
+              </SafeAreaView>
+            </Modal>
+          )}
         </View>
       </View>
     </Modal>

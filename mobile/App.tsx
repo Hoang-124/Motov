@@ -8,15 +8,18 @@ import {
   TouchableOpacity,
   Text,
   Alert,
+  Linking,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Provider } from 'react-redux';
 import { CustomAlert, CustomAlertProvider } from './src/components/CustomAlert';
 
 // Overwrite Alert.alert globally with our custom beautiful modal alert
+const nativeAlert = Alert.alert;
 Alert.alert = (title: string, message?: string, buttons?: any[]) => {
   CustomAlert.alert(title, message, buttons);
 };
+(Alert as any).nativeAlert = nativeAlert;
 
 // Imports from modular structure
 import { store, useAppDispatch, useAppSelector } from './src/app/store';
@@ -28,6 +31,7 @@ import { BookingsScreen } from './src/features/bookings/screens/BookingsScreen';
 import { ProfileScreen } from './src/features/profile/screens/ProfileScreen';
 import { BookingModal } from './src/features/bookings/components/BookingModal';
 import { fetchBikes } from './src/features/bikes/bikesSlice';
+import { fetchBookings } from './src/features/bookings/bookingsSlice';
 
 // Import Owner screens
 import { OwnerDashboardScreen } from './src/features/owner/screens/OwnerDashboardScreen';
@@ -89,6 +93,63 @@ function MainApp() {
     dispatch(fetchBikes());
   }, [dispatch]);
 
+  // Listen for VNPAY Return Deep Link
+  useEffect(() => {
+    const handleDeepLink = (event: { url: string }) => {
+      console.log('Received deep link URL:', event.url);
+      if (event.url.includes('vnpay-return')) {
+        // Parse query params
+        const queryString = event.url.split('?')[1] || '';
+        const params: Record<string, string> = {};
+        queryString.split('&').forEach(param => {
+          const [key, val] = param.split('=');
+          if (key && val) {
+            params[decodeURIComponent(key)] = decodeURIComponent(val);
+          }
+        });
+        
+        const statusVal = params.status;
+        
+        // Refresh bookings list so the new/paid status shows up immediately
+        dispatch(fetchBookings() as any);
+        
+        const showAlert = (Alert as any).nativeAlert || Alert.alert;
+        if (statusVal === 'success') {
+          showAlert(
+            'Thanh Toán Thành Công 🎉',
+            'Đơn hàng của bạn đã được đặt cọc thành công qua cổng VNPAY!'
+          );
+        } else if (statusVal === 'failed') {
+          showAlert(
+            'Thanh Toán Thất Bại ❌',
+            'Giao dịch VNPAY thất bại hoặc đã bị hủy bỏ.'
+          );
+        } else if (statusVal === 'error') {
+          showAlert(
+            'Lỗi Thanh Toán',
+            'Đã xảy ra lỗi trong quá trình xử lý giao dịch.'
+          );
+        }
+        
+        // Redirect to customer bookings tab
+        setActiveTab('bookings');
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Check if the app was opened by a deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink({ url });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [dispatch]);
+
   const handleHomeSearch = () => {
     setActiveTab('bikes');
   };
@@ -107,10 +168,7 @@ function MainApp() {
 
   const handleConfirmSuccess = () => {
     setBookingModalVisible(false);
-    Alert.alert('Thành Công', 'Đơn đặt xe của bạn đã được ghi nhận và đang chờ duyệt!', [
-      { text: 'Xem đơn hàng', onPress: () => setActiveTab('bookings') },
-      { text: 'Quay lại', style: 'cancel' }
-    ]);
+    setActiveTab('bookings');
   };
 
   // Determine bottom tab links dynamically
@@ -118,9 +176,10 @@ function MainApp() {
     switch (role) {
       case 'owner':
         return [
-          { id: 'owner_dashboard', label: 'Doanh thu' },
-          { id: 'owner_bikes', label: 'Xe của tôi' },
-          { id: 'owner_bookings', label: 'Yêu cầu' },
+          { id: 'home', label: 'Trang chủ' },
+          { id: 'bikes', label: 'Dòng xe' },
+          { id: 'bookings', label: 'Đơn thuê' },
+          { id: 'owner_dashboard', label: 'Chủ xe' },
           { id: 'profile', label: 'Cá nhân' }
         ];
       case 'admin':
@@ -154,7 +213,7 @@ function MainApp() {
       <StatusBar barStyle="light-content" />
 
       {/* --- RENDER CURRENT TAB VIEW --- */}
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <View style={styles.scrollContainer}>
         {activeTab === 'home' && (
           <HomeScreen
             homeDate={homeDate}
@@ -198,12 +257,12 @@ function MainApp() {
           <OwnerDashboardScreen setActiveTab={setActiveTab} />
         )}
         {activeTab === 'owner_bikes' && (
-          <OwnerBikesScreen />
+          <OwnerBikesScreen setActiveTab={setActiveTab} />
         )}
         {activeTab === 'owner_bookings' && (
-          <OwnerBookingsScreen />
+          <OwnerBookingsScreen setActiveTab={setActiveTab} />
         )}
-      </ScrollView>
+      </View>
 
       {/* --- BOTTOM TAB NAVIGATION BAR --- */}
       <View style={styles.tabBar}>
@@ -254,7 +313,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bg,
   },
   scrollContainer: {
-    paddingBottom: 90,
+    flex: 1,
+    paddingBottom: 80,
   },
   tabBar: {
     position: 'absolute',
@@ -284,7 +344,7 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     color: COLORS.textMuted,
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '600',
     marginTop: 4,
   },

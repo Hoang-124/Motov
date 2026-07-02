@@ -4,6 +4,7 @@ import { BikeCard } from '../components/BikeCard';
 import { SlidersHorizontal, Search, AlertCircle, Loader, ChevronDown, MapPin, Sparkles } from 'lucide-react';
 import { getAllMotorbikes, getRecommendations, Motorbike } from '../services/vehicleService';
 import { useLanguage } from '../hooks/useLanguage';
+import { motion } from 'motion/react';
 
 export const Bikes = () => {
   const navigate = useNavigate();
@@ -93,10 +94,10 @@ export const Bikes = () => {
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
         {/* Title */}
         <div className="mb-10 text-center md:text-left">
-          <h1 className="font-display font-black text-4xl text-neon uppercase text-glow tracking-tight mb-2">
+          <h1 className="font-display font-black text-4xl text-neon uppercase text-glow tracking-tight mb-2" style={{ textWrap: 'balance' }}>
             {t('bikesPage.title')}
           </h1>
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-300 text-sm">
             {initialLocation && t('bikesPage.searchingAt', { location: initialLocation })}
             {initialDate && ` • ${t('bikesPage.date', { date: initialDate })}`}
           </p>
@@ -241,11 +242,36 @@ export const Bikes = () => {
 
         {/* Bikes Grid */}
         {!loading && filteredBikes.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.div 
+            variants={{
+              hidden: {},
+              show: {
+                transition: {
+                  staggerChildren: 0.08
+                }
+              }
+            }}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
             {filteredBikes.map(bike => (
-              <BikeCard key={bike._id} bike={bike} />
+              <motion.div 
+                key={bike._id} 
+                variants={{
+                  hidden: { opacity: 0, y: 25, filter: 'blur(3px)' },
+                  show: { 
+                    opacity: 1, 
+                    y: 0, 
+                    filter: 'blur(0px)',
+                    transition: { type: 'spring', stiffness: 90, damping: 14 } 
+                  }
+                }}
+              >
+                <BikeCard bike={bike} />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         ) : !loading && (
           <div className="text-center py-20 border border-dashed border-gray-800 rounded-2xl bg-surface/50">
             <p className="text-gray-500 mb-2">{t('bikesPage.noBikes')}</p>

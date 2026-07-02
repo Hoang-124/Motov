@@ -32,53 +32,62 @@ export const BikesScreen: React.FC<BikesScreenProps> = ({ handleOpenBooking }) =
   });
 
   return (
-    <View style={styles.tabContent}>
-      {/* Search Bar */}
-      <View style={styles.searchBarContainer}>
-        <Text style={styles.pageTitle}>Dòng Xe Cho Thuê</Text>
-        <View style={styles.searchBarWithIcon}>
-          <Feather name="search" size={18} color="#888" style={styles.searchBarIcon} />
-          <TextInput
-            style={styles.searchBarInputWithIcon}
-            placeholder="Tìm tên hoặc loại xe..."
-            placeholderTextColor="#888"
-            value={searchQuery}
-            onChangeText={(val) => dispatch(setSearchQuery(val))}
-          />
+    <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContentContainer}>
+      <View style={styles.tabContent}>
+        {/* Search Bar */}
+        <View style={styles.searchBarContainer}>
+          <Text style={styles.pageTitle}>Dòng Xe Cho Thuê</Text>
+          <View style={styles.searchBarWithIcon}>
+            <Feather name="search" size={18} color="#888" style={styles.searchBarIcon} />
+            <TextInput
+              style={styles.searchBarInputWithIcon}
+              placeholder="Tìm tên hoặc loại xe..."
+              placeholderTextColor="#888"
+              value={searchQuery}
+              onChangeText={(val) => dispatch(setSearchQuery(val))}
+            />
+          </View>
+        </View>
+
+        {/* Categories horizontal scroll */}
+        <View style={styles.categoryContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {['All', 'Scooter', 'Classic', 'Sport Cafe', 'Sport', 'Underbone'].map(category => (
+              <TouchableOpacity
+                key={category}
+                style={[styles.categoryTab, selectedType === category && styles.categoryTabActive]}
+                onPress={() => dispatch(setSelectedType(category))}
+              >
+                <Text style={[styles.categoryTabText, selectedType === category && styles.categoryTabTextActive]}>
+                  {category === 'All' ? 'Tất cả' : category}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Bikes List */}
+        <View style={styles.bikesGrid}>
+          {filteredBikes.map(bike => (
+            <BikeCard key={bike.id} bike={bike} handleOpenBooking={handleOpenBooking} />
+          ))}
+          {filteredBikes.length === 0 && (
+            <Text style={styles.emptyText}>Không tìm thấy xe phù hợp.</Text>
+          )}
         </View>
       </View>
-
-      {/* Categories horizontal scroll */}
-      <View style={styles.categoryContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {['All', 'Scooter', 'Classic', 'Sport Cafe', 'Sport', 'Underbone'].map(category => (
-            <TouchableOpacity
-              key={category}
-              style={[styles.categoryTab, selectedType === category && styles.categoryTabActive]}
-              onPress={() => dispatch(setSelectedType(category))}
-            >
-              <Text style={[styles.categoryTabText, selectedType === category && styles.categoryTabTextActive]}>
-                {category === 'All' ? 'Tất cả' : category}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Bikes List */}
-      <View style={styles.bikesGrid}>
-        {filteredBikes.map(bike => (
-          <BikeCard key={bike.id} bike={bike} handleOpenBooking={handleOpenBooking} />
-        ))}
-        {filteredBikes.length === 0 && (
-          <Text style={styles.emptyText}>Không tìm thấy xe phù hợp.</Text>
-        )}
-      </View>
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+  },
+  scrollContentContainer: {
+    paddingBottom: 90,
+  },
   tabContent: {
     padding: 20,
   },

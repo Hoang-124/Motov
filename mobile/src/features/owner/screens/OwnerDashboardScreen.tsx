@@ -46,6 +46,55 @@ export const OwnerDashboardScreen: React.FC<OwnerDashboardScreenProps> = ({ setA
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      {/* Tab Switcher */}
+      {setActiveTab && (
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 15, marginTop: 10 }}>
+          <TouchableOpacity 
+            style={{
+              flex: 1,
+              backgroundColor: COLORS.accent,
+              borderWidth: 1,
+              borderColor: COLORS.accent,
+              paddingVertical: 10,
+              borderRadius: 8,
+              alignItems: 'center'
+            }}
+          >
+            <Text style={{ color: COLORS.accentDark, fontWeight: 'bold', fontSize: 12 }}>Doanh thu</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            onPress={() => setActiveTab('owner_bikes')} 
+            style={{
+              flex: 1,
+              backgroundColor: COLORS.card,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              paddingVertical: 10,
+              borderRadius: 8,
+              alignItems: 'center'
+            }}
+          >
+            <Text style={{ color: COLORS.text, fontWeight: 'bold', fontSize: 12 }}>Xe của tôi</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            onPress={() => setActiveTab('owner_bookings')} 
+            style={{
+              flex: 1,
+              backgroundColor: COLORS.card,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              paddingVertical: 10,
+              borderRadius: 8,
+              alignItems: 'center'
+            }}
+          >
+            <Text style={{ color: COLORS.text, fontWeight: 'bold', fontSize: 12 }}>Yêu cầu</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Title */}
       <View style={styles.header}>
         <Text style={styles.pageTitle}>Doanh Thu & Thống Kê</Text>

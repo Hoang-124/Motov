@@ -10,7 +10,7 @@ import { EmailVerificationToken } from '../models/EmailVerificationToken.js';
 import crypto from 'crypto';
 import { AuthRequest } from '../middlewares/authMiddleware.js';
 import { mapBackendRoleToFrontend, mapFrontendRoleToBackend } from '../utils/roleMapper.js';
-import { sendPasswordReset, sendEmailVerification } from '../utils/emailService.js';
+import { sendPasswordReset, sendEmailVerification, sendOwnerRequestNotification } from '../utils/emailService.js';
 import firebaseAdmin from '../config/firebase.js';
 
 import dotenv from 'dotenv';
@@ -280,7 +280,16 @@ export const login = async (req: Request, res: Response) => {
         gender: user.gender || '',
         dob: user.dob || '',
         status: user.status,
-        identityStatus: user.identityStatus || null
+        identityStatus: user.identityStatus || null,
+        ownerRequestStatus: user.ownerRequestStatus || 'None',
+        ownerContractSigned: user.ownerContractSigned || false,
+        ownerContractSignedAt: user.ownerContractSignedAt || null,
+        ownerContractText: user.ownerContractText || null,
+        ownerRejectReason: user.ownerRejectReason || '',
+        bankName: user.bankName || '',
+        bankAccountNumber: user.bankAccountNumber || '',
+        bankAccountOwner: user.bankAccountOwner || '',
+        ownerSignature: user.ownerSignature || ''
       }
     });
   } catch (error: any) {
@@ -322,7 +331,16 @@ export const getMe = async (req: AuthRequest, res: Response) => {
         status: user.status,
         identityStatus: user.identityStatus || 'Unverified',
         identityRejectReason: user.identityRejectReason || '',
-        citizenIdInfo: user.citizenIdInfo
+        citizenIdInfo: user.citizenIdInfo,
+        ownerRequestStatus: user.ownerRequestStatus || 'None',
+        ownerContractSigned: user.ownerContractSigned || false,
+        ownerContractSignedAt: user.ownerContractSignedAt || null,
+        ownerContractText: user.ownerContractText || null,
+        ownerRejectReason: user.ownerRejectReason || '',
+        bankName: user.bankName || '',
+        bankAccountNumber: user.bankAccountNumber || '',
+        bankAccountOwner: user.bankAccountOwner || '',
+        ownerSignature: user.ownerSignature || ''
       }
     });
   } catch (error: any) {
@@ -360,11 +378,21 @@ export const becomeOwner = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Yêu cầu đăng ký làm Chủ xe của bạn đang chờ phê duyệt.' });
     }
 
+    const { bankName, bankAccountNumber, bankAccountOwner, ownerSignature } = req.body;
+
+    if (!bankName || !bankAccountNumber || !bankAccountOwner) {
+      return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ thông tin tài khoản ngân hàng để nhận doanh thu.' });
+    }
+
+    if (!ownerSignature) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp chữ ký điện tử của bạn.' });
+    }
+
     const displayName = user.firstName && user.lastName
       ? `${user.lastName} ${user.firstName}`
       : (user.firstName || user.lastName || user.username);
 
-    // Biên soạn hợp đồng đối tác điện tử dựa trên thông tin cá nhân hiện tại
+    // Biên soạn hợp đồng đối tác điện tử dựa trên thông tin cá nhân hiện tại và thông tin ngân hàng
     const contractText = `HỢP ĐỒNG HỢP TÁC KINH DOANH (ĐỐI TÁC CHỦ XE)
 Số: MOTOV-OWNER-${user._id.toString().slice(-6).toUpperCase()}/${new Date().getFullYear()}
 
@@ -383,6 +411,11 @@ BÊN B: ĐỐI TÁC CHỦ XE
 - Email: ${user.email || 'N/A'}
 - Địa chỉ thường trú: ${user.citizenIdInfo?.address || 'N/A'}
 
+THÔNG TIN TÀI KHOẢN THANH TOÁN (BÊN B):
+- Ngân hàng: ${bankName}
+- Số tài khoản: ${bankAccountNumber}
+- Chủ tài khoản: ${bankAccountOwner}
+
 ĐIỀU KHOẢN HỢP TÁC:
 1. Bên B đồng ý đưa các phương tiện xe máy thuộc quyền sở hữu/sử dụng hợp pháp của mình lên hệ thống Motov để thực hiện dịch vụ cho thuê xe máy tự lái.
 2. Bên B cam kết các phương tiện cung cấp luôn trong tình trạng hoạt động tốt, được bảo dưỡng định kỳ và có đầy đủ giấy tờ pháp lý (Đăng ký xe, Bảo hiểm trách nhiệm dân sự còn hiệu lực).
@@ -398,8 +431,39 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
     user.ownerContractSigned = true;
     user.ownerContractSignedAt = new Date();
     user.ownerContractText = contractText;
+    user.bankName = bankName;
+    user.bankAccountNumber = bankAccountNumber;
+    user.bankAccountOwner = bankAccountOwner;
+    user.ownerSignature = ownerSignature;
+    user.ownerRejectReason = '';
     
     const savedUser = await user.save();
+
+    // Gửi email và thông báo cho tất cả Admin
+    try {
+      const admins = await User.find({ roles: 'Admin' });
+      for (const admin of admins) {
+        // Tạo thông báo in-app
+        await Notification.create({
+          userId: admin._id,
+          title: 'Có yêu cầu duyệt đối tác Chủ xe mới',
+          message: `Đối tác ${displayName} đã ký hợp đồng đối tác chủ xe và đang chờ phê duyệt.`,
+          type: 'System'
+        });
+
+        // Gửi email thông báo
+        if (admin.email) {
+          await sendOwnerRequestNotification(admin.email, {
+            name: displayName,
+            email: user.email || 'N/A',
+            phoneNumber: user.phoneNumber || 'N/A',
+            bankName
+          });
+        }
+      }
+    } catch (notiErr) {
+      console.error('Lỗi khi tạo thông báo/gửi mail cho Admin khi đối tác đăng ký chủ xe:', notiErr);
+    }
 
     res.status(200).json({
       success: true,
@@ -415,7 +479,12 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
         ownerRequestStatus: savedUser.ownerRequestStatus,
         ownerContractSigned: savedUser.ownerContractSigned,
         ownerContractSignedAt: savedUser.ownerContractSignedAt,
-        ownerContractText: savedUser.ownerContractText
+        ownerContractText: savedUser.ownerContractText,
+        ownerRejectReason: savedUser.ownerRejectReason,
+        bankName: savedUser.bankName,
+        bankAccountNumber: savedUser.bankAccountNumber,
+        bankAccountOwner: savedUser.bankAccountOwner,
+        ownerSignature: savedUser.ownerSignature
       }
     });
   } catch (error: any) {
@@ -434,7 +503,7 @@ export const getOwnerRequests = async (req: AuthRequest, res: Response) => {
     }
 
     const requests = await User.find({ ownerRequestStatus: 'Pending' })
-      .select('username email firstName lastName phoneNumber status ownerRequestStatus createdAt ownerContractText ownerContractSignedAt')
+      .select('username email firstName lastName phoneNumber status ownerRequestStatus createdAt ownerContractText ownerContractSignedAt bankName bankAccountNumber bankAccountOwner ownerSignature ownerRejectReason')
       .sort('-updatedAt');
 
     const formattedRequests = requests.map(u => {
@@ -451,7 +520,12 @@ export const getOwnerRequests = async (req: AuthRequest, res: Response) => {
         ownerRequestStatus: u.ownerRequestStatus,
         createdAt: u.createdAt,
         ownerContractText: u.ownerContractText,
-        ownerContractSignedAt: u.ownerContractSignedAt
+        ownerContractSignedAt: u.ownerContractSignedAt,
+        bankName: u.bankName || '',
+        bankAccountNumber: u.bankAccountNumber || '',
+        bankAccountOwner: u.bankAccountOwner || '',
+        ownerSignature: u.ownerSignature || '',
+        ownerRejectReason: u.ownerRejectReason || ''
       };
     });
 
@@ -486,7 +560,7 @@ export const approveOwnerRequest = async (req: AuthRequest, res: Response) => {
     }
 
     // Nâng cấp lên Owner và cập nhật trạng thái
-    user.roles = ['Owner'];
+    user.set('roles', ['Owner']);
     user.ownerRequestStatus = 'Approved';
     await user.save();
 
@@ -521,12 +595,14 @@ export const rejectOwnerRequest = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params;
+    const { rejectReason } = req.body;
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản người dùng' });
     }
 
     user.ownerRequestStatus = 'Rejected';
+    user.ownerRejectReason = rejectReason || 'Không có lý do cụ thể';
     await user.save();
 
     // Tạo thông báo in-app cho đối tác
@@ -534,7 +610,7 @@ export const rejectOwnerRequest = async (req: AuthRequest, res: Response) => {
       await Notification.create({
         userId: user._id,
         title: 'Yêu cầu làm đối tác Chủ xe bị từ chối',
-        message: 'Rất tiếc, yêu cầu đăng ký làm đối tác Chủ xe của bạn đã bị từ chối bởi nhân viên hệ thống. Vui lòng liên hệ hỗ trợ để biết thêm chi tiết.',
+        message: `Rất tiếc, yêu cầu đăng ký làm đối tác Chủ xe của bạn đã bị từ chối bởi nhân viên hệ thống. Lý do: ${user.ownerRejectReason}`,
         type: 'System'
       });
     } catch (notiErr) {
@@ -665,7 +741,16 @@ export const googleLogin = async (req: Request, res: Response) => {
         gender: user.gender || '',
         dob: user.dob || '',
         status: user.status,
-        identityStatus: user.identityStatus || null
+        identityStatus: user.identityStatus || null,
+        ownerRequestStatus: user.ownerRequestStatus || 'None',
+        ownerContractSigned: user.ownerContractSigned || false,
+        ownerContractSignedAt: user.ownerContractSignedAt || null,
+        ownerContractText: user.ownerContractText || null,
+        ownerRejectReason: user.ownerRejectReason || '',
+        bankName: user.bankName || '',
+        bankAccountNumber: user.bankAccountNumber || '',
+        bankAccountOwner: user.bankAccountOwner || '',
+        ownerSignature: user.ownerSignature || ''
       }
     });
 

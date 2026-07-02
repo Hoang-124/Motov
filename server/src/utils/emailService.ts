@@ -543,3 +543,41 @@ Please avoid late-return penalties.`,
   const info = await transporter.sendMail(mailOptions);
   return logEtherealMail(info, email);
 };
+
+// 8. Gửi email thông báo cho Admin khi có chủ xe đăng ký mới
+export const sendOwnerRequestNotification = async (adminEmail: string, ownerDetails: { name: string; email: string; phoneNumber: string; bankName: string }): Promise<string | boolean> => {
+  const transporter = await getTransporter();
+  const frontendUrl = process.env.CLIENT_ORIGIN || 'http://localhost:3000';
+  const requestLink = `${frontendUrl}/admin/bookings?tab=requests`;
+
+  const mailOptions = {
+    from: '"Motov System" <noreply@motov.com>',
+    to: adminEmail,
+    subject: `[Yêu cầu Duyệt Chủ Xe] Đối tác mới đăng ký - ${ownerDetails.name}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #27272a; border-radius: 8px; background-color: #09090b; color: #fff;">
+        <h2 style="color: #ccff00; border-bottom: 2px solid #ccff00; padding-bottom: 10px; text-align: center; font-weight: 900; letter-spacing: 1px;">MOTOV PARTNER</h2>
+        <p style="color: #e4e4e7; font-size: 15px;">Xin chào Admin,</p>
+        <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6;">Hệ thống Motov vừa ghi nhận một yêu cầu đăng ký làm **Đối tác Chủ xe (Owner)** mới cần được kiểm duyệt.</p>
+        
+        <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 6px; padding: 15px; margin: 20px 0; color: #e4e4e7; font-size: 13px;">
+          <h4 style="color: #ccff00; margin-top: 0; margin-bottom: 10px; text-transform: uppercase;">Thông tin đối tác:</h4>
+          <p style="margin: 5px 0;"><strong>Họ và tên:</strong> ${ownerDetails.name}</p>
+          <p style="margin: 5px 0;"><strong>Email:</strong> ${ownerDetails.email}</p>
+          <p style="margin: 5px 0;"><strong>Số điện thoại:</strong> ${ownerDetails.phoneNumber}</p>
+          <p style="margin: 5px 0;"><strong>Ngân hàng nhận tiền:</strong> ${ownerDetails.bankName}</p>
+        </div>
+        
+        <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6;">Vui lòng nhấn vào liên kết dưới đây để truy cập trang quản trị và kiểm duyệt hồ sơ ký hợp đồng của đối tác:</p>
+        <div style="text-align: center; margin: 35px 0;">
+          <a href="${requestLink}" style="background-color: #ccff00; color: #000; padding: 14px 28px; font-weight: bold; border-radius: 50px; text-decoration: none; display: inline-block; font-size: 13px; letter-spacing: 0.5px; box-shadow: 0 0 15px rgba(204, 255, 0, 0.4);">TRUY CẬP TRANG DUYỆT</a>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #27272a; margin: 30px 0;" />
+        <p style="font-size: 11px; color: #52525b; text-align: center; margin: 0;">Hệ thống quản lý đối tác Motov - Đà Nẵng</p>
+      </div>
+    `,
+  };
+
+  const info = await transporter.sendMail(mailOptions);
+  return logEtherealMail(info, adminEmail);
+};

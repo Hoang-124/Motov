@@ -39,6 +39,10 @@ interface OwnerRequest {
   createdAt: string;
   ownerContractText?: string;
   ownerContractSignedAt?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountOwner?: string;
+  ownerSignature?: string;
 }
 
 export const AdminBookings = () => {
@@ -103,6 +107,18 @@ export const AdminBookings = () => {
     }
   };
 
+  const loadOwnerRequestsSilent = async () => {
+    try {
+      const headers = getAuthHeaders();
+      const res = await axios.get(`${API_BASE_URL}/auth/owner-requests`, headers);
+      if (res.data.success) {
+        setOwnerRequests(res.data.data);
+      }
+    } catch (err: any) {
+      console.error('Lỗi tải ngầm danh sách chủ xe:', err);
+    }
+  };
+
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab === 'ownerRequests' || tab === 'bookings') {
@@ -117,6 +133,7 @@ export const AdminBookings = () => {
   useEffect(() => {
     if (activeTab === 'bookings') {
       loadBookings();
+      loadOwnerRequestsSilent();
     } else {
       loadOwnerRequests();
     }
@@ -159,10 +176,22 @@ export const AdminBookings = () => {
     }
   };
 
-  const handleApproveOwner = async (id: string) => {
-    const confirm = window.confirm('Bạn có chắc chắn muốn phê duyệt khách hàng này thành Chủ xe đối tác không?');
-    if (!confirm) return;
+  const [confirmApproveRequest, setConfirmApproveRequest] = useState<OwnerRequest | null>(null);
+  const [confirmRejectRequest, setConfirmRejectRequest] = useState<OwnerRequest | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
+  const handleApproveOwner = (req: OwnerRequest) => {
+    setConfirmApproveRequest(req);
+  };
+
+  const handleRejectOwner = (req: OwnerRequest) => {
+    setConfirmRejectRequest(req);
+    setRejectReason('');
+  };
+
+  const submitApproveOwner = async () => {
+    if (!confirmApproveRequest) return;
+    const id = confirmApproveRequest.id || (confirmApproveRequest as any)._id;
     try {
       setLoading(true);
       const headers = getAuthHeaders();
@@ -173,25 +202,33 @@ export const AdminBookings = () => {
       }
     } catch (err: any) {
       showToast(err.response?.data?.message || err.message || 'Lỗi khi phê duyệt chủ xe!', 'error');
+    } finally {
       setLoading(false);
+      setConfirmApproveRequest(null);
     }
   };
 
-  const handleRejectOwner = async (id: string) => {
-    const confirm = window.confirm('Bạn có chắc chắn muốn từ chối yêu cầu đăng ký chủ xe này không?');
-    if (!confirm) return;
-
+  const submitRejectOwner = async () => {
+    if (!confirmRejectRequest) return;
+    if (!rejectReason.trim()) {
+      showToast('Vui lòng nhập lý do từ chối cụ thể.', 'error');
+      return;
+    }
+    const id = confirmRejectRequest.id || (confirmRejectRequest as any)._id;
     try {
       setLoading(true);
       const headers = getAuthHeaders();
-      const res = await axios.put(`${API_BASE_URL}/auth/owner-requests/${id}/reject`, {}, headers);
+      const res = await axios.put(`${API_BASE_URL}/auth/owner-requests/${id}/reject`, { rejectReason }, headers);
       if (res.data.success) {
         showToast(res.data.message || 'Đã từ chối yêu cầu thành công.', 'success');
         await loadOwnerRequests();
       }
     } catch (err: any) {
       showToast(err.response?.data?.message || err.message || 'Lỗi khi từ chối yêu cầu!', 'error');
+    } finally {
       setLoading(false);
+      setConfirmRejectRequest(null);
+      setRejectReason('');
     }
   };
 
@@ -532,14 +569,14 @@ export const AdminBookings = () => {
                             </button>
                           )}
                           <button
-                            onClick={() => handleApproveOwner(req.id)}
+                            onClick={() => handleApproveOwner(req)}
                             className="px-3 py-1.5 rounded-lg bg-neon text-dark font-bold text-xs hover:opacity-90 transition-all cursor-pointer flex items-center gap-1"
                             title="Phê duyệt chủ xe"
                           >
                             <Check size={12} /> Duyệt đối tác
                           </button>
                           <button
-                            onClick={() => handleRejectOwner(req.id)}
+                            onClick={() => handleRejectOwner(req)}
                             className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 text-xs font-bold hover:bg-red-500/20 transition-all cursor-pointer flex items-center gap-1"
                             title="Từ chối yêu cầu"
                           >
@@ -600,9 +637,24 @@ export const AdminBookings = () => {
                 <span>Ký ngày: {viewingContractRequest.ownerContractSignedAt ? new Date(viewingContractRequest.ownerContractSignedAt).toLocaleDateString('vi-VN') : 'N/A'}</span>
               </div>
 
-              <pre className="whitespace-pre-wrap font-mono text-xs bg-black/40 border border-white/5 rounded-xl p-4 max-h-[50vh] overflow-y-auto leading-relaxed">
+              <pre className="whitespace-pre-wrap font-mono text-xs bg-black/40 border border-white/5 rounded-xl p-4 max-h-[40vh] overflow-y-auto leading-relaxed">
                 {viewingContractRequest.ownerContractText || 'Không có dữ liệu hợp đồng.'}
               </pre>
+
+              {viewingContractRequest.ownerSignature && (
+                <div className="bg-black/40 border border-white/5 p-4 rounded-xl space-y-2">
+                  <h4 className="font-display font-bold text-white text-xs uppercase tracking-wider text-neon">
+                    Chữ ký điện tử của đối tác
+                  </h4>
+                  <div className="bg-black/60 border border-white/10 rounded-lg p-2 flex justify-center items-center h-24">
+                    <img 
+                      src={viewingContractRequest.ownerSignature} 
+                      alt="Chữ ký đối tác" 
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -612,6 +664,80 @@ export const AdminBookings = () => {
                 className="px-6 py-2.5 rounded-lg bg-neon text-dark font-bold text-xs uppercase hover:bg-[#bbf000] transition-all cursor-pointer"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xác nhận Phê duyệt */}
+      {confirmApproveRequest && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setConfirmApproveRequest(null)}
+          />
+          <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-md z-10 overflow-hidden relative shadow-2xl p-6 space-y-4">
+            <h3 className="font-display font-black text-base text-white uppercase tracking-wider text-neon">
+              Xác nhận phê duyệt chủ xe
+            </h3>
+            <p className="text-gray-300 text-xs leading-relaxed">
+              Bạn có chắc chắn muốn phê duyệt đối tác <span className="text-white font-bold">{confirmApproveRequest.name}</span> thành Chủ xe đối tác của Motov không?
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setConfirmApproveRequest(null)}
+                className="px-4 py-2 rounded-lg border border-gray-800 text-gray-400 hover:text-white text-xs font-bold uppercase transition-all cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={submitApproveOwner}
+                disabled={loading}
+                className="px-5 py-2 rounded-lg bg-neon text-dark font-bold text-xs uppercase hover:bg-[#bbf000] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {loading ? 'Đang xử lý...' : 'Xác nhận duyệt'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xác nhận Từ chối */}
+      {confirmRejectRequest && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setConfirmRejectRequest(null)}
+          />
+          <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-md z-10 overflow-hidden relative shadow-2xl p-6 space-y-4">
+            <h3 className="font-display font-black text-base text-red-500 uppercase tracking-wider">
+              Từ chối đối tác chủ xe
+            </h3>
+            <p className="text-gray-300 text-xs">
+              Vui lòng nhập lý do từ chối cụ thể gửi cho đối tác <span className="text-white font-bold">{confirmRejectRequest.name}</span>:
+            </p>
+            <div>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Ví dụ: Thông tin ngân hàng không trùng khớp với eKYC, vui lòng cập nhật lại..."
+                className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-red-500 h-24 resize-none leading-relaxed"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setConfirmRejectRequest(null)}
+                className="px-4 py-2 rounded-lg border border-gray-800 text-gray-400 hover:text-white text-xs font-bold uppercase transition-all cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={submitRejectOwner}
+                disabled={loading || !rejectReason.trim()}
+                className="px-5 py-2 rounded-lg bg-red-500 text-white font-bold text-xs uppercase hover:bg-red-600 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {loading ? 'Đang xử lý...' : 'Từ chối yêu cầu'}
               </button>
             </div>
           </div>

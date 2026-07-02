@@ -11,7 +11,8 @@ import {
   Ticket, 
   MessageSquare, 
   Settings,
-  ArrowLeft
+  ArrowLeft,
+  UserCheck
 } from 'lucide-react';
 
 export const AdminLayout = () => {
@@ -20,17 +21,27 @@ export const AdminLayout = () => {
 
   const menuItems = [
     { path: '/admin/dashboard', label: t('nav.dashboard'), icon: Activity },
+    { path: '/admin/bookings?tab=ownerRequests', label: 'Duyệt đối tác chủ xe', icon: UserCheck },
+    { path: '/admin/bookings', label: t('nav.allBookings'), icon: ClipboardList },
     { path: '/admin/bikes', label: t('nav.manageBikes'), icon: Bike },
     { path: '/admin/categories', label: t('nav.manageCategories') || 'Quản lý danh mục', icon: Folder },
     { path: '/admin/inventory', label: t('nav.manageInventory') || 'Quản lý kho', icon: Archive },
-    { path: '/admin/bookings', label: t('nav.allBookings'), icon: ClipboardList },
     { path: '/admin/users', label: t('nav.roles'), icon: Users },
     { path: '/admin/promotions', label: t('nav.promotions'), icon: Ticket },
     { path: '/admin/feedbacks', label: t('nav.feedbacks'), icon: MessageSquare },
     { path: '/admin/settings', label: 'Cấu hình hệ thống', icon: Settings },
   ];
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    const [basePath, search] = path.split('?');
+    if (search) {
+      return location.pathname === basePath && location.search.includes(search);
+    }
+    if (path === '/admin/bookings' && location.search.includes('tab=ownerRequests')) {
+      return false;
+    }
+    return location.pathname === basePath;
+  };
 
   const sidebarTitle = language === 'vi' ? 'Hệ thống Quản trị' : language === 'ko' ? '관리자 메뉴' : 'Admin Panel';
 

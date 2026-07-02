@@ -38,6 +38,11 @@ export interface IUser extends Document {
   ownerContractSigned?: boolean;
   ownerContractSignedAt?: Date;
   ownerContractText?: string;
+  ownerSignature?: string;
+  ownerRejectReason?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountOwner?: string;
   citizenIdInfo?: ICitizenIdInfo;
   identityStatus: 'Unverified' | 'Pending' | 'Verified' | 'Rejected';
   identityRejectReason?: string;
@@ -72,6 +77,11 @@ const UserSchema = new Schema<IUser>({
   ownerContractSigned: { type: Boolean, default: false },
   ownerContractSignedAt: { type: Date },
   ownerContractText: { type: String },
+  ownerSignature: { type: String },
+  ownerRejectReason: { type: String },
+  bankName: { type: String },
+  bankAccountNumber: { type: String },
+  bankAccountOwner: { type: String },
   favoriteVehicles: [{ type: Schema.Types.ObjectId, ref: 'Vehicle' }],
   usedVouchers: [UserVoucherSchema],
   citizenIdInfo: {

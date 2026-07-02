@@ -17,6 +17,7 @@ import { COLORS } from '../../../theme/colors';
 import { useAppSelector } from '../../../app/store';
 import { PromotionsModal } from '../components/PromotionsModal';
 import { NotificationModal } from '../components/NotificationModal';
+import { DatePickerModal } from '../../../components/DatePickerModal';
 import { API_BASE_URL } from '../../../constants/api';
 
 const { width } = Dimensions.get('window');
@@ -51,6 +52,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [promotionsVisible, setPromotionsVisible] = useState(false);
   const [notiVisible, setNotiVisible] = useState(false);
   const [unreadNotiCount, setUnreadNotiCount] = useState(0);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const featuredBikes = bikes.filter(b => b.featured);
   const otherBikes = bikes.filter(b => !b.featured).slice(0, 3);
@@ -59,13 +61,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   useEffect(() => {
     if (!token || role === 'guest') return;
 
+    let isMounted = true;
     const fetchUnreadCount = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/notifications`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
-        if (data.success) {
+        if (isMounted && data.success) {
           setUnreadNotiCount(data.unreadCount);
         }
       } catch (e) {
@@ -74,12 +77,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     };
 
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 15000); // 15s polling for near real-time count
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchUnreadCount, 30000); // Poll every 30s instead of 15s to be more gentle
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [token, role]);
 
   return (
-    <View style={styles.tabContent}>
+    <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContentContainer}>
+      <View style={styles.tabContent}>
       {/* Hero Section with Background Image */}
       <ImageBackground
         source={{ uri: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800' }}
@@ -129,17 +136,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <Text style={styles.cardTitle}>Tìm Kiếm Xe</Text>
           
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Ngày Nhận/Trả</Text>
-            <View style={styles.inputWithIcon}>
-              <Feather name="calendar" size={16} color="#888" style={styles.inputIcon} />
-              <TextInput
-                style={styles.textInputWithIcon}
-                placeholder="Chọn ngày nhận & trả"
-                placeholderTextColor="#666"
-                value={homeDate}
-                onChangeText={setHomeDate}
-              />
-            </View>
+            <Text style={styles.inputLabel}>Ngày Nhận Xe</Text>
+            <TouchableOpacity 
+              style={styles.pickerSelector}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <View style={styles.pickerSelectorLeft}>
+                <Feather name="calendar" size={16} color="#888" style={styles.inputIcon} />
+                <Text style={styles.pickerSelectorText}>
+                  {homeDate || 'Chọn ngày nhận xe'}
+                </Text>
+              </View>
+              <Feather name="chevron-down" size={16} color="#888" />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
@@ -215,6 +224,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         onClose={() => setNotiVisible(false)}
         token={token}
         onUpdateCount={setUnreadNotiCount}
+      />
+
+      {/* Date Picker Modal */}
+      <DatePickerModal
+        visible={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        selectedDate={homeDate || new Date().toISOString().slice(0, 10)}
+        onSelectDate={(date) => setHomeDate(date)}
+        minDate={new Date().toISOString().slice(0, 10)}
+        title="Chọn ngày nhận xe"
       />
 
       {/* Featured Section */}
@@ -313,11 +332,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <Text style={styles.bannerBtnText}>ĐẶT CHỖ NGAY</Text>
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+  },
+  scrollContentContainer: {
+    paddingBottom: 90,
+  },
   tabContent: {
     backgroundColor: COLORS.bg,
   },

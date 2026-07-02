@@ -143,17 +143,17 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
 
   return (
     <motion.div 
-      whileHover={{ y: -6, scale: 1.01 }}
-      transition={{ duration: 0.3 }}
-      className={`bg-surface neon-border rounded-xl p-5 flex flex-col h-full group ${large ? 'lg:col-span-2' : ''}`}
+      whileHover={{ y: -8 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className={`glass-premium border border-white/5 rounded-2xl p-5 flex flex-col h-full group ${large ? 'lg:col-span-2' : ''} hover:border-neon/50 hover:shadow-[0_0_30px_rgba(204,255,0,0.15)] transition-all duration-300`}
     >
-      <div className={`relative mb-6 rounded-lg overflow-hidden bg-black ${large ? 'aspect-video lg:aspect-[21/9]' : 'aspect-video'}`}>
+      <div className={`relative mb-6 rounded-xl overflow-hidden bg-black ${large ? 'aspect-video lg:aspect-[21/9]' : 'aspect-video'}`}>
         <Link to={`/motorbike/${bike._id}`} className="block w-full h-full">
           <img 
             src={imageUrl} 
             alt={bike.vehicleModel} 
             loading="lazy"
-            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500 group-hover:scale-105 cursor-pointer"
+            className="w-full h-full object-cover opacity-75 group-hover:opacity-100 transition-all duration-700 cursor-pointer"
           />
         </Link>
         
@@ -174,10 +174,10 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
             />
           </button>
 
-          <div className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+          <div className={`px-3 py-1 rounded-full text-xs font-bold border neon-badge-pulse transition-all duration-300 ${
             bike.status === 'Available' 
-              ? 'bg-green-500/20 text-green-400 border-green-500/30' 
-              : 'bg-red-500/20 text-red-400 border-red-500/30'
+              ? 'bg-neon/10 text-neon border-neon/30' 
+              : 'bg-red-500/10 text-red-400 border-red-500/30'
           }`}>
             {bike.status}
           </div>
@@ -197,25 +197,25 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
         </div>
         <p className="text-neon font-semibold text-lg mb-1">
           {bike.rentalPrice ? bike.rentalPrice.toLocaleString() : '0'} VNĐ{' '}
-          <span className="text-gray-400 text-xs font-normal">
+          <span className="text-gray-300 text-xs font-normal">
             / {language === 'vi' ? 'Ngày' : language === 'ko' ? '일' : 'Day'}
           </span>
         </p>
         
         {/* License Plate */}
-        <p className="text-gray-400 text-xs mb-4">{t('bikesPage.plate', { plate: bike.licensePlate })}</p>
+        <p className="text-gray-300 text-xs mb-4">{t('bikesPage.plate', { plate: bike.licensePlate })}</p>
         
         <div className={`grid gap-2 mb-8 ${large ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-2'}`}>
-          <div className="flex items-center gap-2 text-sm text-gray-400">
+          <div className="flex items-center gap-2 text-sm text-gray-300">
             <span className="w-1.5 h-1.5 rounded-full bg-neon"></span>
             {translateTransmission(bike.transmissionType)}
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-400">
+          <div className="flex items-center gap-2 text-sm text-gray-300">
             <span className="w-1.5 h-1.5 rounded-full bg-neon"></span>
             {t('bikesPage.seats', { seats: bike.seats })}
           </div>
           {bike.features && bike.features.slice(0, 2).map((feature, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm text-gray-400">
+            <div key={i} className="flex items-center gap-2 text-sm text-gray-300">
               <span className="w-1.5 h-1.5 rounded-full bg-neon"></span>
               {translateFeature(feature)}
             </div>
@@ -223,7 +223,7 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
         </div>
 
         {/* Owner Info */}
-        <div className="text-xs text-gray-400 mb-4 flex items-center gap-2">
+        <div className="text-xs text-gray-300 mb-4 flex items-center gap-2">
           <MapPin size={14} />
           {t('bikesPage.owner', { owner: ownerName })}
         </div>

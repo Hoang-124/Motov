@@ -19,6 +19,7 @@ import { motion } from 'motion/react';
 import { bookingService, Booking } from '../../services/bookingService';
 import axios from 'axios';
 import { ReturnMotorbikeModal } from '../../components/ReturnMotorbikeModal';
+import { useSearchParams } from 'react-router-dom';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
 
@@ -34,10 +35,16 @@ interface OwnerRequest {
   createdAt: string;
   ownerContractText?: string;
   ownerContractSignedAt?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountOwner?: string;
+  ownerSignature?: string;
 }
 
 export const StaffBookings = () => {
-  const [activeTab, setActiveTab] = useState<'bookings' | 'ownerRequests'>('bookings');
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as 'bookings' | 'ownerRequests') || 'bookings';
+  const [activeTab, setActiveTab] = useState<'bookings' | 'ownerRequests'>(initialTab);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [ownerRequests, setOwnerRequests] = useState<OwnerRequest[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('All');
@@ -101,6 +108,13 @@ export const StaffBookings = () => {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'ownerRequests' || tab === 'bookings') {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
   const handleUpdateStatus = async (id: string, newStatus: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled') => {
     let reason = '';
     if (newStatus === 'Cancelled') {
@@ -128,10 +142,22 @@ export const StaffBookings = () => {
     }
   };
 
-  const handleApproveOwner = async (id: string) => {
-    const confirm = window.confirm('Bạn có chắc chắn muốn phê duyệt khách hàng này thành Chủ xe đối tác không?');
-    if (!confirm) return;
+  const [confirmApproveRequest, setConfirmApproveRequest] = useState<OwnerRequest | null>(null);
+  const [confirmRejectRequest, setConfirmRejectRequest] = useState<OwnerRequest | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
+  const handleApproveOwner = (req: OwnerRequest) => {
+    setConfirmApproveRequest(req);
+  };
+
+  const handleRejectOwner = (req: OwnerRequest) => {
+    setConfirmRejectRequest(req);
+    setRejectReason('');
+  };
+
+  const submitApproveOwner = async () => {
+    if (!confirmApproveRequest) return;
+    const id = confirmApproveRequest.id || (confirmApproveRequest as any)._id;
     try {
       setLoading(true);
       const headers = getAuthHeaders();
@@ -144,17 +170,21 @@ export const StaffBookings = () => {
       window.alert(err.response?.data?.message || 'Lỗi khi phê duyệt chủ xe!');
     } finally {
       setLoading(false);
+      setConfirmApproveRequest(null);
     }
   };
 
-  const handleRejectOwner = async (id: string) => {
-    const confirm = window.confirm('Bạn có chắc chắn muốn từ chối yêu cầu đăng ký chủ xe này không?');
-    if (!confirm) return;
-
+  const submitRejectOwner = async () => {
+    if (!confirmRejectRequest) return;
+    if (!rejectReason.trim()) {
+      window.alert('Vui lòng nhập lý do từ chối cụ thể.');
+      return;
+    }
+    const id = confirmRejectRequest.id || (confirmRejectRequest as any)._id;
     try {
       setLoading(true);
       const headers = getAuthHeaders();
-      const res = await axios.put(`${API_BASE_URL}/auth/owner-requests/${id}/reject`, {}, headers);
+      const res = await axios.put(`${API_BASE_URL}/auth/owner-requests/${id}/reject`, { rejectReason }, headers);
       if (res.data.success) {
         window.alert(res.data.message || 'Đã từ chối yêu cầu thành công.');
         await loadOwnerRequests();
@@ -163,6 +193,8 @@ export const StaffBookings = () => {
       window.alert(err.response?.data?.message || 'Lỗi khi từ chối yêu cầu!');
     } finally {
       setLoading(false);
+      setConfirmRejectRequest(null);
+      setRejectReason('');
     }
   };
 
@@ -436,14 +468,14 @@ export const StaffBookings = () => {
                       )}
                       <div className="grid grid-cols-2 gap-2">
                         <button
-                          onClick={() => handleApproveOwner(req.id || (req as any)._id)} // SỬA LỖI FALLBACK ID CHỦ XE
+                          onClick={() => handleApproveOwner(req)}
                           disabled={loading}
                           className="flex items-center justify-center gap-1 bg-neon text-dark font-bold py-2 rounded-lg text-xs hover:opacity-95 transition-all cursor-pointer disabled:opacity-50"
                         >
                           <Check size={14} /> Phê duyệt
                         </button>
                         <button
-                          onClick={() => handleRejectOwner(req.id || (req as any)._id)} // SỬA LỖI FALLBACK ID CHỦ XE
+                          onClick={() => handleRejectOwner(req)}
                           disabled={loading}
                           className="flex items-center justify-center gap-1 bg-red-500/10 text-red-500 border border-red-500/20 py-2 rounded-lg text-xs hover:bg-red-500/20 transition-all cursor-pointer disabled:opacity-50"
                         >
@@ -497,9 +529,24 @@ export const StaffBookings = () => {
                 <span>Ký ngày: {viewingContractRequest.ownerContractSignedAt ? new Date(viewingContractRequest.ownerContractSignedAt).toLocaleDateString('vi-VN') : 'N/A'}</span>
               </div>
 
-              <pre className="whitespace-pre-wrap font-mono text-xs bg-black/40 border border-white/5 rounded-xl p-4 max-h-[50vh] overflow-y-auto leading-relaxed">
+              <pre className="whitespace-pre-wrap font-mono text-xs bg-black/40 border border-white/5 rounded-xl p-4 max-h-[40vh] overflow-y-auto leading-relaxed">
                 {viewingContractRequest.ownerContractText || 'Không có dữ liệu hợp đồng.'}
               </pre>
+
+              {viewingContractRequest.ownerSignature && (
+                <div className="bg-black/40 border border-white/5 p-4 rounded-xl space-y-2">
+                  <h4 className="font-display font-bold text-white text-xs uppercase tracking-wider text-neon">
+                    Chữ ký điện tử của đối tác
+                  </h4>
+                  <div className="bg-black/60 border border-white/10 rounded-lg p-2 flex justify-center items-center h-24">
+                    <img 
+                      src={viewingContractRequest.ownerSignature} 
+                      alt="Chữ ký đối tác" 
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -509,6 +556,80 @@ export const StaffBookings = () => {
                 className="px-6 py-2.5 rounded-lg bg-neon text-dark font-bold text-xs uppercase hover:bg-[#bbf000] transition-all cursor-pointer"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xác nhận Phê duyệt */}
+      {confirmApproveRequest && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setConfirmApproveRequest(null)}
+          />
+          <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-md z-10 overflow-hidden relative shadow-2xl p-6 space-y-4">
+            <h3 className="font-display font-black text-base text-white uppercase tracking-wider text-neon">
+              Xác nhận phê duyệt chủ xe
+            </h3>
+            <p className="text-gray-300 text-xs leading-relaxed">
+              Bạn có chắc chắn muốn phê duyệt đối tác <span className="text-white font-bold">{confirmApproveRequest.name}</span> thành Chủ xe đối tác của Motov không?
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setConfirmApproveRequest(null)}
+                className="px-4 py-2 rounded-lg border border-gray-800 text-gray-400 hover:text-white text-xs font-bold uppercase transition-all cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={submitApproveOwner}
+                disabled={loading}
+                className="px-5 py-2 rounded-lg bg-neon text-dark font-bold text-xs uppercase hover:bg-[#bbf000] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {loading ? 'Đang xử lý...' : 'Xác nhận duyệt'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xác nhận Từ chối */}
+      {confirmRejectRequest && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setConfirmRejectRequest(null)}
+          />
+          <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-md z-10 overflow-hidden relative shadow-2xl p-6 space-y-4">
+            <h3 className="font-display font-black text-base text-red-500 uppercase tracking-wider">
+              Từ chối đối tác chủ xe
+            </h3>
+            <p className="text-gray-300 text-xs">
+              Vui lòng nhập lý do từ chối cụ thể gửi cho đối tác <span className="text-white font-bold">{confirmRejectRequest.name}</span>:
+            </p>
+            <div>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Ví dụ: Thông tin ngân hàng không trùng khớp với eKYC, vui lòng cập nhật lại..."
+                className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-red-500 h-24 resize-none leading-relaxed"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setConfirmRejectRequest(null)}
+                className="px-4 py-2 rounded-lg border border-gray-800 text-gray-400 hover:text-white text-xs font-bold uppercase transition-all cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={submitRejectOwner}
+                disabled={loading || !rejectReason.trim()}
+                className="px-5 py-2 rounded-lg bg-red-500 text-white font-bold text-xs uppercase hover:bg-red-600 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {loading ? 'Đang xử lý...' : 'Từ chối yêu cầu'}
               </button>
             </div>
           </div>
