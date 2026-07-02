@@ -131,7 +131,7 @@ export const createVehicle = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { vehicleModel, licensePlate, seats, rentalPrice, category, transmissionType, description, imageUrls, features, ownerId } = req.body;
+    const { vehicleModel, licensePlate, seats, rentalPrice, category, transmissionType, description, imageUrls, features, ownerId, location } = req.body;
 
     // Validation
     const validationErrors = validateVehicleInput(req.body);
@@ -173,6 +173,7 @@ export const createVehicle = async (req: AuthRequest, res: Response) => {
       description,
       imageUrls: imageUrls || [],
       features: features || [],
+      location: location || { type: 'Point', coordinates: [108.22, 16.068] },
       status: 'Available' // Staff/Admin created vehicles are available by default
     });
 
@@ -284,7 +285,8 @@ export const updateVehicle = async (req: AuthRequest, res: Response) => {
       'imageUrls',
       'features',
       'category',
-      'transmissionType'
+      'transmissionType',
+      'location'
     ];
     Object.keys(updateData).forEach(key => {
       if (allowedFields.includes(key)) {

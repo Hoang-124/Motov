@@ -23,10 +23,10 @@ export const ko: TranslationKeys = {
     railway: '다낭 기차역',
     sontra: '선짜(손트라) 반도',
     mykhe: '미케해변 지역 호텔',
-    hoangSa: '황사 군도 (파라셀 제도)',
-    truongSa: '쯔엉사 군도 (스프래틀리 제도)',
-    vietnam: '베트남',
-    sovereigntyClaim: '베트남의 주권에 속함'
+    hoangSa: '호앙사 군도 (Paracel Islands)',
+    truongSa: '쯔엉사 군도 (Spratly Islands)',
+    vietnam: '베트남 (Vietnam)',
+    sovereigntyClaim: '호앙사와 쯔엉사는 베트남의 영토입니다',
   },
   notifications: {
     newPendingTitle: '신규 예약 승인 대기 중',
@@ -63,6 +63,7 @@ export const ko: TranslationKeys = {
   nav: {
     home: '홈',
     bikes: '바이크',
+    bikesMap: '바이크 지도',
     promotions: '프로모션',
     myBookings: '내 예약',
     favoriteBikes: '선호하는 바이크',

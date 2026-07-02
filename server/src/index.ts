@@ -19,6 +19,7 @@ import feedbackRoutes from './routes/feedbackRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 import { Category } from './models/Category.js';
 import { authMiddleware } from './middlewares/authMiddleware.js';
 import { initBookingReminderScheduler } from './utils/bookingReminderScheduler.js';
@@ -81,6 +82,7 @@ app.use('/api/feedbacks', feedbackRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/chats', chatRoutes);
 
 // Routes quản lý xe (Vehicle/Bike Management APIs)
 app.use('/api/vehicles', vehicleRoutes);
@@ -363,7 +365,7 @@ async function migrateVehicleCategories() {
         }
         await db.collection('vehicles').updateOne(
           { _id: v._id },
-          { $set: { category: categoryDoc?._id } } // Chỉ dùng ?. thôi bạn nhé
+          { $set: { category: categoryDoc?._id } }
         );
         migratedCount++;
       }
