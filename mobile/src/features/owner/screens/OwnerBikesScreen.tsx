@@ -12,7 +12,11 @@ import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
 import { useAppSelector } from '../../../app/store';
 
-export const OwnerBikesScreen: React.FC = () => {
+interface OwnerBikesScreenProps {
+  setActiveTab?: (tab: string) => void;
+}
+
+export const OwnerBikesScreen: React.FC<OwnerBikesScreenProps> = ({ setActiveTab }) => {
   const bikes = useAppSelector(state => state.bikes.bikes);
   
   // Mocking owner's bikes
@@ -24,6 +28,55 @@ export const OwnerBikesScreen: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      {/* Tab Switcher */}
+      {setActiveTab && (
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 15, marginTop: 10 }}>
+          <TouchableOpacity 
+            onPress={() => setActiveTab('owner_dashboard')} 
+            style={{
+              flex: 1,
+              backgroundColor: COLORS.card,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              paddingVertical: 10,
+              borderRadius: 8,
+              alignItems: 'center'
+            }}
+          >
+            <Text style={{ color: COLORS.text, fontWeight: 'bold', fontSize: 12 }}>Doanh thu</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={{
+              flex: 1,
+              backgroundColor: COLORS.accent,
+              borderWidth: 1,
+              borderColor: COLORS.accent,
+              paddingVertical: 10,
+              borderRadius: 8,
+              alignItems: 'center'
+            }}
+          >
+            <Text style={{ color: COLORS.accentDark, fontWeight: 'bold', fontSize: 12 }}>Xe của tôi</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            onPress={() => setActiveTab('owner_bookings')} 
+            style={{
+              flex: 1,
+              backgroundColor: COLORS.card,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              paddingVertical: 10,
+              borderRadius: 8,
+              alignItems: 'center'
+            }}
+          >
+            <Text style={{ color: COLORS.text, fontWeight: 'bold', fontSize: 12 }}>Yêu cầu</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Title */}
       <View style={styles.header}>
         <Text style={styles.pageTitle}>Xe Của Tôi</Text>

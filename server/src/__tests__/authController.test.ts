@@ -7,7 +7,8 @@ import { EmailVerificationToken } from '../models/EmailVerificationToken.js';
 
 vi.mock('../utils/emailService.js', () => ({
   sendPasswordReset: vi.fn().mockResolvedValue('https://mock-ethereal-link.com'),
-  sendEmailVerification: vi.fn().mockResolvedValue('https://mock-ethereal-link.com')
+  sendEmailVerification: vi.fn().mockResolvedValue('https://mock-ethereal-link.com'),
+  sendOwnerRequestNotification: vi.fn().mockResolvedValue(true)
 }));
 
 // ── Setup in-memory MongoDB ───────────────────────────────────────────────────
@@ -412,7 +413,15 @@ describe('becomeOwner()', () => {
 
   it('should request upgrade from Customer to Owner and then approve it', async () => {
     const user = await User.create({ username: 'newowner', email: 'newowner@example.com', roles: ['Customer'], status: 'Active', identityStatus: 'Verified' });
-    const req: any = { user: { id: user._id.toString() } };
+    const req: any = {
+      user: { id: user._id.toString() },
+      body: {
+        bankName: 'Vietcombank',
+        bankAccountNumber: '1234567890',
+        bankAccountOwner: 'NGUYEN VAN A',
+        ownerSignature: 'data:image/png;base64,mockSignature'
+      }
+    };
     const res = createMockRes();
     await becomeOwner(req, res);
     expect(res._status).toBe(200);

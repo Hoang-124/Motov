@@ -20,18 +20,18 @@ const HeroSearch = () => {
   };
 
   return (
-    <div className="bg-surface/85 backdrop-blur-xl p-6 rounded-2xl border border-white/10 w-full max-w-sm relative z-20 shadow-2xl">
+    <div className="glass-premium p-6 rounded-2xl border border-white/10 w-full max-w-sm relative z-20 shadow-2xl">
       <h3 className="text-white font-semibold mb-4 text-lg">{t('home.pickupReturn')}</h3>
-      
+
       <form onSubmit={handleSearch} className="space-y-4">
         {/* Date Input */}
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <CalendarDays size={18} className="text-neon" />
           </div>
-          <input 
-            type="text" 
-            placeholder={t('home.selectPickupReturn')} 
+          <input
+            type="text"
+            placeholder={t('home.selectPickupReturn')}
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all duration-300"
@@ -40,7 +40,7 @@ const HeroSearch = () => {
 
         <div>
           <h3 className="text-white font-semibold mb-2 text-sm mt-2">{t('home.location')}</h3>
-          
+
           <div className="space-y-2">
             <div className="relative">
               <button
@@ -85,9 +85,8 @@ const HeroSearch = () => {
                             setLocation(opt.value);
                             setIsDropdownOpen(false);
                           }}
-                          className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer bg-transparent border-none ${
-                            location === opt.value ? 'text-neon bg-neon/5 font-bold' : 'text-gray-300 hover:text-neon hover:bg-white/5'
-                          }`}
+                          className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer bg-transparent border-none ${location === opt.value ? 'text-neon bg-neon/5 font-bold' : 'text-gray-300 hover:text-neon hover:bg-white/5'
+                            }`}
                         >
                           {opt.label}
                         </button>
@@ -100,7 +99,7 @@ const HeroSearch = () => {
           </div>
         </div>
 
-        <button 
+        <button
           type="submit"
           className="w-full bg-neon text-dark font-bold py-3.5 mt-4 rounded-lg hover:bg-[#bbf000] focus:ring-4 focus:outline-none focus:ring-neon/30 transition-all duration-300 shadow-[0_0_15px_rgba(204,255,0,0.4)] hover:shadow-[0_0_25px_rgba(204,255,0,0.6)] cursor-pointer"
         >
@@ -111,41 +110,75 @@ const HeroSearch = () => {
   );
 };
 
-const HeroSection = () => {
-  const { t } = useLanguage();
+const StatsSection = () => {
+  const { language } = useLanguage();
   return (
-    <section className="relative pt-24 pb-16 lg:pt-32 lg:pb-24 min-h-[85vh] flex items-center overflow-hidden">
+    <section className="py-12 border-y border-white/5 relative bg-black/40">
+      <div className="max-w-7xl mx-auto px-4 lg:px-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          {[
+            { value: '1,500+', label: language === 'vi' ? 'Lượt thuê thành công' : 'Rides Completed' },
+            { value: '50+', label: language === 'vi' ? 'Dòng xe cao cấp' : 'Premium Motorbikes' },
+            { value: '99%', label: language === 'vi' ? 'Khách hàng hài lòng' : 'Happy Customers' },
+            { value: '24/7', label: language === 'vi' ? 'Hỗ trợ sự cố khẩn cấp' : 'Roadside Support' }
+          ].map((stat, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: idx * 0.1, duration: 0.5 }}
+              className="glass-premium p-6 rounded-xl border border-white/5 hover:border-neon/30 transition-all duration-300"
+            >
+              <h3 className="text-3xl font-display font-black text-neon text-glow mb-1">{stat.value}</h3>
+              <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">{stat.label}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const HeroSection = () => {
+  const { t, language } = useLanguage();
+  return (
+    <section className="relative pt-20 pb-12 lg:pt-28 lg:pb-20 min-h-[75vh] flex items-center overflow-hidden">
       {/* Background Image & Overlay */}
       <div className="absolute inset-0 z-0">
-        <img 
-          src="https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=2000" 
-          alt="Motorcycle on road" 
-          className="w-full h-full object-cover object-bottom"
+        <img
+          src="https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=2000"
+          alt="Motorcycle on road"
+          className="w-full h-full object-cover object-[center_35%]"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-dark via-dark/85 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-dark via-dark/90 to-transparent"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-dark via-transparent to-transparent"></div>
       </div>
 
-      {/* Giant Typography */}
-      <h1 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-display font-black text-[22vw] leading-none text-neon opacity-[0.06] mix-blend-screen pointer-events-none select-none z-10 w-full text-center tracking-tighter">
-        MOTOV
+      {/* Giant Typography Background */}
+      <h1 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-display font-black text-[22vw] leading-none text-neon opacity-[0.02] mix-blend-screen pointer-events-none select-none z-10 w-full text-center tracking-tighter" style={{ textWrap: 'balance' }}>
+        RIDE FREE
       </h1>
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8 w-full relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <motion.div 
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-5"
           >
             <HeroSearch />
           </motion.div>
-          <div className="hidden lg:block relative z-20 text-right pr-8">
-            <h2 className="text-5xl font-display font-black text-white leading-tight uppercase">
+          <div className="lg:col-span-7 lg:pl-4 text-left">
+            <span className="text-neon text-[11px] font-mono font-bold uppercase tracking-widest px-3 py-1 border border-neon/20 rounded-full bg-neon/5 inline-block mb-4 neon-badge-pulse">
+              {language === 'vi' ? '⚡️ Dịch Vụ Thuê Xe Máy Đỉnh Cao' : '⚡️ Ultimate Motorcycle Rental'}
+            </span>
+            <h2 className="text-4xl lg:text-5xl xl:text-6xl font-display font-black text-white leading-[1.15] uppercase mb-4" style={{ textWrap: 'balance' }}>
               {t('home.freeToExplore')} <br />
-              <span className="text-neon text-glow">{t('home.streets')}</span>
+              <span className="bg-gradient-to-r from-neon via-[#ddff44] to-white bg-clip-text text-transparent text-glow">{t('home.streets')}</span>
             </h2>
-            <p className="text-gray-400 mt-4 max-w-sm ml-auto text-sm leading-relaxed">
+            <p className="text-gray-300 text-xs sm:text-sm leading-relaxed max-w-lg mb-6">
               {t('home.heroSubtitle')}
             </p>
           </div>
@@ -162,19 +195,48 @@ interface SectionProps {
 const PopularSection = ({ bikes }: SectionProps) => {
   const { t } = useLanguage();
   const featuredBikes = bikes.slice(0, 3);
+
+  // Framer motion variants for stagger
+  const containerVariants = {
+    hidden: {},
+    show: {
+      transition: {
+        staggerChildren: 0.15
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 30, filter: 'blur(4px)' },
+    show: {
+      opacity: 1,
+      y: 0,
+      filter: 'blur(0px)',
+      transition: { type: 'spring', stiffness: 80, damping: 15 }
+    }
+  };
+
   return (
-    <section className="py-20 max-w-7xl mx-auto px-4 lg:px-8">
+    <section className="py-24 max-w-7xl mx-auto px-4 lg:px-8">
       <div className="flex flex-col md:flex-row justify-between items-end mb-12">
         <h2 className="font-display font-bold text-3xl md:text-4xl text-neon uppercase text-glow">
           {t('home.popularBikes')}
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: "-100px" }}
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+      >
         {featuredBikes.map((bike, idx) => (
-          <BikeCard key={bike._id || idx} bike={bike} large={idx === 0} />
+          <motion.div key={bike._id || idx} variants={itemVariants}>
+            <BikeCard bike={bike} large={idx === 0} />
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </section>
   );
 };
@@ -183,44 +245,44 @@ const HighQualitySection = ({ bikes }: SectionProps) => {
   const { t } = useLanguage();
   const otherBikes = bikes.slice(3, 6);
   return (
-    <section className="py-20 border-t border-white/5">
+    <section className="py-24 border-t border-white/5 bg-black/20">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-4">
-            <h2 className="font-display font-bold text-3xl md:text-4xl text-white uppercase leading-tight">
+            <h2 className="font-display font-bold text-3xl md:text-4xl text-white uppercase leading-tight" style={{ textWrap: 'balance' }}>
               {t('home.highQualityTitle')}
             </h2>
-            <p className="mt-6 text-gray-400 leading-relaxed text-sm">
+            <p className="mt-6 text-gray-300 leading-relaxed text-sm">
               {t('home.highQualitySubtitle')}
             </p>
             <div className="mt-8 flex flex-col gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-surface border border-neon/20 flex items-center justify-center text-neon">
+                <div className="w-10 h-10 rounded-lg bg-surface border border-neon/20 flex items-center justify-center text-neon font-bold">
                   ✓
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-sm">{t('home.maintenance')}</h4>
-                  <p className="text-xs text-gray-500">{t('home.maintenanceDesc')}</p>
+                  <p className="text-xs text-gray-400">{t('home.maintenanceDesc')}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-surface border border-neon/20 flex items-center justify-center text-neon">
+                <div className="w-10 h-10 rounded-lg bg-surface border border-neon/20 flex items-center justify-center text-neon font-bold">
                   ✓
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-sm">{t('home.support')}</h4>
-                  <p className="text-xs text-gray-500">{t('home.supportDesc')}</p>
+                  <p className="text-xs text-gray-400">{t('home.supportDesc')}</p>
                 </div>
               </div>
             </div>
           </div>
-          
+
           <div className="lg:col-span-8">
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {otherBikes.map((bike, idx) => (
-                  <BikeCard key={bike._id || idx} bike={bike} />
-                ))}
-             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {otherBikes.map((bike, idx) => (
+                <BikeCard key={bike._id || idx} bike={bike} />
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -229,18 +291,23 @@ const HighQualitySection = ({ bikes }: SectionProps) => {
 };
 
 const BannerCTA = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   return (
-    <section className="py-24 border-y border-white/5 relative overflow-hidden bg-gradient-to-r from-neon/5 to-transparent">
-      <div className="absolute inset-0 bg-neon/5 blur-3xl rounded-full translate-y-1/2 scale-150"></div>
+    <section className="py-28 relative overflow-hidden bg-[#0c0c0d] border-y border-white/5">
+      {/* Curved glowing vector backdrop */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[250px] bg-neon/10 blur-[130px] rounded-full pointer-events-none"></div>
+
       <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-        <h2 className="font-display font-bold text-4xl md:text-5xl text-white uppercase leading-tight mb-8">
+        <span className="text-neon text-xs font-mono font-bold uppercase tracking-widest mb-4 inline-block">
+          {language === 'vi' ? 'Khởi hành ngay hôm nay' : 'Start Your Adventure'}
+        </span>
+        <h2 className="font-display font-black text-4xl md:text-6xl text-white uppercase leading-[1.1] mb-8" style={{ textWrap: 'balance' }}>
           {t('home.exploreYourWay')}
         </h2>
-        <button 
+        <button
           onClick={() => navigate('/bikes')}
-          className="bg-neon text-dark font-bold px-10 py-4 rounded-full text-lg hover:bg-[#bbf000] focus:ring-4 focus:outline-none focus:ring-neon/30 transition-all duration-300 shadow-[0_0_25px_rgba(204,255,0,0.5)] hover:shadow-[0_0_40px_rgba(204,255,0,0.8)] cursor-pointer"
+          className="bg-neon text-dark font-black px-12 py-5 rounded-full text-lg hover:bg-[#bbf000] focus:ring-4 focus:outline-none focus:ring-neon/30 transition-all duration-300 shadow-[0_0_30px_rgba(204,255,0,0.5)] hover:shadow-[0_0_50px_rgba(204,255,0,0.8)] hover:scale-105 cursor-pointer"
         >
           {t('home.bookNow')}
         </button>
@@ -341,6 +408,7 @@ export const Home = () => {
       {bikes.length > 0 && <PopularSection bikes={bikes} />}
       {bikes.length > 3 && <HighQualitySection bikes={bikes} />}
       <BannerCTA />
+      <StatsSection />
     </div>
   );
 };

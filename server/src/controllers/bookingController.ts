@@ -640,8 +640,15 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
 
     const vehicleId = (booking.vehicleId as any)._id || booking.vehicleId;
     // Update vehicle status based on booking status
-    if (status === 'Confirmed') {
-      await Vehicle.findByIdAndUpdate(booking.vehicleId._id, { status: 'Rented' });
+    if (status === 'Ongoing') {
+      await Vehicle.findByIdAndUpdate(vehicleId, { status: 'Rented' });
+      await handleBookingStatusTransitionReminders(
+        booking._id,
+        'Ongoing',
+        booking.pickupDateTime,
+        booking.returnDateTime
+      );
+    } else if (status === 'Confirmed') {
       await handleBookingStatusTransitionReminders(
         booking._id,
         'Confirmed',
@@ -1605,7 +1612,8 @@ export const createVNPayUrl = async (req: AuthRequest, res: Response) => {
     vnp_Params['vnp_OrderInfo'] = `Thanh toan dat coc don hang ${booking.bookingCode}`;
     vnp_Params['vnp_OrderType'] = 'other';
     vnp_Params['vnp_Amount'] = amount * 100; // VNPAY amount is in cents
-    vnp_Params['vnp_ReturnUrl'] = returnUrl;
+    const isMobile = req.body.origin === 'mobile' || req.query.origin === 'mobile';
+    vnp_Params['vnp_ReturnUrl'] = isMobile ? `${returnUrl}?origin=mobile` : returnUrl;
     vnp_Params['vnp_IpAddr'] = ipAddr;
     vnp_Params['vnp_CreateDate'] = createDate;
 
@@ -1649,6 +1657,7 @@ export const processVNPayIPN = async (req: any, res: Response) => {
     // Delete hash params
     delete vnp_Params['vnp_SecureHash'];
     delete vnp_Params['vnp_SecureHashType'];
+    delete vnp_Params['origin'];
 
     // Sort params
     const sortedParams = sortObject(vnp_Params);

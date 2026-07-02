@@ -108,7 +108,7 @@ export default function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/bookings" element={
-                  <ProtectedRoute allowedRoles={['customer']}>
+                  <ProtectedRoute allowedRoles={['customer', 'owner']}>
                     <Bookings />
                   </ProtectedRoute>
                 } />

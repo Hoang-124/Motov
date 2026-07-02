@@ -82,6 +82,15 @@ export const Profile = () => {
   const [savingOwnerRequest, setSavingOwnerRequest] = useState(false);
   const [ownerRequestError, setOwnerRequestError] = useState<string | null>(null);
   const [ownerRequestSuccess, setOwnerRequestSuccess] = useState<string | null>(null);
+  const [bankName, setBankName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankAccountOwner, setBankAccountOwner] = useState('');
+  const [ownerSignature, setOwnerSignature] = useState('');
+  const [ownerRejectReason, setOwnerRejectReason] = useState('');
+
+  // Signature drawing refs & states
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
 
   // Owner contract states
   const [ownerContractSigned, setOwnerContractSigned] = useState(false);
@@ -576,6 +585,11 @@ export const Profile = () => {
       setOwnerContractSigned(u.ownerContractSigned || false);
       setOwnerContractSignedAt(u.ownerContractSignedAt || null);
       setOwnerContractText(u.ownerContractText || null);
+      setOwnerRejectReason(u.ownerRejectReason || '');
+      setBankName(u.bankName || '');
+      setBankAccountNumber(u.bankAccountNumber || '');
+      setBankAccountOwner(u.bankAccountOwner || '');
+      setOwnerSignature(u.ownerSignature || '');
       
       if (u.dob) {
         // Format YYYY-MM-DD for date input
@@ -730,6 +744,11 @@ BÊN B: ĐỐI TÁC CHỦ XE
 - Email: ${email || 'N/A'}
 - Địa chỉ thường trú: ${address}
 
+THÔNG TIN TÀI KHOẢN THANH TOÁN (BÊN B):
+- Ngân hàng: ${bankName || '(Chưa nhập)'}
+- Số tài khoản: ${bankAccountNumber || '(Chưa nhập)'}
+- Chủ tài khoản: ${bankAccountOwner || '(Chưa nhập)'}
+
 ĐIỀU KHOẢN HỢP TÁC:
 1. Bên B đồng ý đưa các phương tiện xe máy thuộc quyền sở hữu/sử dụng hợp pháp của mình lên hệ thống Motov để thực hiện dịch vụ cho thuê xe máy tự lái.
 2. Bên B cam kết các phương tiện cung cấp luôn trong tình trạng hoạt động tốt, được bảo dưỡng định kỳ và có đầy đủ giấy tờ pháp lý (Đăng ký xe, Bảo hiểm trách nhiệm dân sự còn hiệu lực).
@@ -751,11 +770,24 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
       return;
     }
 
+    const fullName = citizenIdInfo?.fullName || (lastName && firstName ? `${lastName} ${firstName}` : username);
+    setBankAccountOwner(fullName.toUpperCase());
     setAcceptTerms(false);
+    setOwnerSignature('');
     setIsContractModalOpen(true);
   };
 
   const handleConfirmSignContract = async () => {
+    if (!bankName.trim() || !bankAccountNumber.trim() || !bankAccountOwner.trim()) {
+      alert("Vui lòng điền đầy đủ thông tin tài khoản ngân hàng!");
+      return;
+    }
+
+    if (!ownerSignature) {
+      alert("Vui lòng vẽ chữ ký điện tử của bạn vào khung ký tên!");
+      return;
+    }
+
     if (!acceptTerms) {
       alert("Vui lòng đồng ý với các điều khoản hợp tác trước khi ký!");
       return;
@@ -774,6 +806,12 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          bankName,
+          bankAccountNumber,
+          bankAccountOwner,
+          ownerSignature
+        })
       });
 
       const data = await response.json();
@@ -785,6 +823,7 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
       setOwnerContractSigned(true);
       setOwnerContractSignedAt(data.user.ownerContractSignedAt || new Date().toISOString());
       setOwnerContractText(data.user.ownerContractText || '');
+      setOwnerRejectReason('');
       setOwnerRequestSuccess('Ký hợp đồng đối tác và gửi yêu cầu đăng ký thành công! Vui lòng chờ nhân viên phê duyệt.');
 
       // Cập nhật local storage
@@ -796,6 +835,72 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
     } finally {
       setSavingOwnerRequest(false);
     }
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.strokeStyle = '#ccff00';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+
+    const rect = canvas.getBoundingClientRect();
+    let x, y;
+    if ('touches' in e) {
+      if (e.touches.length === 0) return;
+      x = e.touches[0].clientX - rect.left;
+      y = e.touches[0].clientY - rect.top;
+    } else {
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    let x, y;
+    if ('touches' in e) {
+      if (e.touches.length === 0) return;
+      x = e.touches[0].clientX - rect.left;
+      y = e.touches[0].clientY - rect.top;
+    } else {
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
+    }
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      setOwnerSignature(canvas.toDataURL());
+    }
+  };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setOwnerSignature('');
   };
 
   if (loading) {
@@ -1231,14 +1336,22 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
                   )}
 
                   {ownerRequestStatus === 'Rejected' && (
-                    <button
-                      type="button"
-                      onClick={handleRegisterOwner}
-                      disabled={savingOwnerRequest}
-                      className="w-full bg-neon text-dark font-bold py-3 rounded-lg hover:bg-[#bbf000] transition-all duration-300 shadow-[0_0_12px_rgba(204,255,0,0.2)] font-display uppercase tracking-wider text-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      {savingOwnerRequest ? 'Đang gửi lại...' : 'Xem & ký lại hợp đồng'}
-                    </button>
+                    <div className="space-y-4">
+                      {ownerRejectReason && (
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs">
+                          <p className="font-bold uppercase tracking-wider text-[10px] text-red-500">Lý do từ chối:</p>
+                          <p className="mt-1 text-gray-300 font-semibold">{ownerRejectReason}</p>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleRegisterOwner}
+                        disabled={savingOwnerRequest}
+                        className="w-full bg-neon text-dark font-bold py-3 rounded-lg hover:bg-[#bbf000] transition-all duration-300 shadow-[0_0_12px_rgba(204,255,0,0.2)] font-display uppercase tracking-wider text-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {savingOwnerRequest ? 'Đang gửi lại...' : 'Xem & ký lại hợp đồng'}
+                      </button>
+                    </div>
                   )}
                 </div>
               </motion.div>
@@ -1726,9 +1839,86 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
 
                   {/* Body - hiển thị bản text hợp đồng */}
                   <div className="p-6 overflow-y-auto flex-grow text-gray-300 text-sm font-sans space-y-4">
-                    <pre className="whitespace-pre-wrap font-mono text-xs bg-black/40 border border-white/5 rounded-xl p-4 max-h-[50vh] overflow-y-auto leading-relaxed">
+                    <pre className="whitespace-pre-wrap font-mono text-xs bg-black/40 border border-white/5 rounded-xl p-4 max-h-[40vh] overflow-y-auto leading-relaxed">
                       {getPreviewContractText()}
                     </pre>
+
+                    {/* Thông tin tài khoản ngân hàng */}
+                    <div className="bg-black/40 border border-white/5 p-4 rounded-xl space-y-3">
+                      <h4 className="font-display font-bold text-white text-xs uppercase tracking-wider flex items-center gap-1.5 text-neon">
+                        Thông tin tài khoản nhận doanh thu (85%)
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1">Tên ngân hàng</label>
+                          <input
+                            type="text"
+                            placeholder="Ví dụ: Vietcombank"
+                            value={bankName}
+                            onChange={(e) => setBankName(e.target.value)}
+                            className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-neon"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1">Số tài khoản</label>
+                          <input
+                            type="text"
+                            placeholder="Nhập số tài khoản"
+                            value={bankAccountNumber}
+                            onChange={(e) => setBankAccountNumber(e.target.value)}
+                            className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-neon"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1">Tên chủ tài khoản</label>
+                          <input
+                            type="text"
+                            placeholder="TÊN TRÊN THẺ (VIẾT HOA)"
+                            value={bankAccountOwner}
+                            onChange={(e) => setBankAccountOwner(e.target.value.toUpperCase())}
+                            className="w-full bg-neon/10 border border-neon/35 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-neon uppercase font-bold"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Khung ký tên điện tử */}
+                    <div className="bg-black/40 border border-white/5 p-4 rounded-xl space-y-2">
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-display font-bold text-white text-xs uppercase tracking-wider flex items-center gap-1.5 text-neon">
+                          Vẽ chữ ký điện tử của bạn
+                        </h4>
+                        {ownerSignature && (
+                          <button
+                            type="button"
+                            onClick={clearSignature}
+                            className="text-[10px] uppercase font-bold text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                          >
+                            Xóa chữ ký
+                          </button>
+                        )}
+                      </div>
+                      <div className="border border-dashed border-white/10 rounded-lg overflow-hidden bg-black/60 relative h-32 flex items-center justify-center">
+                        <canvas
+                          ref={canvasRef}
+                          width={600}
+                          height={128}
+                          onMouseDown={startDrawing}
+                          onMouseMove={draw}
+                          onMouseUp={stopDrawing}
+                          onMouseLeave={stopDrawing}
+                          onTouchStart={startDrawing}
+                          onTouchMove={draw}
+                          onTouchEnd={stopDrawing}
+                          className="w-full h-full cursor-crosshair touch-none"
+                        />
+                        {!ownerSignature && (
+                          <div className="absolute pointer-events-none text-gray-500 text-xs font-semibold select-none">
+                            Dùng chuột hoặc ngón tay để vẽ chữ ký của bạn vào đây
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
                     {/* Checkbox đồng ý */}
                     <label className="flex items-start gap-3 p-3 rounded-xl bg-black/20 border border-white/5 cursor-pointer hover:bg-black/30 transition-all select-none">

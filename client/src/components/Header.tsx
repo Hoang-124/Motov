@@ -8,6 +8,9 @@ import { getUserFavorites, removeFromFavorites } from '../services/vehicleServic
 
 const translateNotificationTitle = (title: string, t: any) => {
   const tLower = (title || '').toLowerCase().trim();
+  if (tLower.includes('chủ xe') || tLower.includes('đối tác')) {
+    return title;
+  }
   if (tLower.includes('chờ duyệt') && tLower.includes('mới')) return t('notifications.newPendingTitle');
   if (tLower.includes('phê duyệt') || tLower.includes('được duyệt')) return t('notifications.confirmedTitle');
   if (tLower.includes('bị hủy')) return t('notifications.cancelledTitle');
@@ -26,6 +29,9 @@ const translateNotificationTitle = (title: string, t: any) => {
 
 const translateNotificationMessage = (message: string, t: any) => {
   const mLower = (message || '').toLowerCase().trim();
+  if (mLower.includes('chủ xe') || mLower.includes('đối tác')) {
+    return message;
+  }
   // Extract booking code (e.g. MV-XXXXXX)
   const codeMatch = message.match(/MV-\d+/i) || message.match(/[A-Z0-9]{8,}/);
   const code = codeMatch ? codeMatch[0] : '';
@@ -394,9 +400,11 @@ export const Header = () => {
 
     if (user.role === 'owner') {
       return [
+        { path: '/', label: t('nav.home') },
+        { path: '/bikes', label: t('nav.bikes') },
         { path: '/owner/dashboard', label: t('nav.revenue') },
         { path: '/owner/bikes', label: t('nav.myBikes') },
-        { path: '/owner/bookings', label: t('nav.myBookings') },
+        { path: '/owner/bookings', label: t('nav.approveBookings') },
       ];
     }
 
@@ -875,8 +883,8 @@ export const Header = () => {
                               <span>{t('nav.profile')}</span>
                             </Link>
 
-                            {/* Customer-specific links */}
-                            {user.role === 'customer' && (
+                            {/* Customer & Owner links */}
+                            {(user.role === 'customer' || user.role === 'owner') && (
                               <>
                                 <Link to="/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                                   <ClipboardList size={15} />
@@ -886,6 +894,12 @@ export const Header = () => {
                                   <Ticket size={15} />
                                   <span>{t('nav.promotions')}</span>
                                 </Link>
+                              </>
+                            )}
+
+                            {/* Customer-only owner upgrade options */}
+                            {user.role === 'customer' && (
+                              <>
                                 {user.ownerRequestStatus === 'Pending' ? (
                                   <div className="flex items-center gap-3 px-4 py-2 text-xs text-yellow-500 bg-yellow-500/5 border-t border-b border-yellow-500/10">
                                     <UserCheck size={15} />
@@ -924,6 +938,10 @@ export const Header = () => {
                             {/* Staff-specific links */}
                             {user.role === 'staff' && (
                               <>
+                                <Link to="/staff/bookings?tab=ownerRequests" className="flex items-center gap-3 px-4 py-2 text-sm text-neon hover:bg-white/5 transition-all font-semibold border-b border-neon/10">
+                                  <UserCheck size={15} className="text-neon animate-pulse" />
+                                  <span>Duyệt Đối Tác Chủ Xe</span>
+                                </Link>
                                 <Link to="/staff/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                                   <ClipboardList size={15} />
                                   <span>{t('nav.approveBookings')}</span>
@@ -942,6 +960,10 @@ export const Header = () => {
                             {/* Admin-specific links */}
                             {user.role === 'admin' && (
                               <>
+                                <Link to="/admin/bookings?tab=ownerRequests" className="flex items-center gap-3 px-4 py-2 text-sm text-neon hover:bg-white/5 transition-all font-semibold border-b border-neon/10">
+                                  <UserCheck size={15} className="text-neon animate-pulse" />
+                                  <span>Duyệt Đối Tác Chủ Xe</span>
+                                </Link>
                                 <Link to="/admin/dashboard" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
                                   <Activity size={15} />
                                   <span>{t('nav.dashboard')}</span>

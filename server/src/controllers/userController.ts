@@ -291,7 +291,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
 
     if (role !== undefined && !isSelf) {
       const backendRole = mapFrontendRoleToBackend(role);
-      user.roles = [backendRole];
+      user.set('roles', [backendRole]);
     }
 
     // Hash password if updating

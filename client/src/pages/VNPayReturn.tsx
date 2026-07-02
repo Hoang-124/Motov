@@ -8,6 +8,7 @@ import { useLanguage } from '../hooks/useLanguage';
 export const VNPayReturn = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = new URLSearchParams(location.search).get('origin') === 'mobile';
   const { showToast } = useToast();
   const { language, t } = useLanguage();
   const [status, setStatus] = useState<'loading' | 'success' | 'failed' | 'error'>('loading');
@@ -118,14 +119,23 @@ export const VNPayReturn = () => {
               <span>{t('vnpayReturnPage.securedBy')}</span>
             </div>
 
-            <button
-              onClick={() => navigate('/bookings')}
-              className="w-full py-3.5 bg-neon hover:bg-[#bbf000] text-dark font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(194,248,0,0.15)] cursor-pointer flex items-center justify-center gap-2 text-sm"
-            >
-              <Calendar size={18} />
-              {t('vnpayReturnPage.viewScheduleBtn')}
-              <ArrowRight size={16} />
-            </button>
+            {isMobile ? (
+              <button
+                onClick={() => window.location.href = `motov://vnpay-return?status=success&bookingId=${details.bookingId || ''}`}
+                className="w-full py-3.5 bg-neon hover:bg-[#bbf000] text-dark font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(194,248,0,0.15)] cursor-pointer flex items-center justify-center gap-2 text-sm uppercase"
+              >
+                Quay lại ứng dụng Motov
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/bookings')}
+                className="w-full py-3.5 bg-neon hover:bg-[#bbf000] text-dark font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(194,248,0,0.15)] cursor-pointer flex items-center justify-center gap-2 text-sm"
+              >
+                <Calendar size={18} />
+                {t('vnpayReturnPage.viewScheduleBtn')}
+                <ArrowRight size={16} />
+              </button>
+            )}
           </div>
         )}
 
@@ -152,12 +162,21 @@ export const VNPayReturn = () => {
             )}
 
             <div className="space-y-3 pt-2">
-              <button
-                onClick={() => navigate('/bookings')}
-                className="w-full py-3.5 bg-transparent border border-gray-800 hover:bg-gray-900 text-gray-300 font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-sm"
-              >
-                {t('myBookingsPage.title')}
-              </button>
+              {isMobile ? (
+                <button
+                  onClick={() => window.location.href = `motov://vnpay-return?status=failed&bookingId=${details.bookingId || ''}`}
+                  className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-sm uppercase"
+                >
+                  Quay lại ứng dụng Motov
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate('/bookings')}
+                  className="w-full py-3.5 bg-transparent border border-gray-800 hover:bg-gray-900 text-gray-300 font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-sm"
+                >
+                  {t('myBookingsPage.title')}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -173,12 +192,21 @@ export const VNPayReturn = () => {
               <p className="text-slate-400 text-sm mt-2">{message}</p>
             </div>
 
-            <button
-              onClick={() => navigate('/')}
-              className="w-full py-3.5 bg-transparent border border-gray-800 hover:bg-gray-900 text-gray-300 font-bold rounded-xl transition-all cursor-pointer text-sm"
-            >
-              {t('vnpayReturnPage.backHomeBtn')}
-            </button>
+            {isMobile ? (
+              <button
+                onClick={() => window.location.href = `motov://vnpay-return?status=error`}
+                className="w-full py-3.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl transition-all cursor-pointer text-sm uppercase"
+              >
+                Quay lại ứng dụng Motov
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/')}
+                className="w-full py-3.5 bg-transparent border border-gray-800 hover:bg-gray-900 text-gray-300 font-bold rounded-xl transition-all cursor-pointer text-sm"
+              >
+                {t('vnpayReturnPage.backHomeBtn')}
+              </button>
+            )}
           </div>
         )}
       </div>
