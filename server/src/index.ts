@@ -25,6 +25,7 @@ import { authMiddleware } from './middlewares/authMiddleware.js';
 import { initBookingReminderScheduler } from './utils/bookingReminderScheduler.js';
 import { Discount } from './models/Discount.js';
 import adminRoutes from './routes/adminRoutes.js';
+import { seedFeedbacks } from './utils/feedbackSeeder.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -430,6 +431,7 @@ mongoose.connect(MONGODB_URI)
     await seedVehicles();
     await migrateVehicleCategories();
     await seedDiscounts();
+    await seedFeedbacks();
     initBookingReminderScheduler();
   })
   .catch((err: any) => console.error('❌ Failed to connect to MongoDB:', err));
