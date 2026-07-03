@@ -13,7 +13,8 @@ import {
   getBookingTracking,
   returnMotorbike,
   createVNPayUrl,
-  processVNPayIPN
+  processVNPayIPN,
+  replyToReturnReason
 } from '../controllers/bookingController.js';
 import { authMiddleware, restrictTo } from '../middlewares/authMiddleware.js';
 
@@ -129,5 +130,11 @@ router.put('/staff/bookings/:id/confirm', restrictTo('Staff', 'Admin') as any, c
  */
 // THÊM ĐOẠN NÀY:
 router.put('/staff/bookings/:id/pickup', restrictTo('Staff', 'Admin') as any, confirmBikePickupByStaff as any);
+
+/**
+ * PUT /api/bookings/:id/return-response
+ * Admin/Staff phản hồi lý do trả xe và cảnh cáo thô tục
+ */
+router.put('/:id/return-response', restrictTo('Staff', 'Admin') as any, replyToReturnReason as any);
 
 export default router;

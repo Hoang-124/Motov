@@ -1,109 +1,224 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, MapPin, ChevronDown, Sparkles } from 'lucide-react';
+import { CalendarDays, MapPin, ChevronDown, Sparkles, SlidersHorizontal, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAllMotorbikes, getRecommendations, Motorbike } from '../services/vehicleService';
 import { BikeCard } from '../components/BikeCard';
 import { useLanguage } from '../hooks/useLanguage';
 
 const HeroSearch = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
-  const [date, setDate] = useState('');
+
+  const getTodayString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const getTomorrowString = (baseDateStr?: string) => {
+    const base = baseDateStr ? new Date(baseDateStr) : new Date();
+    const tomorrow = new Date(base);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const yyyy = tomorrow.getFullYear();
+    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const dd = String(tomorrow.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const [pickupDate, setPickupDate] = useState(getTodayString());
+  const [returnDate, setReturnDate] = useState(getTomorrowString());
   const [location, setLocation] = useState('Son Tra Peninsula');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [category, setCategory] = useState('All');
+  const [isLocOpen, setIsLocOpen] = useState(false);
+  const [isCatOpen, setIsCatOpen] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     // Redirect to bikes page with search queries
-    navigate(`/bikes?date=${encodeURIComponent(date)}&location=${encodeURIComponent(location)}`);
+    navigate(`/bikes?pickupDate=${encodeURIComponent(pickupDate)}&returnDate=${encodeURIComponent(returnDate)}&location=${encodeURIComponent(location)}&category=${encodeURIComponent(category)}`);
   };
 
+  const categoriesList = [
+    { value: 'All', label: language === 'vi' ? 'Tất cả dòng xe' : 'All Categories' },
+    { value: 'Xe Ga', label: language === 'vi' ? 'Xe Ga (Scooter)' : 'Scooter' },
+    { value: 'Xe Số', label: language === 'vi' ? 'Xe Số (Semi-Auto)' : 'Semi-Automatic' },
+    { value: 'Xe Côn Tay', label: language === 'vi' ? 'Xe Côn Tay (Clutch)' : 'Clutch Bike' },
+    { value: 'Xe Máy Điện', label: language === 'vi' ? 'Xe Máy Điện (Electric)' : 'Electric Bike' }
+  ];
+
   return (
-    <div className="glass-premium p-6 rounded-2xl border border-white/10 w-full max-w-sm relative z-20 shadow-2xl">
-      <h3 className="text-white font-semibold mb-4 text-lg">{t('home.pickupReturn')}</h3>
+    <div className="glass-premium p-6 rounded-2xl border border-white/10 w-full max-w-md relative z-20 shadow-2xl">
+      <h3 className="text-white font-bold mb-5 text-lg flex items-center gap-2 border-b border-white/5 pb-3">
+        <SlidersHorizontal size={18} className="text-neon" />
+        {language === 'vi' ? 'Tìm Kiếm Xe Máy' : 'Search Motorbikes'}
+      </h3>
 
       <form onSubmit={handleSearch} className="space-y-4">
-        {/* Date Input */}
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <CalendarDays size={18} className="text-neon" />
-          </div>
-          <input
-            type="text"
-            placeholder={t('home.selectPickupReturn')}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-10 p-3 outline-none transition-all duration-300"
-          />
-        </div>
-
-        <div>
-          <h3 className="text-white font-semibold mb-2 text-sm mt-2">{t('home.location')}</h3>
-
-          <div className="space-y-2">
+        {/* Date Inputs Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+              {language === 'vi' ? 'Ngày Nhận' : 'Pickup Date'}
+            </label>
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent flex items-center pl-10 pr-10 p-3 outline-none cursor-pointer transition-all duration-300 text-left relative"
-              >
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <MapPin size={18} className="text-neon" />
-                </div>
-                <span>
-                  {location === 'Son Tra Peninsula' && t('home.sonTra')}
-                  {location === 'Da Nang Airport' && t('home.airport')}
-                  {location === 'City Center' && t('home.cityCenter')}
-                </span>
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180 text-neon' : ''}`} />
-                </div>
-              </button>
+              <input
+                type="date"
+                value={pickupDate}
+                min={getTodayString()}
+                onChange={(e) => {
+                  setPickupDate(e.target.value);
+                  // Auto adjust return date if it is before pickup date
+                  if (new Date(e.target.value) >= new Date(returnDate)) {
+                    setReturnDate(getTomorrowString(e.target.value));
+                  }
+                }}
+                className="w-full bg-black/50 border border-gray-800 text-gray-300 text-xs rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3 outline-none transition-all duration-300 cursor-pointer"
+                style={{ colorScheme: 'dark' }}
+              />
+            </div>
+          </div>
 
-              <AnimatePresence>
-                {isDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsDropdownOpen(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute left-0 right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl overflow-hidden text-gray-300 py-1 font-sans"
-                    >
-                      <div className="absolute top-0 inset-x-0 h-[2px] bg-neon shadow-[0_0_10px_rgba(204,255,0,0.5)]"></div>
-                      {[
-                        { value: 'Son Tra Peninsula', label: t('home.sonTra') },
-                        { value: 'Da Nang Airport', label: t('home.airport') },
-                        { value: 'City Center', label: t('home.cityCenter') }
-                      ].map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => {
-                            setLocation(opt.value);
-                            setIsDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer bg-transparent border-none ${location === opt.value ? 'text-neon bg-neon/5 font-bold' : 'text-gray-300 hover:text-neon hover:bg-white/5'
-                            }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
+          <div>
+            <label className="block text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+              {language === 'vi' ? 'Ngày Trả' : 'Return Date'}
+            </label>
+            <div className="relative">
+              <input
+                type="date"
+                value={returnDate}
+                min={getTomorrowString(pickupDate)}
+                onChange={(e) => setReturnDate(e.target.value)}
+                className="w-full bg-black/50 border border-gray-800 text-gray-300 text-xs rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3 outline-none transition-all duration-300 cursor-pointer"
+                style={{ colorScheme: 'dark' }}
+              />
             </div>
           </div>
         </div>
 
+        {/* Location Dropdown */}
+        <div>
+          <label className="block text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+            {t('home.location')}
+          </label>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => { setIsLocOpen(!isLocOpen); setIsCatOpen(false); }}
+              className="w-full bg-black/50 border border-gray-800 text-gray-300 text-xs rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent flex items-center pl-10 pr-10 p-3 outline-none cursor-pointer transition-all duration-300 text-left relative"
+            >
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MapPin size={16} className="text-neon" />
+              </div>
+              <span className="truncate">
+                {location === 'Son Tra Peninsula' && t('home.sonTra')}
+                {location === 'Da Nang Airport' && t('home.airport')}
+                {location === 'City Center' && t('home.cityCenter')}
+              </span>
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <ChevronDown size={14} className={`text-gray-400 transition-transform duration-300 ${isLocOpen ? 'rotate-180 text-neon' : ''}`} />
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {isLocOpen && (
+                <>
+                  <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsLocOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-0 right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl overflow-hidden text-gray-300 py-1 font-sans"
+                  >
+                    <div className="absolute top-0 inset-x-0 h-[2px] bg-neon shadow-[0_0_10px_rgba(204,255,0,0.5)]"></div>
+                    {[
+                      { value: 'Son Tra Peninsula', label: t('home.sonTra') },
+                      { value: 'Da Nang Airport', label: t('home.airport') },
+                      { value: 'City Center', label: t('home.cityCenter') }
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setLocation(opt.value);
+                          setIsLocOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer bg-transparent border-none ${location === opt.value ? 'text-neon bg-neon/5 font-bold' : 'text-gray-300 hover:text-neon hover:bg-white/5'}`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Category Dropdown */}
+        <div>
+          <label className="block text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+            {language === 'vi' ? 'Dòng Xe' : 'Category'}
+          </label>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => { setIsCatOpen(!isCatOpen); setIsLocOpen(false); }}
+              className="w-full bg-black/50 border border-gray-800 text-gray-300 text-xs rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent flex items-center pl-10 pr-10 p-3 outline-none cursor-pointer transition-all duration-300 text-left relative"
+            >
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <SlidersHorizontal size={16} className="text-neon" />
+              </div>
+              <span className="truncate">
+                {categoriesList.find(c => c.value === category)?.label}
+              </span>
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <ChevronDown size={14} className={`text-gray-400 transition-transform duration-300 ${isCatOpen ? 'rotate-180 text-neon' : ''}`} />
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {isCatOpen && (
+                <>
+                  <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsCatOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-0 right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl overflow-hidden text-gray-300 py-1 font-sans"
+                  >
+                    <div className="absolute top-0 inset-x-0 h-[2px] bg-neon shadow-[0_0_10px_rgba(204,255,0,0.5)]"></div>
+                    {categoriesList.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setCategory(opt.value);
+                          setIsCatOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer bg-transparent border-none ${category === opt.value ? 'text-neon bg-neon/5 font-bold' : 'text-gray-300 hover:text-neon hover:bg-white/5'}`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Submit Button */}
         <button
           type="submit"
-          className="w-full bg-neon text-dark font-bold py-3.5 mt-4 rounded-lg hover:bg-[#bbf000] focus:ring-4 focus:outline-none focus:ring-neon/30 transition-all duration-300 shadow-[0_0_15px_rgba(204,255,0,0.4)] hover:shadow-[0_0_25px_rgba(204,255,0,0.6)] cursor-pointer"
+          className="w-full bg-neon text-dark font-black py-4 mt-6 rounded-xl hover:bg-[#bbf000] focus:ring-4 focus:outline-none focus:ring-neon/30 transition-all duration-300 shadow-[0_0_20px_rgba(204,255,0,0.4)] hover:shadow-[0_0_30px_rgba(204,255,0,0.6)] cursor-pointer flex items-center justify-center gap-2 group hover:scale-[1.02]"
         >
-          {t('home.searchBikes')}
+          <span>{language === 'vi' ? 'TÌM XE NGAY' : 'SEARCH BIKES'}</span>
+          <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
         </button>
       </form>
     </div>
@@ -171,9 +286,6 @@ const HeroSection = () => {
             <HeroSearch />
           </motion.div>
           <div className="lg:col-span-7 lg:pl-4 text-left">
-            <span className="text-neon text-[11px] font-mono font-bold uppercase tracking-widest px-3 py-1 border border-neon/20 rounded-full bg-neon/5 inline-block mb-4 neon-badge-pulse">
-              {language === 'vi' ? '⚡️ Dịch Vụ Thuê Xe Máy Đỉnh Cao' : '⚡️ Ultimate Motorcycle Rental'}
-            </span>
             <h2 className="text-4xl lg:text-5xl xl:text-6xl font-display font-black text-white leading-[1.15] uppercase mb-4" style={{ textWrap: 'balance' }}>
               {t('home.freeToExplore')} <br />
               <span className="bg-gradient-to-r from-neon via-[#ddff44] to-white bg-clip-text text-transparent text-glow">{t('home.streets')}</span>
@@ -193,7 +305,8 @@ interface SectionProps {
 }
 
 const PopularSection = ({ bikes }: SectionProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const navigate = useNavigate();
   const featuredBikes = bikes.slice(0, 3);
 
   // Framer motion variants for stagger
@@ -218,10 +331,17 @@ const PopularSection = ({ bikes }: SectionProps) => {
 
   return (
     <section className="py-24 max-w-7xl mx-auto px-4 lg:px-8">
-      <div className="flex flex-col md:flex-row justify-between items-end mb-12">
+      <div className="flex justify-between items-end mb-12">
         <h2 className="font-display font-bold text-3xl md:text-4xl text-neon uppercase text-glow">
           {t('home.popularBikes')}
         </h2>
+        <button
+          onClick={() => navigate('/bikes')}
+          className="text-neon hover:text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer border-none bg-transparent"
+        >
+          {language === 'vi' ? 'Xem tất cả' : language === 'ko' ? '모두 보기' : 'View All'}
+          <ArrowRight size={14} />
+        </button>
       </div>
 
       <motion.div
@@ -242,13 +362,14 @@ const PopularSection = ({ bikes }: SectionProps) => {
 };
 
 const HighQualitySection = ({ bikes }: SectionProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const navigate = useNavigate();
   const otherBikes = bikes.slice(3, 6);
   return (
     <section className="py-24 border-t border-white/5 bg-black/20">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-4">
+          <div className="lg:col-span-4 text-left">
             <h2 className="font-display font-bold text-3xl md:text-4xl text-white uppercase leading-tight" style={{ textWrap: 'balance' }}>
               {t('home.highQualityTitle')}
             </h2>
@@ -275,6 +396,14 @@ const HighQualitySection = ({ bikes }: SectionProps) => {
                 </div>
               </div>
             </div>
+
+            <button
+              onClick={() => navigate('/bikes')}
+              className="mt-8 bg-neon/10 text-neon hover:bg-neon hover:text-dark px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 w-fit border border-neon/20 hover:border-neon"
+            >
+              {language === 'vi' ? 'Khám phá tất cả xe' : language === 'ko' ? '모든 바이크 둘러보기' : 'Explore All Bikes'}
+              <ArrowRight size={14} />
+            </button>
           </div>
 
           <div className="lg:col-span-8">

@@ -24,7 +24,7 @@ export const Chat = () => {
   // Trạng thái hiển thị cột hội thoại trên mobile khi đang chat
   const [showMobileList, setShowMobileList] = useState<boolean>(true);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageContainerRef = useRef<HTMLDivElement>(null);
   const sseRef = useRef<EventSource | null>(null);
 
   // 1. Khởi tạo thông tin user hiện tại từ localStorage
@@ -134,7 +134,12 @@ export const Chat = () => {
 
   // 5. Tự động cuộn xuống cuối khung chat khi có tin nhắn mới
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messageContainerRef.current) {
+      messageContainerRef.current.scrollTo({
+        top: messageContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   };
 
   useEffect(() => {
@@ -470,7 +475,10 @@ export const Chat = () => {
                 </div>
 
                 {/* Khu vực Tin nhắn */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[calc(100vh-320px)] lg:max-h-[calc(100vh-300px)] min-h-[250px] relative scrollbar-thin scrollbar-thumb-gray-800">
+                <div 
+                  ref={messageContainerRef}
+                  className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[calc(100vh-320px)] lg:max-h-[calc(100vh-300px)] min-h-[250px] relative scrollbar-thin scrollbar-thumb-gray-800"
+                >
                   {loadingMessages ? (
                     <div className="flex flex-col items-center justify-center py-20 text-gray-500 gap-2">
                       <Loader size={24} className="animate-spin text-neon" />
@@ -518,7 +526,6 @@ export const Chat = () => {
                       );
                     })
                   )}
-                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* Form Nhập & Gửi tin nhắn */}

@@ -31,7 +31,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     req.user = {
       id: decoded.id,
       email: decoded.email,
-      roles: decoded.roles,
+      roles: decoded.roles && decoded.roles.length > 0 ? decoded.roles : ['Customer'],
     };
     next();
   } catch (error) {
@@ -45,8 +45,11 @@ export const restrictTo = (...allowedRoles: ('Admin' | 'Staff' | 'Owner' | 'Cust
       return res.status(401).json({ success: false, message: 'Yêu cầu đăng nhập trước khi truy cập' });
     }
 
-    const hasRole = req.user.roles.some(role => allowedRoles.includes(role));
+    const normalizedAllowed = allowedRoles.map(r => r.toLowerCase());
+    console.log('[DEBUG AUTH] user roles:', req.user.roles, 'normalizedAllowed:', normalizedAllowed);
+    const hasRole = req.user.roles.some(role => normalizedAllowed.includes(role.toLowerCase()));
     if (!hasRole) {
+      console.log('[DEBUG AUTH] Access denied for user roles:', req.user.roles);
       return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập chức năng này' });
     }
 
