@@ -65,6 +65,13 @@ export const feedbackService = {
     return res.data;
   },
 
+  // Get all reviews submitted by the current user
+  getMyFeedbacks: async (): Promise<FeedbackItem[]> => {
+    const res = await axios.get(`${BASE_URL}/my`);
+    return res.data.data || [];
+  },
+
+
   // 2. Get public reviews for a specific vehicle
   getVehicleFeedbacks: async (vehicleId: string): Promise<FeedbackItem[]> => {
     const res = await axios.get(`${BASE_URL}/vehicle/${vehicleId}`);

@@ -70,8 +70,19 @@ export const Bookings = () => {
     try {
       setLoading(true);
       setError('');
-      const data = await bookingService.getMyBookings();
-      setBookings(data);
+      
+      const [bookingsData, feedbacksData] = await Promise.all([
+        bookingService.getMyBookings(),
+        feedbackService.getMyFeedbacks().catch(err => {
+          console.error('Lỗi khi tải feedbacks của user:', err);
+          return [];
+        })
+      ]);
+      
+      setBookings(bookingsData);
+      
+      const reviewedIds = feedbacksData.map(fb => fb.bookingId);
+      setReviewedBookingIds(reviewedIds);
     } catch (err: any) {
       setError(err.response?.data?.message || t('bookings.errorFetch'));
     } finally {

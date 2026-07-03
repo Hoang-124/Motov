@@ -370,7 +370,7 @@ export const deleteFeedback = async (req: AuthRequest, res: Response) => {
 
     // 2. Delete from database
     await Feedback.findByIdAndDelete(id);
-
+ 
     res.status(200).json({
       success: true,
       message: 'Xóa đánh giá vĩnh viễn thành công'
@@ -384,3 +384,33 @@ export const deleteFeedback = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+// [GET] /api/feedbacks/my - Get all feedbacks written by the current logged-in user (Customer only)
+export const getMyFeedbacks = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Yêu cầu đăng nhập'
+      });
+    }
+
+    const feedbacks = await Feedback.find({ userId })
+      .populate('vehicleId', 'vehicleModel licensePlate imageUrls')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: feedbacks
+    });
+  } catch (error: any) {
+    console.error('Error fetching user feedbacks:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi máy chủ khi lấy danh sách đánh giá của bạn',
+      error: error.message
+    });
+  }
+};
+
