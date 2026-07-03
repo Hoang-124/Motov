@@ -67,6 +67,25 @@ export const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const isLinkActive = (path: string, exactQuery?: string) => {
+    if (exactQuery) {
+      return location.pathname === path && location.search.includes(exactQuery);
+    }
+    if (path === '/admin/bookings' || path === '/staff/bookings') {
+      return location.pathname === path && !location.search.includes('tab=ownerRequests');
+    }
+    return location.pathname === path;
+  };
+
+  const getLinkClass = (path: string, exactQuery?: string, isSpecial?: boolean) => {
+    const active = isLinkActive(path, exactQuery);
+    return `flex items-center gap-3 px-4 py-2 text-sm transition-all ${
+      active 
+        ? 'text-neon font-semibold bg-white/5 border-l-2 border-neon pl-3.5' 
+        : 'text-gray-300 hover:text-neon hover:bg-white/5'
+    } ${isSpecial ? 'border-b border-neon/10' : ''}`;
+  };
+
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -290,7 +309,20 @@ export const Header = () => {
       } else if (role === 'staff') {
         navigate('/staff/bookings');
       } else if (role === 'owner') {
-        navigate('/owner/bookings');
+        const titleLower = noti?.title?.toLowerCase() || '';
+        const msgLower = noti?.message?.toLowerCase() || '';
+        const isCustomerNoti = titleLower.includes('phản hồi') || 
+                               titleLower.includes('cảnh cáo') || 
+                               titleLower.includes('yêu cầu trả') ||
+                               titleLower.includes('thanh toán') || 
+                               titleLower.includes('đặt cọc') ||
+                               msgLower.includes('đơn hàng') ||
+                               msgLower.includes('mã đơn');
+        if (isCustomerNoti) {
+          navigate('/bookings');
+        } else {
+          navigate('/owner/bookings');
+        }
       } else {
         const titleLower = noti?.title?.toLowerCase() || '';
         const msgLower = noti?.message?.toLowerCase() || '';
@@ -990,20 +1022,20 @@ export const Header = () => {
                             {/* Staff-specific links */}
                             {user.role === 'staff' && (
                               <>
-                                <Link to="/staff/bookings?tab=ownerRequests" className="flex items-center gap-3 px-4 py-2 text-sm text-neon hover:bg-white/5 transition-all font-semibold border-b border-neon/10">
-                                  <UserCheck size={15} className="text-neon animate-pulse" />
+                                <Link to="/staff/bookings?tab=ownerRequests" className={getLinkClass('/staff/bookings', 'tab=ownerRequests', true)}>
+                                  <UserCheck size={15} className={isLinkActive('/staff/bookings', 'tab=ownerRequests') ? 'text-neon animate-pulse' : 'text-gray-400'} />
                                   <span>Duyệt Đối Tác Chủ Xe</span>
                                 </Link>
-                                <Link to="/staff/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
-                                  <ClipboardList size={15} />
+                                <Link to="/staff/bookings" className={getLinkClass('/staff/bookings')}>
+                                  <ClipboardList size={15} className={isLinkActive('/staff/bookings') ? 'text-neon' : 'text-gray-400'} />
                                   <span>{t('nav.approveBookings')}</span>
                                 </Link>
-                                <Link to="/staff/bikes" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
-                                  <BookOpen size={15} />
+                                <Link to="/staff/bikes" className={getLinkClass('/staff/bikes')}>
+                                  <BookOpen size={15} className={isLinkActive('/staff/bikes') ? 'text-neon' : 'text-gray-400'} />
                                   <span>{t('nav.bikeStatus')}</span>
                                 </Link>
-                                <Link to="/admin/inventory" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
-                                  <Archive size={15} />
+                                <Link to="/admin/inventory" className={getLinkClass('/admin/inventory')}>
+                                  <Archive size={15} className={isLinkActive('/admin/inventory') ? 'text-neon' : 'text-gray-400'} />
                                   <span>Quản lý kho</span>
                                 </Link>
                               </>
@@ -1012,44 +1044,44 @@ export const Header = () => {
                             {/* Admin-specific links */}
                             {user.role === 'admin' && (
                               <>
-                                <Link to="/admin/bookings?tab=ownerRequests" className="flex items-center gap-3 px-4 py-2 text-sm text-neon hover:bg-white/5 transition-all font-semibold border-b border-neon/10">
-                                  <UserCheck size={15} className="text-neon animate-pulse" />
+                                <Link to="/admin/bookings?tab=ownerRequests" className={getLinkClass('/admin/bookings', 'tab=ownerRequests', true)}>
+                                  <UserCheck size={15} className={isLinkActive('/admin/bookings', 'tab=ownerRequests') ? 'text-neon animate-pulse' : 'text-gray-400'} />
                                   <span>Duyệt Đối Tác Chủ Xe</span>
                                 </Link>
-                                <Link to="/admin/dashboard" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
-                                  <Activity size={15} />
+                                <Link to="/admin/dashboard" className={getLinkClass('/admin/dashboard')}>
+                                  <Activity size={15} className={isLinkActive('/admin/dashboard') ? 'text-neon' : 'text-gray-400'} />
                                   <span>{t('nav.dashboard')}</span>
                                 </Link>
-                                <Link to="/admin/bikes" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
-                                  <BookOpen size={15} />
+                                <Link to="/admin/bikes" className={getLinkClass('/admin/bikes')}>
+                                  <BookOpen size={15} className={isLinkActive('/admin/bikes') ? 'text-neon' : 'text-gray-400'} />
                                   <span>{t('nav.manageBikes')}</span>
                                 </Link>
-                                <Link to="/admin/categories" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
-                                  <Folder size={15} />
+                                <Link to="/admin/categories" className={getLinkClass('/admin/categories')}>
+                                  <Folder size={15} className={isLinkActive('/admin/categories') ? 'text-neon' : 'text-gray-400'} />
                                   <span>Quản lý danh mục</span>
                                 </Link>
-                                <Link to="/admin/bookings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
-                                  <ClipboardList size={15} />
+                                <Link to="/admin/bookings" className={getLinkClass('/admin/bookings')}>
+                                  <ClipboardList size={15} className={isLinkActive('/admin/bookings') ? 'text-neon' : 'text-gray-400'} />
                                   <span>{t('nav.allBookings')}</span>
                                 </Link>
-                                <Link to="/admin/users" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
-                                  <UserCheck size={15} />
+                                <Link to="/admin/users" className={getLinkClass('/admin/users')}>
+                                  <UserCheck size={15} className={isLinkActive('/admin/users') ? 'text-neon' : 'text-gray-400'} />
                                   <span>{t('nav.roles')}</span>
                                 </Link>
-                                <Link to="/admin/promotions" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
-                                  <Ticket size={15} />
+                                <Link to="/admin/promotions" className={getLinkClass('/admin/promotions')}>
+                                  <Ticket size={15} className={isLinkActive('/admin/promotions') ? 'text-neon' : 'text-gray-400'} />
                                   <span>{t('nav.promotions')}</span>
                                 </Link>
-                                <Link to="/admin/feedbacks" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
-                                  <MessageSquare size={15} />
+                                <Link to="/admin/feedbacks" className={getLinkClass('/admin/feedbacks')}>
+                                  <MessageSquare size={15} className={isLinkActive('/admin/feedbacks') ? 'text-neon' : 'text-gray-400'} />
                                   <span>{t('nav.feedbacks')}</span>
                                 </Link>
-                                <Link to="/admin/inventory" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
-                                  <Archive size={15} />
+                                <Link to="/admin/inventory" className={getLinkClass('/admin/inventory')}>
+                                  <Archive size={15} className={isLinkActive('/admin/inventory') ? 'text-neon' : 'text-gray-400'} />
                                   <span>Quản lý kho</span>
                                 </Link>
-                                <Link to="/admin/settings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:text-neon hover:bg-white/5 transition-all">
-                                  <Settings size={15} />
+                                <Link to="/admin/settings" className={getLinkClass('/admin/settings')}>
+                                  <Settings size={15} className={isLinkActive('/admin/settings') ? 'text-neon' : 'text-gray-400'} />
                                   <span>Cấu hình hệ thống</span>
                                 </Link>
                               </>

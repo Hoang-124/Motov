@@ -483,7 +483,7 @@ export const AdminBikes = () => {
                           )}
                           <button
                             onClick={() => openEditModal(bike)}
-                            className="p-2 rounded bg-black hover:bg-gray-800 text-yellow-500 border border-gray-800 hover:border-yellow-500/30 transition-all cursor-pointer"
+                            className="p-2 rounded bg-black hover:bg-neon/10 text-neon border border-gray-800 hover:border-neon/30 transition-all cursor-pointer"
                             title="Sửa thông tin"
                           >
                             <Edit2 size={14} />

@@ -30,11 +30,12 @@ export interface IBooking extends Document {
   totalAmount: number;
   depositAmount?: number;
   remainingAmount?: number;
-  status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled';
+  status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Returning' | 'Completed' | 'Cancelled';
   bookingCode: string;
   surcharges: ISurcharge[];
   cancelReason?: string;
   returnReason?: string;
+  returnReasonReply?: string;
   paymentMethod?: 'Cash' | 'Banking';
   deliveryMethod?: 'StorePickup' | 'HomeDelivery';
   isPaid?: boolean;
@@ -79,11 +80,12 @@ const BookingSchema = new Schema<IBooking>({
   totalAmount: { type: Number, required: true },
   depositAmount: { type: Number, default: 0 },
   remainingAmount: { type: Number, default: 0 },
-  status: { type: String, enum: ['Pending', 'Confirmed', 'Ongoing', 'Completed', 'Cancelled'], default: 'Pending', index: true },
+  status: { type: String, enum: ['Pending', 'Confirmed', 'Ongoing', 'Returning', 'Completed', 'Cancelled'], default: 'Pending', index: true },
   bookingCode: { type: String, required: true, unique: true, index: true },
   surcharges: [SurchargeSchema],
   cancelReason: { type: String },
   returnReason: { type: String },
+  returnReasonReply: { type: String },
   paymentMethod: { type: String, enum: ['Cash', 'Banking'], default: 'Banking' },
   deliveryMethod: { type: String, enum: ['StorePickup', 'HomeDelivery'], default: 'StorePickup' },
   isPaid: { type: Boolean, default: false },

@@ -3,13 +3,12 @@ import nodemailer from 'nodemailer';
 
 // Helper tạo SMTP Transporter dùng chung
 let cachedTransporter: any = null;
+const useSMTP = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 
 const getTransporter = async () => {
   if (cachedTransporter) {
     return cachedTransporter;
   }
-
-  const useSMTP = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
 
   if (useSMTP) {
     cachedTransporter = nodemailer.createTransport({

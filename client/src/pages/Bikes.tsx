@@ -11,7 +11,9 @@ export const Bikes = () => {
   const { language, t } = useLanguage();
   const [searchParams] = useSearchParams();
   const initialLocation = searchParams.get('location') || '';
-  const initialDate = searchParams.get('date') || '';
+  const pickupDate = searchParams.get('pickupDate') || '';
+  const returnDate = searchParams.get('returnDate') || '';
+  const initialCategory = searchParams.get('category') || 'All';
 
   const [bikes, setBikes] = useState<Motorbike[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,7 @@ export const Bikes = () => {
   }, [language]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [priceSort, setPriceSort] = useState('Default');
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
@@ -99,7 +101,7 @@ export const Bikes = () => {
           </h1>
           <p className="text-gray-300 text-sm">
             {initialLocation && t('bikesPage.searchingAt', { location: initialLocation })}
-            {initialDate && ` • ${t('bikesPage.date', { date: initialDate })}`}
+            {pickupDate && returnDate && ` • ${pickupDate} → ${returnDate}`}
           </p>
         </div>
 

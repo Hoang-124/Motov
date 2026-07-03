@@ -268,10 +268,10 @@ export const AdminCategories = () => {
                       <td className="p-4 pr-6 text-right">
                         <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => handleOpenEdit(category)}
-                            title="Sửa danh mục"
-                            className="p-2 bg-blue-600/10 border border-blue-500/20 hover:border-blue-400 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg transition-all cursor-pointer"
-                          >
+                             onClick={() => handleOpenEdit(category)}
+                             title="Sửa danh mục"
+                             className="p-2 bg-neon/10 border border-neon/20 hover:border-neon hover:bg-neon hover:text-dark text-neon rounded-lg transition-all cursor-pointer"
+                           >
                             <Edit2 size={12} />
                           </button>
                           <button
