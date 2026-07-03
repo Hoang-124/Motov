@@ -5,7 +5,8 @@ import {
   getAllFeedbacksForAdmin,
   blockFeedback,
   unblockFeedback,
-  deleteFeedback
+  deleteFeedback,
+  getMyFeedbacks
 } from '../controllers/feedbackController.js';
 import { authMiddleware, restrictTo } from '../middlewares/authMiddleware.js';
 
@@ -16,6 +17,9 @@ router.get('/vehicle/:vehicleId', getVehicleFeedbacks as any);
 
 // Protected route to write review (requires authentication)
 router.post('/', authMiddleware as any, createFeedback as any);
+
+// Get current user's feedbacks
+router.get('/my', authMiddleware as any, getMyFeedbacks as any);
 
 // Admin moderation routes (requires authentication & Admin role)
 router.get('/admin', authMiddleware as any, restrictTo('Admin') as any, getAllFeedbacksForAdmin as any);
