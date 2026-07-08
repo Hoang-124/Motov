@@ -7,10 +7,14 @@ import { useLanguage } from '../hooks/useLanguage';
 import { feedbackService } from '../services/feedbackService';
 import { BookingTrackingModal } from '../components/BookingTrackingModal';
 import { useToast } from '../hooks/useToast';
+import { BookingChatFAB } from '../components/chat/BookingChatFAB';
+import { BookingChatModal } from '../components/chat/BookingChatModal';
+import { useBookingChat } from '../hooks/useBookingChat';
 
 export const Bookings = () => {
   const { language, t } = useLanguage();
   const { showToast } = useToast();
+  const { isChatOpen, openChat, closeChat } = useBookingChat();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -805,6 +809,10 @@ export const Bookings = () => {
         pickupAddress={trackingBooking?.pickupLocation?.address}
         returnAddress={trackingBooking?.returnLocation?.address}
       />
+
+      {/* Chat Integration */}
+      {!isChatOpen && <BookingChatFAB onClick={openChat} />}
+      <BookingChatModal isOpen={isChatOpen} onClose={closeChat} />
     </div>
   );
 };

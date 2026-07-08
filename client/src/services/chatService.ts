@@ -35,47 +35,80 @@ export interface ChatUser {
 
 export interface ChatMessage {
   _id: string;
+  conversationId: string;
   senderId: string | ChatUser;
-  receiverId: string | ChatUser;
-  message: string;
-  isRead: boolean;
+  content: string;
+  readBy: string[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ConversationItem {
-  _id: string; // ID đối tác chat
-  unreadCount: number;
-  lastMessage: ChatMessage;
-  partnerInfo: ChatUser & { phoneNumber?: string };
+  _id: string;
+  participants: ChatUser[];
+  type: string;
+  relatedBooking?: string | {
+    _id: string;
+    bookingCode: string;
+    status: string;
+    pickupDateTime: string;
+    returnDateTime: string;
+    vehicleSnapshot?: {
+      name: string;
+      image: string;
+      rentalPrice: number;
+    };
+  };
+  relatedVehicle?: {
+    _id: string;
+    vehicleModel: string;
+    licensePlate: string;
+    imageUrls: string[];
+  };
+  lastMessage?: ChatMessage;
+  unreadCount?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const chatService = {
-  // Gửi tin nhắn mới
-  sendMessage: async (receiverId: string, message: string): Promise<{ success: boolean; data: ChatMessage }> => {
+  getUserBasicInfo: async (userId: string): Promise<{ success: boolean; data: ChatUser }> => {
     const headers = getAuthHeaders();
-    const res = await axios.post(API_URL, { receiverId, message }, headers);
+    const res = await axios.get(`${API_URL}/users/${userId}/basic-info`, headers);
     return res.data;
   },
 
-  // Lấy lịch sử tin nhắn với đối tác
-  getMessages: async (partnerId: string): Promise<{ success: boolean; data: ChatMessage[] }> => {
+  createConversation: async (partnerId: string, relatedBookingId: string | null, type: string): Promise<{ success: boolean; data: ConversationItem }> => {
     const headers = getAuthHeaders();
-    const res = await axios.get(`${API_URL}/${partnerId}`, headers);
+    const payload: any = { partnerId, type };
+    if (relatedBookingId) {
+      payload.relatedBookingId = relatedBookingId;
+    }
+    const res = await axios.post(`${API_URL}/conversations`, payload, headers);
     return res.data;
   },
 
-  // Lấy danh sách các cuộc hội thoại
-  getConversations: async (): Promise<{ success: boolean; data: ConversationItem[] }> => {
+  getConversations: async (skip = 0, limit = 20): Promise<{ success: boolean; data: ConversationItem[] }> => {
     const headers = getAuthHeaders();
-    const res = await axios.get(`${API_URL}/conversations`, headers);
+    const res = await axios.get(`${API_URL}/conversations`, { ...headers, params: { skip, limit } });
     return res.data;
   },
 
-  // Lấy thông tin cơ bản của người dùng để phục vụ chat
-  getUserBasicInfo: async (userId: string): Promise<{ success: boolean; data: ChatUser & { phoneNumber?: string } }> => {
+  getMessages: async (conversationId: string, skip = 0, limit = 50): Promise<{ success: boolean; data: ChatMessage[] }> => {
     const headers = getAuthHeaders();
-    const res = await axios.get(`${API_URL}/user/${userId}`, headers);
+    const res = await axios.get(`${API_URL}/conversations/${conversationId}/messages`, { ...headers, params: { skip, limit } });
+    return res.data;
+  },
+
+  sendMessage: async (conversationId: string, content: string): Promise<{ success: boolean; data: ChatMessage }> => {
+    const headers = getAuthHeaders();
+    const res = await axios.post(`${API_URL}/messages`, { conversationId, content }, headers);
+    return res.data;
+  },
+
+  markAsRead: async (conversationId: string): Promise<{ success: boolean; message: string }> => {
+    const headers = getAuthHeaders();
+    const res = await axios.patch(`${API_URL}/conversations/${conversationId}/read`, {}, headers);
     return res.data;
   }
 };

@@ -25,10 +25,12 @@
   "dependencies": {
     "dotenv": "^17.4.2",
     "expo": "^55.0.25",
+    "firebase-admin": "10.3.0",
     "mongoose": "^9.6.3",
     "nativewind": "^4.2.4",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "nodemailer": "9.0.1",
     "react-native-vector-icons": "^10.3.0",
     "react-native-web": "^0.21.0"
   }
