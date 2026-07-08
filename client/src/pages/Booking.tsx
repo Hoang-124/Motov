@@ -6,6 +6,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { bookingService } from '../services/bookingService'; // Import Service API
 import { promotionService } from '../services/promotionService'; // Import Promotion Service
 import { useLanguage } from '../hooks/useLanguage';
+import { useBookingChat } from '../hooks/useBookingChat';
+import { BookingChatFAB } from '../components/chat/BookingChatFAB';
+import { BookingChatModal } from '../components/chat/BookingChatModal';
 
 const translateCategory = (cat: string, t: any) => {
   const c = (cat || '').toLowerCase().trim();
@@ -28,6 +31,7 @@ export const Booking = () => {
   const { bikeId } = useParams();
   const navigate = useNavigate();
   const { language, t } = useLanguage();
+  const { isChatOpen, openChat, closeChat } = useBookingChat();
   
   const [bike, setBike] = useState<Motorbike | undefined>(undefined);
   
@@ -839,6 +843,10 @@ export const Booking = () => {
 
         </div>
       </div>
+
+      {/* Chat Integration */}
+      {!isChatOpen && <BookingChatFAB onClick={openChat} />}
+      <BookingChatModal isOpen={isChatOpen} onClose={closeChat} />
     </div>
   );
 };

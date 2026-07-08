@@ -1,25 +1,24 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IMessage extends Document {
+  conversationId: mongoose.Types.ObjectId;
   senderId: mongoose.Types.ObjectId;
-  receiverId: mongoose.Types.ObjectId;
-  message: string;
-  isRead: boolean;
+  content: string;
+  readBy: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 const MessageSchema = new Schema<IMessage>({
+  conversationId: { type: Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
   senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  receiverId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  message: { type: String, required: true },
-  isRead: { type: Boolean, default: false, index: true }
+  content: { type: String, required: true, maxlength: 5000 },
+  readBy: [{ type: Schema.Types.ObjectId, ref: 'User' }]
 }, {
   timestamps: true
 });
 
-// Thêm index kép để tối ưu truy vấn lịch sử chat
-MessageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
-MessageSchema.index({ receiverId: 1, senderId: 1, createdAt: -1 });
+// Optimize query for fetching conversation messages ordered by time
+MessageSchema.index({ conversationId: 1, createdAt: -1 });
 
 export const Message = mongoose.model<IMessage>('Message', MessageSchema);

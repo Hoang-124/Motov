@@ -18,6 +18,10 @@ import { ResetPassword } from './pages/ResetPassword';
 import { VerifyEmail } from './pages/VerifyEmail';
 import { Chat } from './pages/Chat';
 
+// Chat
+import { ChatProvider } from './contexts/ChatContext';
+import { ChatLayout } from './components/chat/ChatLayout';
+
 // Staff pages
 import { StaffBookings } from './pages/staff/StaffBookings';
 import { StaffBikes } from './pages/staff/StaffBikes';
@@ -65,12 +69,13 @@ export default function App() {
     <BrowserRouter>
       <LanguageProvider>
         <ToastProvider>
-          <div className="min-h-screen bg-dark text-white flex flex-col font-sans selection:bg-neon selection:text-dark">
-            {/* Header Navigation */}
-            <Header />
+          <ChatProvider>
+            <div className="min-h-screen bg-dark text-white flex flex-col font-sans selection:bg-neon selection:text-dark">
+              {/* Header Navigation */}
+              <Header />
 
-            {/* Main Content Pages */}
-            <main className="flex-grow">
+              {/* Main Content Pages */}
+              <main className="flex-grow">
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<Home />} />
@@ -214,7 +219,8 @@ export default function App() {
 
             {/* Footer */}
             <Footer />
-          </div>
+            </div>
+          </ChatProvider>
         </ToastProvider>
       </LanguageProvider>
     </BrowserRouter>

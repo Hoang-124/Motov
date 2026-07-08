@@ -301,6 +301,7 @@ export const Auth = () => {
       }
 
       const userObj = {
+        id: data.user._id || data.user.id,
         email: data.user.email,
         name: data.user.name,
         role: data.user.role,
@@ -448,6 +449,7 @@ export const Auth = () => {
         }
 
         const userObj = {
+          id: data.user._id || data.user.id,
           email: data.user.email,
           name: data.user.name,
           role: data.user.role,
@@ -510,6 +512,7 @@ export const Auth = () => {
         }
 
         const userObj = {
+          id: data.user._id || data.user.id,
           email: data.user.email,
           name: data.user.name,
           role: data.user.role,
