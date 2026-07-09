@@ -27,6 +27,15 @@ beforeAll(async () => {
 
   // Ensure Vehicle is registered
   if (!Vehicle) console.warn('Vehicle model not found');
+
+  // Clear junk state from previous runs
+  await Promise.all([
+    Vehicle.deleteMany({}),
+    Conversation.deleteMany({}),
+    Message.deleteMany({}),
+    Booking.deleteMany({}),
+    User.deleteMany({})
+  ]);
 });
 
 afterAll(async () => {
@@ -42,6 +51,7 @@ afterEach(async () => {
   await Message.deleteMany({});
   await Booking.deleteMany({});
   await User.deleteMany({});
+  await Vehicle.deleteMany({});
 });
 
 describe('chatService - Unit Tests', () => {

@@ -46,6 +46,19 @@ import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminCategories } from './pages/admin/AdminCategories';
 import { InventoryManagement } from './pages/admin/InventoryManagement';
 
+// Auto-migrate session token if missing
+try {
+  const storedUser = localStorage.getItem('user');
+  if (storedUser && !localStorage.getItem('token')) {
+    const user = JSON.parse(storedUser);
+    if (user && user.token) {
+      localStorage.setItem('token', user.token);
+    }
+  }
+} catch (e) {
+  console.error('Session migration error:', e);
+}
+
 // Route Guard component
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: ('customer' | 'staff' | 'admin' | 'owner')[] }) => {
   const storedUser = localStorage.getItem('user');

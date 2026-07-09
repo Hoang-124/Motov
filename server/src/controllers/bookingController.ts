@@ -652,6 +652,15 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
         booking.returnDateTime
       );
     } else if (status === 'Confirmed') {
+      // BỔ SUNG: Kiểm tra xem xe có còn khả dụng trùng lịch không trước khi phê duyệt
+      const isAvailable = await checkVehicleAvailability(vehicleId.toString(), booking.pickupDateTime, booking.returnDateTime);
+      if (!isAvailable) {
+        return res.status(400).json({
+          success: false,
+          message: 'Không thể duyệt đơn do chiếc xe này đã được xác nhận thuê trùng lịch vào khoảng thời gian trên.'
+        });
+      }
+
       await handleBookingStatusTransitionReminders(
         booking._id,
         'Confirmed',

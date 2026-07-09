@@ -414,6 +414,7 @@ export const Header = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     setUser(null);
     navigate('/');
     window.location.reload();
