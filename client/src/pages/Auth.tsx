@@ -310,6 +310,7 @@ export const Auth = () => {
       };
 
       localStorage.setItem('user', JSON.stringify(userObj));
+      localStorage.setItem('token', data.token);
 
       const redirectPath = 
         userObj.role === 'admin' ? '/admin/dashboard' :
@@ -457,6 +458,7 @@ export const Auth = () => {
         };
         
         localStorage.setItem('user', JSON.stringify(userObj));
+        localStorage.setItem('token', data.token);
         
         // Xét từng vai trò (role) để chuyển hướng về đúng trang
         const redirectPath = 
@@ -520,6 +522,7 @@ export const Auth = () => {
         };
         
         localStorage.setItem('user', JSON.stringify(userObj));
+        localStorage.setItem('token', data.token);
         
         const redirectPath = 
           userObj.role === 'owner' ? '/owner/dashboard' :

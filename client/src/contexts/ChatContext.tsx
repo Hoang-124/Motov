@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { chatService, ConversationItem, ChatMessage } from '../services/chatService';
 import DOMPurify from 'dompurify';
@@ -153,6 +153,40 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
+
+  const parsedWithRef = useRef<string | null>(null);
+
+  // Handle URL query parameters for auto-selecting or creating a conversation (e.g. /chat?with=partnerId)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const partnerId = params.get('with');
+    if (!partnerId || conversations.length === 0 || parsedWithRef.current === partnerId) return;
+
+    parsedWithRef.current = partnerId;
+
+    // Check if we already have a conversation with this user
+    const existing = conversations.find(c => 
+      c.participants && c.participants.some(p => p._id === partnerId)
+    );
+
+    if (existing) {
+      selectConversation(existing);
+    } else {
+      // Create new conversation
+      const initNewConv = async () => {
+        try {
+          const res = await chatService.createConversation(partnerId, null, 'Direct');
+          if (res.success && res.data) {
+            setConversations(prev => [res.data, ...prev]);
+            selectConversation(res.data);
+          }
+        } catch (err) {
+          console.error('Lỗi khi tự động khởi tạo cuộc trò chuyện:', err);
+        }
+      };
+      initNewConv();
+    }
+  }, [conversations, selectConversation]);
 
   return (
     <ChatContext.Provider value={{

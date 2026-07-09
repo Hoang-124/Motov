@@ -159,7 +159,14 @@ export const sendMessage = async (conversationId: string, senderId: string, cont
 
   // Emit real-time message via socket.io
   const io = getIO();
+  // Emit to the conversation room (for clients currently in the conversation)
   io.to(conversationId.toString()).emit('new_message', populatedMessage);
+  // Emit to personal rooms of all participants (for real-time updates in header/list)
+  if (conversation && conversation.participants) {
+    conversation.participants.forEach(p => {
+      io.to(`user_${p.toString()}`).emit('new_message', populatedMessage);
+    });
+  }
 
   return populatedMessage;
 };

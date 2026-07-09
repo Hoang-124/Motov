@@ -1,5 +1,6 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { Server as HttpServer } from 'http';
+import jwt from 'jsonwebtoken';
 
 let io: SocketIOServer;
 
@@ -20,8 +21,32 @@ export const initSocket = (server: HttpServer) => {
     }
   });
 
+  // Authentication middleware using JWT
+  io.use((socket, next) => {
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    if (!token) {
+      return next(new Error('Authentication error: Token missing'));
+    }
+    try {
+      const decoded = jwt.verify(token as string, process.env.JWT_SECRET as string) as any;
+      socket.data = {
+        userId: decoded.id,
+        email: decoded.email,
+        roles: decoded.roles
+      };
+      next();
+    } catch (err) {
+      return next(new Error('Authentication error: Invalid token'));
+    }
+  });
+
   io.on('connection', (socket) => {
-    console.log(`Socket connected: ${socket.id}`);
+    const userId = socket.data.userId;
+    console.log(`Socket connected: ${socket.id} for user ${userId}`);
+
+    // Join personal user room
+    socket.join(`user_${userId}`);
+    console.log(`Socket ${socket.id} joined personal room user_${userId}`);
 
     // Join a specific conversation room
     socket.on('join_conversation', (conversationId: string) => {
