@@ -37,13 +37,24 @@ export const ForgotPassword = () => {
       }
     };
   }, []);
-
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
     setPreviewUrl(null);
     setLoading(true);
+
+    if (!email.trim()) {
+      setError('Địa chỉ email không được để trống');
+      setLoading(false);
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Địa chỉ email không đúng định dạng');
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
@@ -77,7 +88,12 @@ export const ForgotPassword = () => {
     setSuccess(null);
     setLoading(true);
 
-    // Basic phone validation
+    if (!phoneNumber.trim()) {
+      setError('Số điện thoại không được để trống.');
+      setLoading(false);
+      return;
+    }
+
     const cleanPhone = phoneNumber.replace(/\s+/g, '');
     if (!/^\d{9,11}$/.test(cleanPhone)) {
       setError('Số điện thoại không hợp lệ. Vui lòng nhập từ 9-11 chữ số.');
@@ -85,7 +101,6 @@ export const ForgotPassword = () => {
       return;
     }
 
-    // Format to E.164 (Firebase requires +84 format for Vietnam)
     let formattedPhone = cleanPhone;
     if (formattedPhone.startsWith('0')) {
       formattedPhone = '+84' + formattedPhone.slice(1);

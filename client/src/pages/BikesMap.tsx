@@ -229,11 +229,11 @@ export const BikesMap = () => {
             <a href="/bikes/${bike._id || bike.id}" style="display: block; text-align: center; background-color: #ccff00; color: #000; font-weight: bold; padding: 8px 0; border-radius: 6px; text-decoration: none; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; transition: opacity 0.2s;">Xem chi tiết</a>
           `;
         } else {
-          // Nút Chat chuyển hướng sang trang /chat?with={ownerId}
+          // Nút Chat chuyển hướng sang trang /chat?with={ownerId}&vehicle={vehicleId}
           actionButtonsHtml = `
             <div style="display: flex; gap: 8px;">
               <a href="/bikes/${bike._id || bike.id}" style="flex: 1; text-align: center; background-color: #ccff00; color: #000; font-weight: bold; padding: 8px 0; border-radius: 6px; text-decoration: none; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; transition: opacity 0.2s;">Thuê ngay</a>
-              <a href="/chat?with=${ownerId}" style="flex: 1; text-align: center; background-color: #111; color: #00e5ff; border: 1px solid #00e5ff; font-weight: bold; padding: 8px 0; border-radius: 6px; text-decoration: none; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; transition: opacity 0.2s;">Chat</a>
+              <a href="/chat?with=${ownerId}&vehicle=${bike._id || bike.id}" style="flex: 1; text-align: center; background-color: #111; color: #00e5ff; border: 1px solid #00e5ff; font-weight: bold; padding: 8px 0; border-radius: 6px; text-decoration: none; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; transition: opacity 0.2s;">Chat</a>
             </div>
           `;
         }
