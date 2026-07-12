@@ -78,11 +78,14 @@ export const chatService = {
     return res.data;
   },
 
-  createConversation: async (partnerId: string, relatedBookingId: string | null, type: string): Promise<{ success: boolean; data: ConversationItem }> => {
+  createConversation: async (partnerId: string, relatedBookingId: string | null, type: string, relatedVehicleId?: string | null): Promise<{ success: boolean; data: ConversationItem }> => {
     const headers = getAuthHeaders();
     const payload: any = { partnerId, type };
     if (relatedBookingId) {
       payload.relatedBookingId = relatedBookingId;
+    }
+    if (relatedVehicleId) {
+      payload.relatedVehicleId = relatedVehicleId;
     }
     const res = await axios.post(`${API_URL}/conversations`, payload, headers);
     return res.data;

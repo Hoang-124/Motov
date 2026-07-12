@@ -105,7 +105,7 @@ export const AuthScreen: React.FC = () => {
     if (!isLogin) {
       if (fieldName === 'name') {
         if (!value.trim()) {
-          errorMsg = 'Họ và tên là bắt buộc.';
+          errorMsg = 'Họ và tên không được để trống';
         } else {
           const nameRegex = /[0-9!@#$%^&*(),.?":{}|<>]/;
           if (nameRegex.test(value)) {
@@ -116,7 +116,7 @@ export const AuthScreen: React.FC = () => {
 
       if (fieldName === 'username') {
         if (!value.trim()) {
-          errorMsg = 'Tên đăng nhập là bắt buộc.';
+          errorMsg = 'Tên đăng nhập không được để trống';
         } else if (value.length < 3 || value.length > 30) {
           errorMsg = 'Tên đăng nhập phải dài từ 3 đến 30 ký tự.';
         } else {
@@ -129,27 +129,25 @@ export const AuthScreen: React.FC = () => {
 
       if (fieldName === 'email') {
         if (!value.trim()) {
-          errorMsg = 'Địa chỉ email là bắt buộc.';
+          errorMsg = 'Địa chỉ email không được để trống';
         } else {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (!emailRegex.test(value.trim())) {
-            errorMsg = 'Địa chỉ email không đúng định dạng.';
+            errorMsg = 'Địa chỉ email không đúng định dạng';
           }
         }
       }
 
       if (fieldName === 'password') {
         if (!value) {
-          errorMsg = 'Mật khẩu là bắt buộc.';
-        } else if (value.length < 8) {
-          errorMsg = 'Mật khẩu phải dài ít nhất 8 ký tự.';
+          errorMsg = 'Mật khẩu không được để trống';
         } else {
           const hasLowercase = /[a-z]/.test(value);
           const hasUppercase = /[A-Z]/.test(value);
           const hasDigit = /[0-9]/.test(value);
           const hasSpecial = /[\W_]/.test(value);
-          if (!hasLowercase || !hasUppercase || !hasDigit || !hasSpecial) {
-            errorMsg = 'Mật khẩu phải gồm chữ thường, chữ hoa, số và ký tự đặc biệt.';
+          if (value.length < 8 || !hasLowercase || !hasUppercase || !hasDigit || !hasSpecial) {
+            errorMsg = 'Mật khẩu phải chứa ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và chữ số';
           }
         }
       }
@@ -157,15 +155,15 @@ export const AuthScreen: React.FC = () => {
       if (fieldName === 'confirmPassword') {
         const passwordToCompare = currentPassword !== undefined ? currentPassword : password;
         if (!value) {
-          errorMsg = 'Vui lòng xác nhận mật khẩu.';
+          errorMsg = 'Vui lòng xác nhận mật khẩu';
         } else if (value !== passwordToCompare) {
-          errorMsg = 'Mật khẩu xác nhận không trùng khớp.';
+          errorMsg = 'Mật khẩu xác nhận không trùng khớp với mật khẩu đã nhập';
         }
       }
     } else {
       if (fieldName === 'email') {
         if (!value.trim()) {
-          errorMsg = 'Vui lòng nhập tên đăng nhập hoặc email.';
+          errorMsg = 'Vui lòng nhập tên đăng nhập/email';
         } else if (value.includes('@')) {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (!emailRegex.test(value.trim())) {
@@ -182,7 +180,7 @@ export const AuthScreen: React.FC = () => {
       }
       if (fieldName === 'password') {
         if (!value) {
-          errorMsg = 'Vui lòng nhập mật khẩu.';
+          errorMsg = 'Vui lòng nhập mật khẩu';
         }
       }
     }
@@ -233,7 +231,7 @@ export const AuthScreen: React.FC = () => {
 
     if (!isLogin) {
       if (!name.trim()) {
-        errorsList.name = 'Họ và tên là bắt buộc.';
+        errorsList.name = 'Họ và tên không được để trống';
         isValid = false;
       } else if (/[0-9!@#$%^&*(),.?":{}|<>]/.test(name)) {
         errorsList.name = 'Họ và tên không được chứa số hoặc ký tự đặc biệt.';
@@ -241,7 +239,7 @@ export const AuthScreen: React.FC = () => {
       }
 
       if (!username.trim()) {
-        errorsList.username = 'Tên đăng nhập là bắt buộc.';
+        errorsList.username = 'Tên đăng nhập không được để trống';
         isValid = false;
       } else if (username.length < 3 || username.length > 30) {
         errorsList.username = 'Tên đăng nhập phải dài từ 3 đến 30 ký tự.';
@@ -252,40 +250,37 @@ export const AuthScreen: React.FC = () => {
       }
 
       if (!email.trim()) {
-        errorsList.email = 'Địa chỉ email là bắt buộc.';
+        errorsList.email = 'Địa chỉ email không được để trống';
         isValid = false;
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        errorsList.email = 'Địa chỉ email không đúng định dạng.';
+        errorsList.email = 'Địa chỉ email không đúng định dạng';
         isValid = false;
       }
 
       if (!password) {
-        errorsList.password = 'Mật khẩu là bắt buộc.';
-        isValid = false;
-      } else if (password.length < 8) {
-        errorsList.password = 'Mật khẩu phải dài ít nhất 8 ký tự.';
+        errorsList.password = 'Mật khẩu không được để trống';
         isValid = false;
       } else {
         const hasLowercase = /[a-z]/.test(password);
         const hasUppercase = /[A-Z]/.test(password);
         const hasDigit = /[0-9]/.test(password);
         const hasSpecial = /[\W_]/.test(password);
-        if (!hasLowercase || !hasUppercase || !hasDigit || !hasSpecial) {
-          errorsList.password = 'Mật khẩu phải gồm chữ thường, chữ hoa, số và ký tự đặc biệt.';
+        if (password.length < 8 || !hasLowercase || !hasUppercase || !hasDigit || !hasSpecial) {
+          errorsList.password = 'Mật khẩu phải chứa ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và chữ số';
           isValid = false;
         }
       }
 
       if (!confirmPassword) {
-        errorsList.confirmPassword = 'Vui lòng xác nhận mật khẩu.';
+        errorsList.confirmPassword = 'Vui lòng xác nhận mật khẩu';
         isValid = false;
       } else if (confirmPassword !== password) {
-        errorsList.confirmPassword = 'Mật khẩu xác nhận không trùng khớp.';
+        errorsList.confirmPassword = 'Mật khẩu xác nhận không trùng khớp với mật khẩu đã nhập';
         isValid = false;
       }
     } else {
       if (!email.trim()) {
-        errorsList.email = 'Vui lòng nhập tên đăng nhập hoặc email.';
+        errorsList.email = 'Vui lòng nhập tên đăng nhập/email';
         isValid = false;
       } else if (email.includes('@')) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -305,7 +300,7 @@ export const AuthScreen: React.FC = () => {
       }
 
       if (!password) {
-        errorsList.password = 'Vui lòng nhập mật khẩu.';
+        errorsList.password = 'Vui lòng nhập mật khẩu';
         isValid = false;
       }
     }

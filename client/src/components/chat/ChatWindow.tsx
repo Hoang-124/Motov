@@ -6,11 +6,16 @@ import { Image as ImageIcon, ShieldCheck } from 'lucide-react';
 
 export const ChatWindow = () => {
   const { messages, activeConversation, loadMoreMessages } = useChat();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
   }, [messages]);
 
   const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -81,6 +86,7 @@ export const ChatWindow = () => {
 
       {/* Messages Area */}
       <div 
+        ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col gap-4"
         onScroll={handleScroll}
       >
@@ -101,7 +107,6 @@ export const ChatWindow = () => {
             return <MessageBubble key={msg._id || idx} message={msg} isMine={isMine} />;
           })
         )}
-        <div ref={messagesEndRef} className="h-4" />
       </div>
 
       {/* Input Area */}

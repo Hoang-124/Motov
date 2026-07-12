@@ -36,6 +36,7 @@ export const Profile = () => {
   const [gender, setGender] = useState<'Male' | 'Female' | 'Other' | ''>('');
   const [dob, setDob] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [profileErrors, setProfileErrors] = useState<{ lastName?: string; firstName?: string }>({});
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -295,6 +296,7 @@ export const Profile = () => {
       }, 2500);
     } catch (err) {
       setLivenessLogs(prev => [...prev, 'Lỗi: Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập camera trên trình duyệt.']);
+      setEkycError('Hệ thống cần quyền truy cập camera để thực hiện xác thực khuôn mặt');
       console.error('Camera error:', err);
     }
   };
@@ -454,8 +456,14 @@ export const Profile = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+      setEkycError('Định dạng file không hỗ trợ');
+      return;
+    }
+
     if (file.size > 2 * 1024 * 1024) {
-      setEkycError('Kích thước ảnh không được vượt quá 2MB');
+      setEkycError('Dung lượng file không được vượt quá 2MB');
       return;
     }
 
@@ -613,6 +621,24 @@ export const Profile = () => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setProfileErrors({});
+
+    let hasErr = false;
+    const newErrors: any = {};
+    if (!lastName.trim()) {
+      newErrors.lastName = 'Please fill out this field';
+      hasErr = true;
+    }
+    if (!firstName.trim()) {
+      newErrors.firstName = 'Please fill out this field';
+      hasErr = true;
+    }
+
+    if (hasErr) {
+      setProfileErrors(newErrors);
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -1071,9 +1097,17 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
                       type="text" 
                       placeholder="Nhập họ và tên đệm"
                       value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3 outline-none transition-all"
+                      onChange={(e) => {
+                        setLastName(e.target.value);
+                        if (profileErrors.lastName) {
+                          setProfileErrors(prev => ({ ...prev, lastName: undefined }));
+                        }
+                      }}
+                      className={`w-full bg-black/50 border text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3 outline-none transition-all ${profileErrors.lastName ? 'border-red-500/50' : 'border-gray-800'}`}
                     />
+                    {profileErrors.lastName && (
+                      <p className="text-red-500 text-xs mt-1">{profileErrors.lastName}</p>
+                    )}
                   </div>
 
                   {/* Tên */}
@@ -1081,12 +1115,19 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
                     <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Tên</label>
                     <input 
                       type="text" 
-                      required
                       placeholder="Nhập tên"
                       value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3 outline-none transition-all"
+                      onChange={(e) => {
+                        setFirstName(e.target.value);
+                        if (profileErrors.firstName) {
+                          setProfileErrors(prev => ({ ...prev, firstName: undefined }));
+                        }
+                      }}
+                      className={`w-full bg-black/50 border text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-3 outline-none transition-all ${profileErrors.firstName ? 'border-red-500/50' : 'border-gray-800'}`}
                     />
+                    {profileErrors.firstName && (
+                      <p className="text-red-500 text-xs mt-1">{profileErrors.firstName}</p>
+                    )}
                   </div>
                 </div>
 
@@ -1315,7 +1356,7 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
                       disabled={savingOwnerRequest}
                       className="w-full bg-neon text-dark font-bold py-3 rounded-lg hover:bg-[#bbf000] transition-all duration-300 shadow-[0_0_12px_rgba(204,255,0,0.2)] font-display uppercase tracking-wider text-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      {savingOwnerRequest ? 'Đang gửi yêu cầu...' : 'Xem & ký hợp đồng đối tác'}
+                      {savingOwnerRequest ? 'Đang gửi yêu cầu...' : 'XEM & KÝ HỢP ĐỒNG ĐỐI TÁC'}
                     </button>
                   )}
 
@@ -1349,7 +1390,7 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
                         disabled={savingOwnerRequest}
                         className="w-full bg-neon text-dark font-bold py-3 rounded-lg hover:bg-[#bbf000] transition-all duration-300 shadow-[0_0_12px_rgba(204,255,0,0.2)] font-display uppercase tracking-wider text-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
                       >
-                        {savingOwnerRequest ? 'Đang gửi lại...' : 'Xem & ký lại hợp đồng'}
+                        {savingOwnerRequest ? 'Đang gửi lại...' : 'XEM & KÝ LẠI HỢP ĐỒNG'}
                       </button>
                     </div>
                   )}
@@ -1524,8 +1565,12 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
 
                         <div className="pt-4 border-t border-white/5 flex justify-end">
                           <button
-                            disabled={!cardFront || !cardBack || uploadingCard !== null}
+                            disabled={uploadingCard !== null}
                             onClick={() => {
+                              if (!cardFront || !cardBack) {
+                                setEkycError('Vui lòng tải lên đầy đủ cả mặt trước và mặt sau của CCCD.');
+                                return;
+                              }
                               setEkycStep('liveness');
                               startCamera();
                             }}
@@ -1616,6 +1661,17 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
                             className="bg-white/5 text-gray-400 hover:text-white border border-white/10 px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer"
                           >
                             Quay lại
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={!isCameraActive}
+                            onClick={() => {
+                              // startCamera is already triggered automatically upon entering step
+                            }}
+                            className="bg-neon disabled:opacity-50 disabled:cursor-not-allowed text-dark font-black px-5 py-2.5 rounded-lg text-xs uppercase tracking-wider cursor-pointer"
+                          >
+                            Bắt đầu
                           </button>
                         </div>
                       </div>

@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, ReactNode, useCallback, useR
 import { io, Socket } from 'socket.io-client';
 import { chatService, ConversationItem, ChatMessage } from '../services/chatService';
 import DOMPurify from 'dompurify';
+import { useLocation } from 'react-router-dom';
 
 interface ChatContextProps {
   socket: Socket | null;
@@ -18,12 +19,14 @@ interface ChatContextProps {
 export const ChatContext = createContext<ChatContextProps | undefined>(undefined);
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
+  const location = useLocation();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [activeConversation, setActiveConversation] = useState<ConversationItem | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [skip, setSkip] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const limit = 50;
 
   // Initialize Socket Connection
@@ -64,11 +67,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data } = await chatService.getConversations();
       setConversations(data);
+      setConversationsLoaded(true);
       // Calculate unread globally if needed based on data
       // Mock unread count logic:
       // setUnreadCount(data.filter(c => c.lastMessage && !c.lastMessage.readBy.includes(myUserId)).length);
     } catch (err) {
       console.error('Failed to fetch conversations', err);
+      setConversationsLoaded(true);
     }
   }, []);
 
@@ -110,7 +115,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const { data: newMessage } = await chatService.sendMessage(activeConversation._id, cleanContent);
-      setMessages((prev) => [...prev, newMessage]);
       // Update the lastMessage in conversations list
       setConversations((prev) => prev.map(c => 
         c._id === activeConversation._id ? { ...c, lastMessage: newMessage } : c
@@ -128,8 +132,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       // If the message is for the active conversation, append it
       if (activeConversation && message.conversationId === activeConversation._id) {
         setMessages((prev) => {
-          // Prevent duplicates
-          if (prev.find(m => m._id === message._id)) return prev;
+          // Prevent duplicates by comparing string values of IDs
+          if (prev.find(m => String(m._id) === String(message._id))) return prev;
           return [...prev, message];
         });
         // Optionally mark as read immediately if window is focused
@@ -160,7 +164,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const partnerId = params.get('with');
-    if (!partnerId || conversations.length === 0 || parsedWithRef.current === partnerId) return;
+    const vehicleId = params.get('vehicle');
+    
+    if (!partnerId) {
+      parsedWithRef.current = null;
+      return;
+    }
+
+    if (!conversationsLoaded || parsedWithRef.current === partnerId) return;
 
     parsedWithRef.current = partnerId;
 
@@ -175,7 +186,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       // Create new conversation
       const initNewConv = async () => {
         try {
-          const res = await chatService.createConversation(partnerId, null, 'Direct');
+          const res = await chatService.createConversation(partnerId, null, 'customer-owner', vehicleId);
           if (res.success && res.data) {
             setConversations(prev => [res.data, ...prev]);
             selectConversation(res.data);
@@ -186,7 +197,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       };
       initNewConv();
     }
-  }, [conversations, selectConversation]);
+  }, [conversations, conversationsLoaded, location.search, selectConversation]);
 
   return (
     <ChatContext.Provider value={{
