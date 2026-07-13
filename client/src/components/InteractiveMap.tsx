@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 interface InteractiveMapProps {
-  status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled';
+  status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Returning' | 'Completed' | 'Cancelled';
   pickupAddress?: string;
   returnAddress?: string;
 }
