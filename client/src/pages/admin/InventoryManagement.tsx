@@ -105,6 +105,19 @@ export const InventoryManagement = () => {
     setIsDeleteOpen(true);
   };
 
+  // Handler chặn ký tự không phải số cho các trường number
+  const handleNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Cho phép: số 0-9, Backspace, Delete, Tab, Enter, mũi tên, Home, End, dấu chấm/phẩy
+    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', '.'];
+    if (allowedKeys.includes(e.key)) return;
+    // Cho phép Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+    if (e.ctrlKey || e.metaKey) return;
+    // Chặn nếu không phải số
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   // Submit Add/Edit Form
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -508,6 +521,7 @@ export const InventoryManagement = () => {
                       required
                       min="0"
                       value={minQuantity}
+                      onKeyDown={handleNumberKeyDown}
                       onChange={e => setMinQuantity(e.target.value)}
                       className="w-full bg-black/50 border border-gray-800 text-gray-300 rounded-lg p-3 outline-none focus:ring-1 focus:ring-neon focus:border-transparent transition-all font-mono"
                     />
@@ -521,6 +535,7 @@ export const InventoryManagement = () => {
                       min="0"
                       placeholder="Ví dụ: 120000"
                       value={price}
+                      onKeyDown={handleNumberKeyDown}
                       onChange={e => setPrice(e.target.value)}
                       className="w-full bg-black/50 border border-gray-800 text-gray-300 rounded-lg p-3 outline-none focus:ring-1 focus:ring-neon focus:border-transparent transition-all font-mono"
                     />
