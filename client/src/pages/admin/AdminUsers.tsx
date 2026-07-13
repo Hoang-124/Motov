@@ -167,7 +167,7 @@ export const AdminUsers = () => {
 
       // Build query params
       const params = new URLSearchParams();
-      if (search) params.append('search', search);
+      if (debouncedSearch) params.append('search', debouncedSearch);
       if (roleFilter) params.append('role', roleFilter);
       if (statusFilter) params.append('status', statusFilter);
 
@@ -192,6 +192,13 @@ export const AdminUsers = () => {
     }
   };
 
+  // L\u1ed7i 96: Debounce search 400ms \u0111\u1ec3 tr\u00e1nh g\u1ecdi API m\u1ed7i k\u00fd t\u1ef1
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   // Trigger load when search/filters change or tab changes
   useEffect(() => {
     if (activeTab === 'users') {
@@ -199,7 +206,7 @@ export const AdminUsers = () => {
     } else {
       fetchEkycRequests();
     }
-  }, [search, roleFilter, statusFilter, activeTab]);
+  }, [debouncedSearch, roleFilter, statusFilter, activeTab]);
 
   // Display Toast messages
   const showToast = (message: string, isError = false) => {
