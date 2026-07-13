@@ -56,7 +56,20 @@ export const ChatLayout = () => {
               </button>
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-white truncate text-[15px]">
-                  {activeConversation.participants.find(p => p._id !== JSON.parse(localStorage.getItem('user') || '{}').id)?.firstName || 'User'}
+                  {activeConversation?.participants && Array.isArray(activeConversation.participants)
+                    ? (() => {
+                        let myId = '';
+                        try {
+                          const parsed = JSON.parse(localStorage.getItem('user') || '{}');
+                          myId = parsed.id || parsed._id || '';
+                        } catch (e) {}
+                        return (activeConversation.participants.find(p => {
+                          if (!p) return false;
+                          const pId = typeof p === 'object' ? p._id : p;
+                          return pId !== myId;
+                        }) as any)?.firstName || 'User';
+                      })()
+                    : 'User'}
                 </h3>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <ImageIcon className="w-3 h-3 text-neon" />
