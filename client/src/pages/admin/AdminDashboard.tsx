@@ -269,7 +269,7 @@ export const AdminDashboard = () => {
           statusCounts['Đã hủy']++;
         }
         
-        if (b.status === 'Ongoing') {
+        if (b.status === 'Ongoing' || b.status === 'Returning') {
           renting++;
         }
       });
