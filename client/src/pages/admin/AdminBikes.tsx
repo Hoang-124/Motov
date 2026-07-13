@@ -222,18 +222,17 @@ export const AdminBikes = () => {
         return;
       }
 
-      if (!vehicleModel.trim()) {
-        setErrorMessage('Tên dòng xe là bắt buộc.');
+      // Lỗi 87: Validate tất cả trường bắt buộc, báo lỗi tổng hợp
+      if (!vehicleModel.trim() || !licensePlate.trim() || !category.trim() || !transmissionType || rentalPrice === '' || Number(rentalPrice) <= 0) {
+        setErrorMessage('Vui lòng điền đầy đủ các trường thông tin bắt buộc (Tên xe, Biển số, Phân loại, Hộp số, Giá thuê).');
         return;
       }
 
-      if (!licensePlate.trim()) {
-        setErrorMessage('Biển số xe là bắt buộc.');
-        return;
-      }
-
-      if (!category.trim()) {
-        setErrorMessage('Phân loại xe là bắt buộc.');
+      // Lỗi 88: Validate định dạng biển số xe Việt Nam
+      // Chuẩn: 2 số + 1-2 chữ cái + 1 số + dấu gạch ngang + 4-5 số (VD: 29A1-99999, 43H1-12345, 51G-12345)
+      const vnLicensePlateRegex = /^[0-9]{2}[A-Z]{1,2}[0-9]?-[0-9]{4,5}$|^[0-9]{2}[A-Z]{1,2}[0-9]?-[0-9]{3}\.[0-9]{2}$/i;
+      if (!vnLicensePlateRegex.test(licensePlate.trim().replace(/\s/g, ''))) {
+        setErrorMessage('Biển số xe không đúng định dạng Việt Nam. Ví dụ hợp lệ: 29A1-99999, 43H1-12345, 51G-12345.');
         return;
       }
 
@@ -248,7 +247,7 @@ export const AdminBikes = () => {
 
       const bikeData: Partial<Motorbike> = {
         vehicleModel: vehicleModel.trim(),
-        licensePlate: licensePlate.trim(),
+        licensePlate: licensePlate.trim().toUpperCase(),
         category,
         imageUrls: normalizedImageUrls,
         features: normalizedFeatures,
