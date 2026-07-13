@@ -37,21 +37,35 @@ export const createOrGetConversation = async (participantIds: string[], type: 'c
     type
   };
 
-  if (relatedBookingId) {
-    query.relatedBooking = new mongoose.Types.ObjectId(relatedBookingId);
-  } else {
-    query.relatedBooking = { $exists: false };
-  }
-
-  if (relatedVehicleId) {
-    query.relatedVehicle = new mongoose.Types.ObjectId(relatedVehicleId);
-  } else {
-    query.relatedVehicle = { $exists: false };
-  }
-
   let conversation = await Conversation.findOne(query);
 
-  if (!conversation) {
+  if (conversation) {
+    let needsUpdate = false;
+    if (relatedBookingId) {
+      const bookingObjId = new mongoose.Types.ObjectId(relatedBookingId);
+      if (conversation.relatedBooking?.toString() !== relatedBookingId) {
+        conversation.relatedBooking = bookingObjId;
+        needsUpdate = true;
+      }
+      if (conversation.relatedVehicle) {
+        conversation.relatedVehicle = undefined;
+        needsUpdate = true;
+      }
+    } else if (relatedVehicleId) {
+      const vehicleObjId = new mongoose.Types.ObjectId(relatedVehicleId);
+      if (conversation.relatedVehicle?.toString() !== relatedVehicleId) {
+        conversation.relatedVehicle = vehicleObjId;
+        needsUpdate = true;
+      }
+      if (conversation.relatedBooking) {
+        conversation.relatedBooking = undefined;
+        needsUpdate = true;
+      }
+    }
+    if (needsUpdate) {
+      await conversation.save();
+    }
+  } else {
     const createData: any = {
       participants: participantsObjIds,
       type
@@ -64,6 +78,14 @@ export const createOrGetConversation = async (participantIds: string[], type: 'c
     }
     conversation = await Conversation.create(createData);
   }
+
+  // Populate conversation fields to match client-side expectations
+  await conversation.populate([
+    { path: 'participants', select: 'firstName lastName email username' },
+    { path: 'relatedBooking', select: 'bookingCode status pickupDateTime returnDateTime vehicleSnapshot' },
+    { path: 'relatedVehicle', select: 'vehicleModel imageUrls licensePlate' },
+    { path: 'lastMessage' }
+  ]);
 
   return conversation;
 };

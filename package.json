@@ -8,6 +8,8 @@
     "mobile"
   ],
   "scripts": {
+    "predev": "powershell.exe -File scripts/start-mongodb.ps1",
+    "premobile": "powershell.exe -File scripts/start-mongodb.ps1",
     "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "mobile": "concurrently \"npm run dev --prefix server\" \"npm run start --prefix mobile\"",
     "kill:port": "powershell.exe -Command \"$p = (Get-NetTCPConnection -LocalPort 5000 -State Listen -ErrorAction SilentlyContinue).OwningProcess; if ($p) { Stop-Process -Id $p -Force; Write-Host 'Killed PID' $p } else { Write-Host 'Port 5000 is free' }\"",

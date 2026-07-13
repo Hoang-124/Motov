@@ -180,28 +180,48 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Use composite key so switching between different vehicles of same owner creates correct conversations
+    // Use composite key to detect changes in partner and vehicle to trigger context updates
     const compositeKey = vehicleId ? `${partnerId}_${vehicleId}` : partnerId;
     if (!conversationsLoaded || parsedWithRef.current === compositeKey) return;
 
     parsedWithRef.current = compositeKey;
 
-    // Check if we already have a conversation with this partner (and optionally this vehicle)
+    // Check if we already have a conversation with this partner (regardless of vehicle)
     const existing = conversations.find(c => {
-      const hasPartner = c.participants && c.participants.some(p => p._id === partnerId);
-      if (!hasPartner) return false;
-      // If vehicleId provided, match on relatedVehicle too
-      if (vehicleId) {
-        const convVehicleId = typeof c.relatedVehicle === 'object'
-          ? (c.relatedVehicle as any)?._id
-          : c.relatedVehicle;
-        return convVehicleId === vehicleId || !convVehicleId; // prefer vehicle-specific, fallback to generic
-      }
-      return true;
+      const hasPartner = c.participants && Array.isArray(c.participants) && c.participants.some(p => {
+        const pId = typeof p === 'object' && p ? (p as any)._id : p;
+        return pId === partnerId;
+      });
+      return hasPartner;
     });
 
     if (existing) {
-      selectConversation(existing);
+      const convVehicleId = typeof existing.relatedVehicle === 'object'
+        ? (existing.relatedVehicle as any)?._id
+        : existing.relatedVehicle;
+
+      // If a vehicle context was passed and it differs from the current conversation's vehicle context,
+      // update the context on the backend so the sidebar/header displays the correct vehicle info.
+      if (vehicleId && convVehicleId !== vehicleId) {
+        const updateContext = async () => {
+          try {
+            const res = await chatService.createConversation(partnerId, null, 'customer-owner', vehicleId);
+            if (res.success && res.data) {
+              setConversations(prev => {
+                const filtered = prev.filter(c => c._id !== res.data._id);
+                return [res.data, ...filtered];
+              });
+              selectConversation(res.data);
+            }
+          } catch (err) {
+            console.error('Lỗi khi cập nhật ngữ cảnh xe cho cuộc trò chuyện:', err);
+            selectConversation(existing);
+          }
+        };
+        updateContext();
+      } else {
+        selectConversation(existing);
+      }
     } else {
       // Create new conversation
       const initNewConv = async () => {
