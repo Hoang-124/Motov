@@ -26,6 +26,10 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
   // Inline field errors
   const [odometerError, setOdometerError] = useState<string | null>(null);
   const [returnTimeError, setReturnTimeError] = useState<string | null>(null);
+  // Lỗi 77: Checklist chưa tích đủ
+  const [checklistError, setChecklistError] = useState(false);
+  // Lỗi 78: Ảnh chưa upload đủ
+  const [photosError, setPhotosError] = useState(false);
   const [checklist, setChecklist] = useState({
     helmetsReturned: false,
     mirrorsIntact: false,
@@ -51,6 +55,8 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
       setEndOdometer(startOdometer ? startOdometer.toString() : '');
       setOdometerError(null);
       setReturnTimeError(null);
+      setChecklistError(false);
+      setPhotosError(false);
       setChecklist({
         helmetsReturned: false,
         mirrorsIntact: false,
@@ -116,15 +122,21 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
     }
     setOdometerError(null);
 
+    // Lỗi 77: Checklist thiếu ô nào chưa tích
     if (!checklist.helmetsReturned || !checklist.mirrorsIntact || !checklist.noNewScratches) {
-      setError('Vui lòng kiểm tra và xác nhận đầy đủ hiện trạng thiết bị thu hồi.');
+      setChecklistError(true);
+      setError('Vui lòng tích chọn xác nhận đầy đủ các tình trạng kiểm tra khi thu hồi xe.');
       return;
     }
+    setChecklistError(false);
 
+    // Lỗi 78: Chưa upload đủ 4 góc ảnh
     if (!photos.front || !photos.back || !photos.left || !photos.right) {
+      setPhotosError(true);
       setError('Vui lòng chụp đầy đủ 4 hướng góc ảnh của xe lúc thu hồi.');
       return;
     }
+    setPhotosError(false);
 
     if (!returnReason.trim()) {
       setError('Vui lòng nhập lý do thu hồi xe.');
@@ -265,12 +277,18 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
                 <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
                   Kiểm tra khi thu hồi xe *
                 </label>
-                <div className="bg-black/40 border border-gray-800 rounded-xl p-3 space-y-2.5">
+                {/* Lỗi 77: border đỏ khi chưa tích đủ */}
+                <div className={`bg-black/40 border rounded-xl p-3 space-y-2.5 ${
+                  checklistError ? 'border-red-500' : 'border-gray-800'
+                }`}>
                   <label className="flex items-center gap-2.5 text-xs text-gray-300 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={checklist.helmetsReturned}
-                      onChange={(e) => setChecklist(prev => ({ ...prev, helmetsReturned: e.target.checked }))}
+                      onChange={(e) => {
+                        setChecklist(prev => ({ ...prev, helmetsReturned: e.target.checked }));
+                        if (e.target.checked) setChecklistError(false);
+                      }}
                       className="accent-neon w-4 h-4 rounded"
                     />
                     <span>Khách trả đủ 02 Mũ bảo hiểm đã giao</span>
@@ -279,7 +297,10 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
                     <input
                       type="checkbox"
                       checked={checklist.mirrorsIntact}
-                      onChange={(e) => setChecklist(prev => ({ ...prev, mirrorsIntact: e.target.checked }))}
+                      onChange={(e) => {
+                        setChecklist(prev => ({ ...prev, mirrorsIntact: e.target.checked }));
+                        if (e.target.checked) setChecklistError(false);
+                      }}
                       className="accent-neon w-4 h-4 rounded"
                     />
                     <span>02 Gương chiếu hậu nguyên vẹn, không vỡ</span>
@@ -288,12 +309,21 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
                     <input
                       type="checkbox"
                       checked={checklist.noNewScratches}
-                      onChange={(e) => setChecklist(prev => ({ ...prev, noNewScratches: e.target.checked }))}
+                      onChange={(e) => {
+                        setChecklist(prev => ({ ...prev, noNewScratches: e.target.checked }));
+                        if (e.target.checked) setChecklistError(false);
+                      }}
                       className="accent-neon w-4 h-4 rounded"
                     />
                     <span>Xác nhận không phát sinh thêm vết móp/xước mới</span>
                   </label>
                 </div>
+                {/* Lỗi 77: hiển thị cảnh báo */}
+                {checklistError && (
+                  <p className="text-[11px] text-red-400 font-semibold flex items-center gap-1">
+                    <span>⚠️</span> Vui lòng tích chọn xác nhận đầy đủ các tình trạng kiểm tra khi thu hồi xe.
+                  </p>
+                )}
               </div>
 
               {/* Ảnh chụp thu hồi */}
@@ -302,6 +332,12 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
                   <Camera size={12} className="text-neon" />
                   Ảnh chụp hiện trạng lúc thu hồi xe *
                 </label>
+                {/* Lỗi 78: hiển thị cảnh báo nếu đang có lỗi ảnh */}
+                {photosError && (
+                  <p className="text-[11px] text-red-400 font-semibold flex items-center gap-1 mb-1">
+                    <span>⚠️</span> Vui lòng tải lên đủ 4 góc ảnh hiện trạng xe (Trước, Sau, Trái, Phải).
+                  </p>
+                )}
                 <div className="grid grid-cols-4 gap-2">
                   {[
                     { key: 'front', label: 'Trước' },
@@ -311,7 +347,10 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
                   ].map((dir) => (
                     <div key={dir.key} className="flex flex-col gap-1 text-center">
                       <span className="text-[8px] text-gray-400 font-bold uppercase">{dir.label}</span>
-                      <div className="aspect-[4/3] w-full bg-black/60 border border-dashed border-gray-800 rounded-lg overflow-hidden relative flex flex-col items-center justify-center cursor-pointer hover:border-neon/40 transition-colors group">
+                      {/* Lỗi 78: border đỏ cho ô ảnh chưa upload */}
+                      <div className={`aspect-[4/3] w-full bg-black/60 border rounded-lg overflow-hidden relative flex flex-col items-center justify-center cursor-pointer hover:border-neon/40 transition-colors group ${
+                        photosError && !photos[dir.key] ? 'border-red-500 border-dashed' : 'border-dashed border-gray-800'
+                      }`}>
                         {photos[dir.key] ? (
                           <>
                             <img src={photos[dir.key]} alt={dir.label} className="w-full h-full object-cover" />
@@ -332,7 +371,10 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
                             <input
                               type="file"
                               accept="image/*"
-                              onChange={(e) => handlePhotoUpload(dir.key, e)}
+                              onChange={(e) => {
+                                handlePhotoUpload(dir.key, e);
+                                setPhotosError(false);
+                              }}
                               className="hidden"
                             />
                           </label>
