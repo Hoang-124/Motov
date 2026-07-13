@@ -493,6 +493,12 @@ export const InventoryManagement = () => {
                       onChange={e => setQuantity(e.target.value)}
                       className="w-full bg-black/50 border border-gray-800 text-gray-300 rounded-lg p-3 outline-none focus:ring-1 focus:ring-neon focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed font-mono"
                     />
+                    {!!selectedItem && (
+                      <p className="text-[10px] text-yellow-500/80 flex items-center gap-1 mt-1">
+                        <Info size={10} className="shrink-0" />
+                        Chỉ đọc khi cập nhật. Dùng nút <strong>Nhập / Xuất kho</strong> để điều chỉnh số lượng tồn kho.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
