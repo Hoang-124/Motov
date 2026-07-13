@@ -8,7 +8,7 @@ interface BookingTrackingModalProps {
   isOpen: boolean;
   onClose: () => void;
   bookingId: string | null;
-  status?: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled';
+  status?: 'Pending' | 'Confirmed' | 'Ongoing' | 'Returning' | 'Completed' | 'Cancelled';
   pickupAddress?: string;
   returnAddress?: string;
 }
