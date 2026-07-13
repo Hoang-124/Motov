@@ -23,6 +23,9 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
   const [actualReturnTime, setActualReturnTime] = useState('');
   const [returnReason, setReturnReason] = useState('');
   const [endOdometer, setEndOdometer] = useState('');
+  // Inline field errors
+  const [odometerError, setOdometerError] = useState<string | null>(null);
+  const [returnTimeError, setReturnTimeError] = useState<string | null>(null);
   const [checklist, setChecklist] = useState({
     helmetsReturned: false,
     mirrorsIntact: false,
@@ -46,6 +49,8 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
       setActualReturnTime(localDateTime);
       setReturnReason('');
       setEndOdometer(startOdometer ? startOdometer.toString() : '');
+      setOdometerError(null);
+      setReturnTimeError(null);
       setChecklist({
         helmetsReturned: false,
         mirrorsIntact: false,
@@ -80,10 +85,14 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
     e.preventDefault();
     if (!bookingId) return;
 
+    // Lỗi 76: Validate thời gian trả xe không được trước thời gian nhận xe
     if (pickupDateTime && new Date(actualReturnTime) < new Date(pickupDateTime)) {
-      setError('Thời gian trả xe không thể trước thời gian nhận xe.');
+      const msg = 'Thời gian trả xe không thể trước thời gian nhận xe.';
+      setReturnTimeError(msg);
+      setError(msg);
       return;
     }
+    setReturnTimeError(null);
 
     if (!endOdometer.trim()) {
       setError('Vui lòng nhập số Odometer hiện tại của xe máy.');
@@ -92,14 +101,20 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
 
     const endOdoVal = Number(endOdometer);
     if (isNaN(endOdoVal) || endOdoVal < 0) {
-      setError('Số Odometer không hợp lệ (phải là số không âm).');
+      const msg = 'Số Odometer không hợp lệ (phải là số không âm).';
+      setOdometerError(msg);
+      setError(msg);
       return;
     }
 
+    // Lỗi 75: Validate Odometer trả xe không được nhỏ hơn lúc nhận xe
     if (endOdoVal < startOdometer) {
-      setError(`Số Odometer trả xe (${endOdoVal} km) không được nhỏ hơn lúc nhận (${startOdometer} km).`);
+      const msg = `Số Odometer hiện tại (${endOdoVal} km) không được nhỏ hơn Số Odometer lúc nhận xe (${startOdometer} km).`;
+      setOdometerError(msg);
+      setError(msg);
       return;
     }
+    setOdometerError(null);
 
     if (!checklist.helmetsReturned || !checklist.mirrorsIntact || !checklist.noNewScratches) {
       setError('Vui lòng kiểm tra và xác nhận đầy đủ hiện trạng thiết bị thu hồi.');
@@ -181,14 +196,30 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
                   <input
                     type="datetime-local"
                     value={actualReturnTime}
-                    onChange={(e) => setActualReturnTime(e.target.value)}
-                    className="pl-10 w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-2.5 outline-none transition-all cursor-pointer"
+                    onChange={(e) => {
+                      setActualReturnTime(e.target.value);
+                      // Lỗi 76: Real-time validate khi người dùng thay đổi thời gian
+                      if (pickupDateTime && new Date(e.target.value) < new Date(pickupDateTime)) {
+                        setReturnTimeError('Thời gian trả xe không thể trước thời gian nhận xe.');
+                      } else {
+                        setReturnTimeError(null);
+                      }
+                    }}
+                    className={`pl-10 w-full bg-black/50 border text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-2.5 outline-none transition-all cursor-pointer ${
+                      returnTimeError ? 'border-red-500' : 'border-gray-800'
+                    }`}
                     required
                   />
                 </div>
                 {pickupDateTime && (
                   <p className="mt-1 text-[10px] text-gray-500">
                     Nhận xe lúc: {new Date(pickupDateTime).toLocaleString('vi-VN')}
+                  </p>
+                )}
+                {/* Inline error lỗi 76 */}
+                {returnTimeError && (
+                  <p className="text-[11px] text-red-400 font-semibold flex items-center gap-1 mt-1">
+                    <span>⚠️</span> {returnTimeError}
                   </p>
                 )}
               </div>
@@ -201,15 +232,32 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
                 <input
                   type="number"
                   value={endOdometer}
-                  onChange={(e) => setEndOdometer(e.target.value)}
+                  onChange={(e) => {
+                    setEndOdometer(e.target.value);
+                    // Lỗi 75: Real-time validate Odometer khi người dùng nhập
+                    const val = Number(e.target.value);
+                    if (e.target.value !== '' && !isNaN(val) && val < startOdometer) {
+                      setOdometerError(`Số Odometer hiện tại không được nhỏ hơn Số Odometer lúc nhận xe (${startOdometer} km).`);
+                    } else {
+                      setOdometerError(null);
+                    }
+                  }}
                   min={startOdometer}
                   placeholder={`Nhập số km hiện tại (>= ${startOdometer} km)`}
-                  className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-2.5 outline-none transition-all font-mono"
+                  className={`w-full bg-black/50 border text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-2.5 outline-none transition-all font-mono ${
+                    odometerError ? 'border-red-500' : 'border-gray-800'
+                  }`}
                   required
                 />
                 <p className="mt-1 text-[10px] text-gray-500">
                   Odometer lúc nhận: {startOdometer} km
                 </p>
+                {/* Inline error lỗi 75 */}
+                {odometerError && (
+                  <p className="text-[11px] text-red-400 font-semibold flex items-center gap-1 mt-1">
+                    <span>⚠️</span> {odometerError}
+                  </p>
+                )}
               </div>
 
               {/* Checklist thu hồi */}
