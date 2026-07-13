@@ -7,10 +7,14 @@ import { useLanguage } from '../hooks/useLanguage';
 import { feedbackService } from '../services/feedbackService';
 import { BookingTrackingModal } from '../components/BookingTrackingModal';
 import { useToast } from '../hooks/useToast';
+import { BookingChatFAB } from '../components/chat/BookingChatFAB';
+import { BookingChatModal } from '../components/chat/BookingChatModal';
+import { useBookingChat } from '../hooks/useBookingChat';
 
 export const Bookings = () => {
   const { language, t } = useLanguage();
   const { showToast } = useToast();
+  const { isChatOpen, openChat, closeChat } = useBookingChat();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -27,6 +31,7 @@ export const Bookings = () => {
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [activeReturnBooking, setActiveReturnBooking] = useState<Booking | null>(null);
   const [endOdometerInput, setEndOdometerInput] = useState('');
+  const [returnReason, setReturnReason] = useState('');
 
   // State cho Modal hủy đơn
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -172,59 +177,35 @@ export const Bookings = () => {
   const openReturnModal = (booking: Booking) => {
     setActiveReturnBooking(booking);
     setEndOdometerInput(booking.startOdometer ? booking.startOdometer.toString() : '');
+    setReturnReason('');
     setShowReturnModal(true);
   };
 
-  // Hàm gọi API trả xe máy từ Modal
+  // Hàm gọi API trả xe máy từ Modal (Yêu cầu trả xe)
   const handleReturnBookingSubmit = async () => {
     if (!activeReturnBooking) return;
 
-    if (!endOdometerInput.trim()) {
-      showToast(
-        language === 'vi' 
-          ? 'Vui lòng nhập số Odometer hiện tại của xe máy!' 
-          : 'Please enter the current Odometer of the motorbike!', 
-        'warning'
-      );
-      return;
-    }
-
-    const endOdoVal = Number(endOdometerInput);
-    if (isNaN(endOdoVal) || endOdoVal < 0) {
-      showToast(
-        language === 'vi' 
-          ? 'Số Odometer không hợp lệ (phải là số không âm)!' 
-          : 'Invalid Odometer reading (must be a non-negative number)!', 
-        'warning'
-      );
-      return;
-    }
-
-    const startOdoVal = activeReturnBooking.startOdometer || 0;
-    if (endOdoVal < startOdoVal) {
-      showToast(
-        language === 'vi' 
-          ? `Số Odometer trả xe (${endOdoVal} km) không được nhỏ hơn số Odometer lúc nhận (${startOdoVal} km)!` 
-          : `End Odometer (${endOdoVal} km) cannot be smaller than start Odometer (${startOdoVal} km)!`, 
-        'warning'
-      );
-      return;
-    }
-
     try {
       setLoading(true);
-      await bookingService.returnMotorbike(activeReturnBooking.id, new Date().toISOString(), endOdoVal);
-      showToast(t('myBookingsPage.returnSuccess'), 'success');
+      // Gửi yêu cầu trả xe, chuyển trạng thái sang 'Returning' để nhân viên/admin xử lý tiếp
+      await bookingService.updateStatus(activeReturnBooking.id, 'Returning', returnReason);
+      showToast(
+        language === 'vi' 
+          ? 'Gửi yêu cầu trả xe thành công! Nhân viên điều phối sẽ liên hệ để thu hồi xe.' 
+          : 'Return request submitted successfully! Staff will contact you to retrieve the vehicle.',
+        'success'
+      );
       setShowReturnModal(false);
       // Tải lại danh sách mới từ Server
       await loadMyBookings();
     } catch (err: any) {
-      showToast(err.response?.data?.message || (language === 'vi' ? 'Không thể trả xe vào lúc này!' : 'Failed to return motorbike at this moment!'), 'error');
+      showToast(err.response?.data?.message || (language === 'vi' ? 'Không thể gửi yêu cầu trả xe vào lúc này!' : 'Failed to submit return request at this moment!'), 'error');
       setLoading(false);
     }
   };
 
   const translateStatusLabel = (status: string, label: string) => {
+    if (status === 'Returning') return language === 'vi' ? '⏳ Chờ trả xe' : '⏳ Returning';
     if (language === 'vi') return label;
     if (status === 'Pending') return 'Pending';
     if (status === 'Confirmed') return 'Confirmed';
@@ -330,6 +311,7 @@ export const Bookings = () => {
                         booking.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30' :
                         booking.status === 'Confirmed' ? 'bg-neon/10 text-neon border-neon/30 shadow-[0_0_10px_rgba(204,255,0,0.1)]' :
                         booking.status === 'Ongoing' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' :
+                        booking.status === 'Returning' ? 'bg-neon/10 text-neon border-neon/30 shadow-[0_0_10px_rgba(204,255,0,0.1)]' :
                         booking.status === 'Completed' ? 'bg-white/5 text-gray-300 border-white/20' :
                         'bg-red-500/10 text-red-500 border-red-500/30' // Cancelled
                       }`}>
@@ -357,6 +339,21 @@ export const Bookings = () => {
                     {booking.cancelReason && (
                       <div className="p-2 bg-red-500/5 border border-red-500/10 rounded-lg text-xs text-red-400/80">
                         {t('myBookingsPage.cancelReason', { reason: booking.cancelReason })}
+                      </div>
+                    )}
+
+                    {booking.returnReason && (
+                      <div className="p-3 bg-white/5 border border-white/10 rounded-xl space-y-2 text-xs">
+                        <div>
+                          <span className="font-bold text-gray-400">Lý do bạn yêu cầu trả xe sớm:</span>
+                          <p className="text-gray-300 mt-0.5 font-mono">"{booking.returnReason}"</p>
+                        </div>
+                        {booking.returnReasonReply && (
+                          <div className="pt-2 border-t border-white/5">
+                            <span className="font-bold text-neon">Phản hồi của Admin:</span>
+                            <p className="text-neon/95 mt-0.5 font-sans font-medium">"{booking.returnReasonReply}"</p>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -654,24 +651,29 @@ export const Bookings = () => {
                     </div>
                   )}
 
-                  {/* Nhập số Odometer khi trả xe */}
+                  {/* Hướng dẫn quy trình trả xe */}
+                  <div className="bg-black/30 border border-white/5 p-4 rounded-xl space-y-2 text-xs leading-relaxed text-gray-400">
+                    <p className="font-bold text-white uppercase tracking-wider mb-1 text-[10px] text-neon">
+                      {language === 'vi' ? 'Quy trình thu hồi xe:' : 'Return Process:'}
+                    </p>
+                    <p>
+                      {language === 'vi' 
+                        ? 'Sau khi bạn gửi yêu cầu trả xe, nhân viên điều phối của Motov sẽ liên hệ trực tiếp và đến địa điểm hẹn để kiểm tra thực tế xe máy (số Odometer, các trang thiết bị kèm theo, chụp ảnh ghi nhận hiện trạng) trước khi hoàn tất đóng đơn.' 
+                        : 'After you submit the return request, Motov staff will contact you and meet at your location to inspect the vehicle (Odometer, helmets, mirrors, condition photos) before closing the booking.'}
+                    </p>
+                  </div>
+
+                  {/* Nhập lý do trả xe */}
                   <div className="space-y-2 bg-black/20 p-4 rounded-xl border border-white/5">
                     <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wide block">
-                      {language === 'vi' ? 'Số Odometer hiện tại (km)' : 'Current Odometer (km)'} <span className="text-neon">*</span>
+                      {language === 'vi' ? 'Lý do trả xe (Không bắt buộc)' : 'Return Reason (Optional)'}
                     </label>
-                    <input
-                      type="number"
-                      required
-                      min={activeReturnBooking.startOdometer || 0}
-                      placeholder={language === 'vi' ? `Nhập số km hiện tại (>= ${activeReturnBooking.startOdometer || 0} km)` : `Enter current km (>= ${activeReturnBooking.startOdometer || 0} km)`}
-                      value={endOdometerInput}
-                      onChange={(e) => setEndOdometerInput(e.target.value)}
-                      className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-2.5 outline-none transition-all font-mono"
+                    <textarea
+                      placeholder={language === 'vi' ? 'Ví dụ: Trả xe sớm do đổi lịch trình, xe có tiếng kêu lạ...' : 'E.g., early return due to plan changes, unusual noise...'}
+                      value={returnReason}
+                      onChange={(e) => setReturnReason(e.target.value)}
+                      className="w-full h-20 bg-black/50 border border-gray-800 text-gray-300 text-xs rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block p-2.5 outline-none resize-none transition-all"
                     />
-                    <div className="flex justify-between text-[10px] text-gray-500 font-mono">
-                      <span>{language === 'vi' ? 'Odometer lúc nhận:' : 'Odometer at pickup:'}</span>
-                      <span>{activeReturnBooking.startOdometer || 0} km</span>
-                    </div>
                   </div>
                 </div>
 
@@ -807,6 +809,10 @@ export const Bookings = () => {
         pickupAddress={trackingBooking?.pickupLocation?.address}
         returnAddress={trackingBooking?.returnLocation?.address}
       />
+
+      {/* Chat Integration */}
+      {!isChatOpen && <BookingChatFAB onClick={openChat} />}
+      <BookingChatModal isOpen={isChatOpen} onClose={closeChat} />
     </div>
   );
 };

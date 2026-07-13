@@ -122,12 +122,14 @@ export const getVehicleById = async (req: AuthRequest, res: Response) => {
  */
 export const createVehicle = async (req: AuthRequest, res: Response) => {
   try {
-    // Check if user has permission (staff or admin only)
-    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
-    if (!hasPermission) {
+    // Check if user has permission (staff, admin, or owner)
+    const isStaffOrAdmin = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
+    const isOwner = req.user?.roles?.includes('Owner');
+
+    if (!isStaffOrAdmin && !isOwner) {
       return res.status(403).json({
         success: false,
-        error: 'Only staff and admins can create vehicles'
+        error: 'Only owners, staff, and admins can create vehicles'
       });
     }
 
@@ -161,9 +163,12 @@ export const createVehicle = async (req: AuthRequest, res: Response) => {
     }
 
     // Create new vehicle
-    // If staff/admin provides ownerId, use it; otherwise set as system vehicle
+    // If Owner, ownerId must be their own id and status is PendingApproval
+    const vehicleOwnerId = isStaffOrAdmin ? (ownerId || req.user?.id) : req.user?.id;
+    const initialStatus = isStaffOrAdmin ? 'Available' : 'PendingApproval';
+
     const newVehicle = new Vehicle({
-      ownerId: ownerId || req.user?.id,
+      ownerId: vehicleOwnerId,
       vehicleModel,
       licensePlate,
       seats: seats || 2,
@@ -174,7 +179,7 @@ export const createVehicle = async (req: AuthRequest, res: Response) => {
       imageUrls: imageUrls || [],
       features: features || [],
       location: location || { type: 'Point', coordinates: [108.22, 16.068] },
-      status: 'Available' // Staff/Admin created vehicles are available by default
+      status: initialStatus
     });
 
     await newVehicle.save();

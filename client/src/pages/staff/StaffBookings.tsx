@@ -19,6 +19,7 @@ import { motion } from 'motion/react';
 import { bookingService, Booking } from '../../services/bookingService';
 import axios from 'axios';
 import { ReturnMotorbikeModal } from '../../components/ReturnMotorbikeModal';
+import { HandoverChecklistModal } from '../../components/HandoverChecklistModal';
 import { useSearchParams } from 'react-router-dom';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
@@ -52,6 +53,8 @@ export const StaffBookings = () => {
   const [error, setError] = useState('');
   const [returningBookingId, setReturningBookingId] = useState<string | null>(null);
   const [returningPickupTime, setReturningPickupTime] = useState<string | undefined>(undefined);
+  const [handingBookingId, setHandingBookingId] = useState<string | null>(null);
+  const [handingVehicleModel, setHandingVehicleModel] = useState<string>('');
   const [viewingContractRequest, setViewingContractRequest] = useState<OwnerRequest | null>(null);
 
   const getAuthHeaders = () => {
@@ -203,6 +206,11 @@ export const StaffBookings = () => {
     setReturningBookingId(null);
   };
 
+  const handleHandoverSuccess = () => {
+    loadStaffBookings();
+    setHandingBookingId(null);
+  };
+
   const formatDate = (isoString: string) => {
     const d = new Date(isoString);
     return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
@@ -266,6 +274,24 @@ export const StaffBookings = () => {
         {/* Render Tab Bookings */}
         {activeTab === 'bookings' && (
           <>
+            {/* Cảnh báo yêu cầu trả xe cho Admin/Staff */}
+            {bookings.filter(b => b.status === 'Returning').length > 0 && (
+              <div className="mb-6 p-4 bg-neon/10 border border-neon/30 rounded-2xl text-neon text-xs sm:text-sm flex items-center justify-between gap-3 animate-pulse shadow-[0_0_15px_rgba(204,255,0,0.15)] font-sans">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2 h-2 rounded-full bg-neon animate-ping"></span>
+                  <span className="font-bold">
+                    Có {bookings.filter(b => b.status === 'Returning').length} đơn đặt xe đang yêu cầu trả xe. Vui lòng thông báo nhân viên thu hồi!
+                  </span>
+                </div>
+                <button
+                  onClick={() => setFilterStatus('Returning')}
+                  className="bg-neon hover:bg-[#bbf000] text-dark font-bold py-1.5 px-3 rounded-lg text-[10px] uppercase tracking-wider transition-all border-none cursor-pointer shrink-0"
+                >
+                  Xem chi tiết
+                </button>
+              </div>
+            )}
+
             {/* Filter quick status */}
             <div className="flex gap-2 overflow-x-auto pb-4 mb-6 border-b border-gray-900/60">
               {[
@@ -273,18 +299,42 @@ export const StaffBookings = () => {
                 { key: 'Pending', label: 'Chờ duyệt' },
                 { key: 'Confirmed', label: 'Đã xác nhận' },
                 { key: 'Ongoing', label: 'Đang thuê' },
+                { key: 'Returning', label: 'Yêu cầu trả' },
                 { key: 'Completed', label: 'Hoàn thành' },
                 { key: 'Cancelled', label: 'Đã hủy' }
-              ].map((status) => (
-                <button
-                  key={status.key}
-                  onClick={() => setFilterStatus(status.key)}
-                  className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${filterStatus === status.key ? 'bg-neon text-dark font-bold' : 'bg-surface border border-gray-800 text-gray-400 hover:border-gray-700'
+              ].map((status) => {
+                const count = status.key === 'All' 
+                  ? bookings.length 
+                  : bookings.filter(b => b.status === status.key).length;
+                const isSelected = filterStatus === status.key;
+                
+                return (
+                  <button
+                    key={status.key}
+                    onClick={() => setFilterStatus(status.key)}
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isSelected 
+                        ? 'bg-neon text-dark font-bold shadow-[0_0_12px_rgba(204,255,0,0.4)]' 
+                        : status.key === 'Returning' && count > 0
+                          ? 'bg-neon/10 border border-neon/30 text-neon hover:border-neon/50 animate-pulse font-bold'
+                          : 'bg-surface border border-gray-800 text-gray-400 hover:text-white'
                     }`}
-                >
-                  {status.label}
-                </button>
-              ))}
+                  >
+                    <span>{status.label}</span>
+                    {count > 0 && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+                        isSelected 
+                          ? 'bg-dark text-neon' 
+                          : status.key === 'Returning'
+                            ? 'bg-neon text-dark'
+                            : 'bg-gray-800 text-gray-400'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Grid list Bookings */}
@@ -303,12 +353,13 @@ export const StaffBookings = () => {
                       <div className="flex justify-between items-center mb-3">
                         <span className="font-mono text-xs font-bold text-neon">{booking.bookingCode}</span>
                         <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${booking.status === 'Ongoing' ? 'text-green-400 border-green-500/20 bg-green-500/5' :
+                          booking.status === 'Returning' ? 'text-neon border-neon/20 bg-neon/5 animate-pulse shadow-[0_0_8px_rgba(204,255,0,0.3)]' :
                           booking.status === 'Pending' ? 'text-yellow-400 border-yellow-500/20 bg-yellow-500/5' :
                             booking.status === 'Confirmed' ? 'text-blue-400 border-blue-500/20 bg-blue-500/5' :
-                              booking.status === 'Completed' ? 'text-purple-400 border-purple-500/20 bg-purple-500/5' :
+                              booking.status === 'Completed' ? 'text-white border-white/10 bg-white/5' :
                                 'text-red-400 border-red-500/20 bg-red-500/5'
                           }`}>
-                          {booking.statusLabel}
+                          {booking.status === 'Returning' ? '⏳ Chờ trả xe' : booking.statusLabel}
                         </span>
                       </div>
 
@@ -320,6 +371,13 @@ export const StaffBookings = () => {
                         <div className="flex items-center gap-2"><Phone size={13} /> SĐT: <span className="text-white font-mono">{booking.userPhone}</span></div>
                         <div className="flex items-center gap-2"><CreditCard size={13} /> Tổng thu: <span className="text-neon font-semibold">{(booking.totalAmount || 0).toLocaleString('vi-VN')} VNĐ</span></div>
                       </div>
+
+                      {booking.returnReason && (
+                        <div className="p-3 bg-neon/5 border border-neon/20 rounded-xl mb-4 text-xs text-neon font-medium">
+                          <span className="font-bold text-[10px] uppercase tracking-wider block text-neon/70 mb-1">Lý do khách trả xe:</span>
+                          "{booking.returnReason}"
+                        </div>
+                      )}
 
                       {/* Giao nhận địa chỉ */}
                       <div className="space-y-2 text-xs text-gray-400 mb-6">
@@ -369,9 +427,12 @@ export const StaffBookings = () => {
                       {booking.status === 'Confirmed' && (
                         <div className="grid grid-cols-4 gap-2">
                           <button
-                            onClick={() => handleUpdateStatus(booking.id || (booking as any)._id, 'Ongoing')}
+                            onClick={() => {
+                              setHandingBookingId(booking.id || (booking as any)._id);
+                              setHandingVehicleModel(booking.vehicleModel);
+                            }}
                             disabled={loading}
-                            className="col-span-3 flex items-center justify-center gap-1 bg-blue-500 text-white font-bold py-2.5 rounded-lg text-xs hover:bg-blue-600 transition-colors cursor-pointer disabled:opacity-50"
+                            className="col-span-3 flex items-center justify-center gap-1 bg-neon text-dark font-bold py-2.5 rounded-lg text-xs hover:bg-[#bbf000] transition-colors cursor-pointer disabled:opacity-50"
                           >
                             Bàn giao xe (Bắt đầu thuê)
                           </button>
@@ -393,9 +454,22 @@ export const StaffBookings = () => {
                             setReturningPickupTime(booking.pickupDateTime);
                           }}
                           disabled={loading}
-                          className="w-full flex items-center justify-center gap-1 bg-green-600 text-white font-bold py-2.5 rounded-lg text-xs hover:bg-green-700 transition-colors cursor-pointer disabled:opacity-50"
+                          className="w-full flex items-center justify-center gap-1 bg-neon text-dark font-bold py-2.5 rounded-lg text-xs hover:bg-[#bbf000] transition-colors cursor-pointer disabled:opacity-50"
                         >
                           <Key size={14} /> Xác nhận khách trả xe (Thu hồi xe)
+                        </button>
+                      )}
+
+                      {booking.status === 'Returning' && (
+                        <button
+                          onClick={() => {
+                            setReturningBookingId(booking.id || (booking as any)._id);
+                            setReturningPickupTime(booking.pickupDateTime);
+                          }}
+                          disabled={loading}
+                          className="w-full flex items-center justify-center gap-1 bg-neon text-dark font-bold py-2.5 rounded-lg text-xs hover:bg-[#bbf000] transition-colors cursor-pointer disabled:opacity-50 animate-pulse shadow-[0_0_12px_rgba(204,255,0,0.4)]"
+                        >
+                          <Key size={14} /> Tiến hành Thu hồi xe (Khách yêu cầu trả)
                         </button>
                       )}
 
@@ -643,6 +717,14 @@ export const StaffBookings = () => {
         pickupDateTime={returningPickupTime}
         startOdometer={bookings.find(b => (b.id === returningBookingId || (b as any)._id === returningBookingId))?.startOdometer || 0}
         onSuccess={handleReturnSuccess}
+      />
+
+      <HandoverChecklistModal
+        isOpen={!!handingBookingId}
+        onClose={() => setHandingBookingId(null)}
+        bookingId={handingBookingId}
+        vehicleModel={handingVehicleModel}
+        onSuccess={handleHandoverSuccess}
       />
     </div>
   );

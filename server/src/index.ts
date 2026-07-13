@@ -26,12 +26,17 @@ import { initBookingReminderScheduler } from './utils/bookingReminderScheduler.j
 import { Discount } from './models/Discount.js';
 import adminRoutes from './routes/adminRoutes.js';
 import { seedFeedbacks } from './utils/feedbackSeeder.js';
+import { seedChats } from './utils/chatSeeder.js';
+import { createServer } from 'http';
+import { initSocket } from './socket.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const httpServer = createServer(app);
+initSocket(httpServer);
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/Motov';
 
@@ -40,7 +45,9 @@ const ALLOWED_ORIGINS = [
   process.env.CLIENT_ORIGIN || 'http://localhost:3000',
   'http://localhost:3001',
   'http://127.0.0.1:3000',
-  'http://127.0.0.1:3001'
+  'http://127.0.0.1:3001',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173'
 ];
 app.use(cors({
   origin: (origin, callback) => {
@@ -432,6 +439,7 @@ mongoose.connect(MONGODB_URI)
     await migrateVehicleCategories();
     await seedDiscounts();
     await seedFeedbacks();
+    await seedChats();
     initBookingReminderScheduler();
   })
   .catch((err: any) => console.error('❌ Failed to connect to MongoDB:', err));
@@ -968,6 +976,6 @@ app.get('/api/bikes', (req, res) => {
   res.json(BIKES);
 });
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

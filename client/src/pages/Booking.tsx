@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getMotorbikeById, Motorbike } from '../services/vehicleService';
-import { CalendarDays, MapPin, Phone, User, CreditCard, ArrowLeft, CheckCircle2, Ticket, X as XIcon, ChevronDown } from 'lucide-react';
+import { CalendarDays, MapPin, Phone, User, CreditCard, ArrowLeft, CheckCircle2, Ticket, X as XIcon, ChevronDown, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { bookingService } from '../services/bookingService'; // Import Service API
 import { promotionService } from '../services/promotionService'; // Import Promotion Service
@@ -29,6 +29,19 @@ export const Booking = () => {
   const navigate = useNavigate();
   const { language, t } = useLanguage();
   
+  // Helper: get ownerId from bike
+  const getOwnerId = (b: Motorbike | undefined) => {
+    if (!b) return null;
+    if (typeof b.ownerId === 'object' && b.ownerId !== null) return (b.ownerId as any)._id;
+    return b.ownerId as string;
+  };
+
+  const handleOpenOwnerChat = () => {
+    const ownerId = getOwnerId(bike);
+    if (!ownerId) return;
+    navigate(`/chat?with=${ownerId}&vehicle=${bikeId}`);
+  };
+
   const [bike, setBike] = useState<Motorbike | undefined>(undefined);
   
   const pickupInputRef = useRef<HTMLInputElement>(null);
@@ -846,6 +859,17 @@ export const Booking = () => {
 
         </div>
       </div>
+
+      {/* Chat with Owner FAB - links to pre-booking conversation */}
+      <button
+        onClick={handleOpenOwnerChat}
+        disabled={!getOwnerId(bike)}
+        title="Nhắn tin với chủ xe trước khi đặt"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-neon text-dark rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(204,255,0,0.3)] hover:scale-110 hover:bg-[#bbf000] transition-all z-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label="Chat với chủ xe"
+      >
+        <MessageSquare size={24} />
+      </button>
     </div>
   );
 };

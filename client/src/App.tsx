@@ -18,6 +18,10 @@ import { ResetPassword } from './pages/ResetPassword';
 import { VerifyEmail } from './pages/VerifyEmail';
 import { Chat } from './pages/Chat';
 
+// Chat
+import { ChatProvider } from './contexts/ChatContext';
+import { ChatLayout } from './components/chat/ChatLayout';
+
 // Staff pages
 import { StaffBookings } from './pages/staff/StaffBookings';
 import { StaffBikes } from './pages/staff/StaffBikes';
@@ -42,6 +46,19 @@ import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminCategories } from './pages/admin/AdminCategories';
 import { InventoryManagement } from './pages/admin/InventoryManagement';
 
+// Auto-migrate session token if missing
+try {
+  const storedUser = localStorage.getItem('user');
+  if (storedUser && !localStorage.getItem('token')) {
+    const user = JSON.parse(storedUser);
+    if (user && user.token) {
+      localStorage.setItem('token', user.token);
+    }
+  }
+} catch (e) {
+  console.error('Session migration error:', e);
+}
+
 // Route Guard component
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: ('customer' | 'staff' | 'admin' | 'owner')[] }) => {
   const storedUser = localStorage.getItem('user');
@@ -65,12 +82,13 @@ export default function App() {
     <BrowserRouter>
       <LanguageProvider>
         <ToastProvider>
-          <div className="min-h-screen bg-dark text-white flex flex-col font-sans selection:bg-neon selection:text-dark">
-            {/* Header Navigation */}
-            <Header />
+          <ChatProvider>
+            <div className="min-h-screen bg-dark text-white flex flex-col font-sans selection:bg-neon selection:text-dark">
+              {/* Header Navigation */}
+              <Header />
 
-            {/* Main Content Pages */}
-            <main className="flex-grow">
+              {/* Main Content Pages */}
+              <main className="flex-grow">
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<Home />} />
@@ -214,7 +232,8 @@ export default function App() {
 
             {/* Footer */}
             <Footer />
-          </div>
+            </div>
+          </ChatProvider>
         </ToastProvider>
       </LanguageProvider>
     </BrowserRouter>
