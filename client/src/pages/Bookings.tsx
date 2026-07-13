@@ -185,21 +185,33 @@ export const Bookings = () => {
   const handleReturnBookingSubmit = async () => {
     if (!activeReturnBooking) return;
 
+    // Chỉ cho phép trả xe khi đơn đang ở trạng thái Ongoing (Đang cho thuê)
+    if (activeReturnBooking.status !== 'Ongoing') {
+      showToast(
+        language === 'vi'
+          ? 'Chỉ có thể gửi yêu cầu trả xe khi đơn đang ở trạng thái Đang cho thuê.'
+          : 'You can only request vehicle return when the booking is in Ongoing status.',
+        'warning'
+      );
+      return;
+    }
+
     try {
       setLoading(true);
       // Gửi yêu cầu trả xe, chuyển trạng thái sang 'Returning' để nhân viên/admin xử lý tiếp
       await bookingService.updateStatus(activeReturnBooking.id, 'Returning', returnReason);
+      setShowReturnModal(false);
       showToast(
         language === 'vi' 
           ? 'Gửi yêu cầu trả xe thành công! Nhân viên điều phối sẽ liên hệ để thu hồi xe.' 
           : 'Return request submitted successfully! Staff will contact you to retrieve the vehicle.',
         'success'
       );
-      setShowReturnModal(false);
       // Tải lại danh sách mới từ Server
       await loadMyBookings();
     } catch (err: any) {
       showToast(err.response?.data?.message || (language === 'vi' ? 'Không thể gửi yêu cầu trả xe vào lúc này!' : 'Failed to submit return request at this moment!'), 'error');
+    } finally {
       setLoading(false);
     }
   };
@@ -367,7 +379,7 @@ export const Bookings = () => {
                     </div>
                   </div>
 
-                  {/* Nút hủy đơn liên kết API */}
+                  {/* Nút hủy đơn / trả xe / đánh giá liên kết API */}
                   <div className="w-full md:w-auto flex justify-end md:self-center border-t md:border-t-0 pt-4 md:pt-0 border-gray-800/50">
                     {booking.status === 'Pending' ? (
                       <button 
@@ -379,6 +391,7 @@ export const Bookings = () => {
                         {t('myBookingsPage.cancelReq')}
                       </button>
                     ) : booking.status === 'Ongoing' ? (
+                      // Chỉ hiển thị nút Trả xe khi đơn đang ở trạng thái Ongoing (Đang cho thuê - badge xanh)
                       <button 
                         onClick={() => openReturnModal(booking)}
                         disabled={loading}
