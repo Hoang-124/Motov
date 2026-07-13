@@ -25,6 +25,12 @@ const validateVehicleInput = (data: any) => {
   }
   if (!data.licensePlate || data.licensePlate.trim() === '') {
     errors.push('License plate is required');
+  } else {
+    const cleanPlate = data.licensePlate.trim().toUpperCase();
+    const plateRegex = /^[0-9]{2}-?([A-Z][0-9]|[A-Z]{2})[\s-]?([0-9]{4}|[0-9]{5}|[0-9]{3}\.[0-9]{2})$/;
+    if (!plateRegex.test(cleanPlate)) {
+      errors.push('Biển số xe máy không hợp lệ. Ví dụ đúng: 43-C1 123.45 hoặc 43C1-12345 (phải có 4 hoặc 5 số).');
+    }
   }
   const categoryStr = data.category ? data.category.toString().trim() : '';
   if (!categoryStr) {
@@ -382,7 +388,7 @@ export const getOwnerVehicles = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const vehicles = await Vehicle.find({ ownerId })
+    const vehicles = await Vehicle.find({ ownerId, isDeleted: { $ne: true } })
       .populate('ownerId', 'firstName lastName email phoneNumber')
       .populate('category')
       .sort('-createdAt')
@@ -778,6 +784,7 @@ export const getNearbyVehicles = async (req: AuthRequest, res: Response) => {
     // Tìm các xe Available gần nhất trong bán kính bằng GeoJSON $near
     const vehicles = await Vehicle.find({
       status: 'Available',
+      isDeleted: { $ne: true },
       location: {
         $near: {
           $geometry: {
