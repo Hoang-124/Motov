@@ -52,12 +52,23 @@ export const Bookings = () => {
     e.preventDefault();
     if (!selectedBookingId) return;
 
+    // Lỗi 81: Validate nội dung đánh giá không được để trống
+    if (!feedbackContent.trim()) {
+      showToast(
+        language === 'vi'
+          ? 'Vui lòng nhập nội dung đánh giá trước khi gửi.'
+          : 'Please enter your review content before submitting.',
+        'warning'
+      );
+      return;
+    }
+
     try {
       setLoading(true);
       await feedbackService.createFeedback({
         bookingId: selectedBookingId,
         rating: feedbackRating,
-        content: feedbackContent
+        content: feedbackContent.trim()
       });
       showToast(language === 'vi' ? 'Gửi đánh giá thành công! Cảm ơn phản hồi của bạn.' : 'Feedback submitted successfully! Thank you for your feedback.', 'success');
       setReviewedBookingIds(prev => [...prev, selectedBookingId]);
