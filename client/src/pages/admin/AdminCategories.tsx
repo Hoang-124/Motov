@@ -18,6 +18,8 @@ export const AdminCategories = () => {
   // Delete confirmation states
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
+  // Lỗi 91/94: Inline error cho trường tên
+  const [nameError, setNameError] = useState<string | null>(null);
 
   const loadCategories = async () => {
     try {
@@ -40,6 +42,7 @@ export const AdminCategories = () => {
     setEditingCategory(null);
     setFormData({ name: '', description: '' });
     setErrorMessage(null);
+    setNameError(null);
     setShowModal(true);
   };
 
@@ -50,6 +53,7 @@ export const AdminCategories = () => {
       description: category.description || ''
     });
     setErrorMessage(null);
+    setNameError(null);
     setShowModal(true);
   };
 
@@ -63,6 +67,7 @@ export const AdminCategories = () => {
     setShowModal(false);
     setEditingCategory(null);
     setFormData({ name: '', description: '' });
+    setNameError(null);
   };
 
   const handleCloseDeleteModal = () => {
@@ -77,8 +82,21 @@ export const AdminCategories = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Lỗi 91/94: Validate tên danh mục không được để trống
     if (!formData.name.trim()) {
-      setErrorMessage('Tên danh mục là bắt buộc');
+      setNameError('Vui lòng nhập tên danh mục.');
+      return;
+    }
+    setNameError(null);
+
+    // Lỗi 92/95: Kiểm tra trùng tên client-side trước khi gọi API
+    const duplicateName = categories.find(c =>
+      c.name.trim().toLowerCase() === formData.name.trim().toLowerCase() &&
+      c._id !== editingCategory?._id
+    );
+    if (duplicateName) {
+      setNameError('Tên danh mục này đã tồn tại, vui lòng chọn tên khác.');
       return;
     }
 
@@ -350,11 +368,22 @@ export const AdminCategories = () => {
                       type="text"
                       name="name"
                       value={formData.name}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        handleChange(e);
+                        // Lỗi 91/94: Xóa inline error khi người dùng bắt đầu gõ
+                        if (nameError) setNameError(null);
+                      }}
                       placeholder="e.g. Xe Tay Ga, Xe Côn Tay"
-                      className="w-full bg-black/50 border border-gray-800 focus:border-neon text-gray-200 text-sm rounded-lg px-4 py-3 outline-none transition-all"
-                      required
+                      className={`w-full bg-black/50 border text-gray-200 text-sm rounded-lg px-4 py-3 outline-none transition-all ${
+                        nameError ? 'border-red-500 focus:border-red-400' : 'border-gray-800 focus:border-neon'
+                      }`}
                     />
+                    {/* Lỗi 91/94: Inline error ngay dưới ô nhập */}
+                    {nameError && (
+                      <p className="text-[11px] text-red-400 font-semibold flex items-center gap-1 mt-1.5">
+                        <span>⚠️</span> {nameError}
+                      </p>
+                    )}
                   </div>
 
                   <div>
