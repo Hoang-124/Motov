@@ -10,7 +10,7 @@ interface ChatContextProps {
   activeConversation: ConversationItem | null;
   messages: ChatMessage[];
   unreadCount: number;
-  selectConversation: (conversation: ConversationItem) => void;
+  selectConversation: (conversation: ConversationItem | null) => void;
   sendMessage: (content: string) => Promise<void>;
   loadMoreMessages: () => Promise<void>;
   fetchConversations: () => Promise<void>;
@@ -77,7 +77,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const selectConversation = useCallback(async (conversation: ConversationItem) => {
+  const selectConversation = useCallback(async (conversation: ConversationItem | null) => {
+    // Handle null to go back to conversation list
+    if (!conversation) {
+      setActiveConversation(null);
+      setMessages([]);
+      return;
+    }
     setActiveConversation(conversation);
     setSkip(0);
     try {
@@ -124,32 +130,35 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [activeConversation]);
 
-  // Listen for incoming messages
+  // Listen for incoming messages (from conversation room - for active chat window)
   useEffect(() => {
     if (!socket) return;
 
     const handleNewMessage = (message: ChatMessage) => {
-      // If the message is for the active conversation, append it
-      if (activeConversation && message.conversationId === activeConversation._id) {
-        setMessages((prev) => {
-          // Prevent duplicates by comparing string values of IDs
-          if (prev.find(m => String(m._id) === String(message._id))) return prev;
-          return [...prev, message];
-        });
-        // Optionally mark as read immediately if window is focused
+      // Append message to active conversation window (dedup)
+      setMessages((prev) => {
+        if (prev.find(m => String(m._id) === String(message._id))) return prev;
+        return [...prev, message];
+      });
+      // Optionally mark as read immediately if window is focused
+      if (activeConversation) {
         chatService.markAsRead(activeConversation._id).catch(console.error);
       }
+    };
 
-      // Always update the conversations list
-      setConversations((prev) => prev.map(c => 
-        c._id === message.conversationId ? { ...c, lastMessage: message } : c
+    // conversation_updated is emitted to personal rooms for sidebar/list updates
+    const handleConversationUpdated = (data: { conversationId: string; lastMessage: ChatMessage }) => {
+      setConversations((prev) => prev.map(c =>
+        c._id === data.conversationId ? { ...c, lastMessage: data.lastMessage, unreadCount: (c.unreadCount || 0) + 1 } : c
       ));
     };
 
     socket.on('new_message', handleNewMessage);
+    socket.on('conversation_updated', handleConversationUpdated);
 
     return () => {
       socket.off('new_message', handleNewMessage);
+      socket.off('conversation_updated', handleConversationUpdated);
     };
   }, [socket, activeConversation]);
 
@@ -171,14 +180,25 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    if (!conversationsLoaded || parsedWithRef.current === partnerId) return;
+    // Use composite key so switching between different vehicles of same owner creates correct conversations
+    const compositeKey = vehicleId ? `${partnerId}_${vehicleId}` : partnerId;
+    if (!conversationsLoaded || parsedWithRef.current === compositeKey) return;
 
-    parsedWithRef.current = partnerId;
+    parsedWithRef.current = compositeKey;
 
-    // Check if we already have a conversation with this user
-    const existing = conversations.find(c => 
-      c.participants && c.participants.some(p => p._id === partnerId)
-    );
+    // Check if we already have a conversation with this partner (and optionally this vehicle)
+    const existing = conversations.find(c => {
+      const hasPartner = c.participants && c.participants.some(p => p._id === partnerId);
+      if (!hasPartner) return false;
+      // If vehicleId provided, match on relatedVehicle too
+      if (vehicleId) {
+        const convVehicleId = typeof c.relatedVehicle === 'object'
+          ? (c.relatedVehicle as any)?._id
+          : c.relatedVehicle;
+        return convVehicleId === vehicleId || !convVehicleId; // prefer vehicle-specific, fallback to generic
+      }
+      return true;
+    });
 
     if (existing) {
       selectConversation(existing);

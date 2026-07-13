@@ -9,9 +9,13 @@ export const ChatLayout = () => {
 
   let contextText = 'Booking';
   if (activeConversation?.relatedVehicle) {
-    contextText = `${activeConversation.relatedVehicle.make} ${activeConversation.relatedVehicle.model}`;
+    const v = activeConversation.relatedVehicle;
+    contextText = `${(v as any).vehicleModel || (v as any).make || ''} ${(v as any).model || ''}`.trim() || 'Xe';
   } else if (activeConversation?.relatedBooking) {
-    contextText = `Booking: ${activeConversation.relatedBooking}`;
+    const bookingCode = typeof activeConversation.relatedBooking === 'object'
+      ? (activeConversation.relatedBooking as any).bookingCode
+      : activeConversation.relatedBooking;
+    contextText = `Booking: ${bookingCode || ''}`;
   }
 
   return (
