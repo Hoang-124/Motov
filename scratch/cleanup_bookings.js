@@ -8,17 +8,32 @@ async function run() {
     process.exit(1);
   }
 
-  // Find all Suzuki Raider / Satria 150 bookings for this user
-  const userId = new mongoose.Types.ObjectId('6a223b4bb8081481db32a122');
+  // 1. Find all active ongoing bookings (rented and in-use right now)
+  const ongoingBookings = await db.collection('bookings').find({ status: 'Ongoing' }).toArray();
+  const activeRentedVehicleIds = ongoingBookings.map(b => b.vehicleId.toString());
   
-  // We want to keep BK20260630634472 and delete other duplicates of Raider created around the same time
-  const res = await db.collection('bookings').deleteMany({
-    userId: userId,
-    'vehicleSnapshot.name': 'Suzuki Raider / Satria 150',
-    bookingCode: { $ne: 'BK20260630634472' }
-  });
+  console.log('Active Ongoing Booking count:', ongoingBookings.length);
+  console.log('Vehicle IDs currently in-use:', activeRentedVehicleIds);
 
-  console.log('Deleted duplicate bookings count:', res.deletedCount);
+  // 2. Fetch all vehicles
+  const vehicles = await db.collection('vehicles').find({}).toArray();
+  
+  let updatedCount = 0;
+  for (const vehicle of vehicles) {
+    const isCurrentlyRented = activeRentedVehicleIds.includes(vehicle._id.toString());
+    const expectedStatus = isCurrentlyRented ? 'Rented' : 'Available';
+    
+    if (vehicle.status !== expectedStatus) {
+      await db.collection('vehicles').updateOne(
+        { _id: vehicle._id },
+        { $set: { status: expectedStatus } }
+      );
+      console.log(`Updated vehicle ${vehicle.vehicleModel || vehicle.licensePlate} (${vehicle._id}) status from ${vehicle.status} -> ${expectedStatus}`);
+      updatedCount++;
+    }
+  }
+
+  console.log(`Successfully completed migration! Updated ${updatedCount} vehicle statuses.`);
   process.exit(0);
 }
 

@@ -7,7 +7,7 @@ import {
   Motorbike
 } from '../../services/vehicleService';
 import { getAllCategories, Category } from '../../services/categoryService';
-import { Plus, Edit2, Trash2, X, AlertCircle, Sparkles, Loader, FileText, CheckCircle, HelpCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, AlertCircle, Sparkles, Loader, FileText, CheckCircle, HelpCircle, MapPin, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800';
@@ -40,6 +40,140 @@ export const OwnerBikes = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [bikeToDelete, setBikeToDelete] = useState<string | null>(null);
 
+  // Location and address fields for geocoding
+  const [profileUser, setProfileUser] = useState<any>(null);
+  const [bikeAddress, setBikeAddress] = useState('');
+  const [latitude, setLatitude] = useState('16.068');
+  const [longitude, setLongitude] = useState('108.22');
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.token) return;
+
+    setIsUploadingImage(true);
+    setErrorMsg(null);
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
+      const response = await fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: formData
+      });
+
+      const result = await response.json();
+      if (result.success && result.url) {
+        setImageInput(result.url);
+        setSuccessMsg('Tải ảnh xe máy lên thành công!');
+        setTimeout(() => setSuccessMsg(null), 3000);
+      } else {
+        setErrorMsg(result.message || 'Không thể tải ảnh lên.');
+        setTimeout(() => setErrorMsg(null), 4000);
+      }
+    } catch (error) {
+      console.error('Lỗi khi upload ảnh:', error);
+      setErrorMsg('Đã xảy ra lỗi khi tải ảnh lên. Vui lòng thử lại.');
+      setTimeout(() => setErrorMsg(null), 4000);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const modalMapRef = React.useRef<any>(null);
+  const modalMarkerRef = React.useRef<any>(null);
+
+  const DANANG_BOUNDS = {
+    minLat: 15.88,
+    maxLat: 16.28,
+    minLng: 107.75,
+    maxLng: 108.35
+  };
+
+  const checkInDaNang = (lat: number, lng: number) => {
+    return lat >= DANANG_BOUNDS.minLat && lat <= DANANG_BOUNDS.maxLat &&
+           lng >= DANANG_BOUNDS.minLng && lng <= DANANG_BOUNDS.maxLng;
+  };
+
+  const loadLeaflet = (): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if ((window as any).L) {
+        resolve((window as any).L);
+        return;
+      }
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      link.crossOrigin = '';
+      document.head.appendChild(link);
+
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.crossOrigin = '';
+      script.onload = () => resolve((window as any).L);
+      script.onerror = (e) => reject(e);
+      document.body.appendChild(script);
+    });
+  };
+
+  const reverseGeocode = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+      );
+      const data = await response.json();
+      if (data && data.display_name) {
+        setBikeAddress(data.display_name);
+      }
+    } catch (e) {
+      console.error('Lỗi giải mã ngược địa chỉ:', e);
+    }
+  };
+
+  // Geocoding helper function using OpenStreetMap Nominatim
+  const geocodeAddress = async (addr: string) => {
+    if (!addr.trim()) return;
+    setIsGeocoding(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`
+      );
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const firstResult = data[0];
+        const lat = parseFloat(firstResult.lat);
+        const lng = parseFloat(firstResult.lon);
+
+        if (checkInDaNang(lat, lng)) {
+          setLatitude(lat.toFixed(6));
+          setLongitude(lng.toFixed(6));
+
+          // Move map and marker if initialized
+          if (modalMapRef.current && modalMarkerRef.current) {
+            modalMapRef.current.setView([lat, lng], 14);
+            modalMarkerRef.current.setLatLng([lat, lng]);
+          }
+        } else {
+          setErrorMsg('Vị trí tìm thấy nằm ngoài địa phận Đà Nẵng!');
+          setTimeout(() => setErrorMsg(null), 4000);
+        }
+      } else {
+        setErrorMsg('Không tìm thấy tọa độ cho địa chỉ này.');
+        setTimeout(() => setErrorMsg(null), 4000);
+      }
+    } catch (error) {
+      console.error('Lỗi định vị địa chỉ:', error);
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
   // Fetch all initial data
   const loadInitialData = async (currentUser = user) => {
     if (!currentUser) return;
@@ -54,6 +188,18 @@ export const OwnerBikes = () => {
       // Fetch owner's motorbikes
       const data = await getOwnerMotorbikes(currentUser.id);
       setBikes(data);
+
+      // Fetch full user profile details for eKYC address defaulting
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
+      const res = await fetch(`${API_BASE_URL}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${currentUser.token}`
+        }
+      });
+      const profileData = await res.json();
+      if (profileData.success) {
+        setProfileUser(profileData.user);
+      }
     } catch (err: any) {
       console.error('Error loading initial data:', err);
       setErrorMsg(err.message || 'Không thể tải danh sách xe. Vui lòng thử lại.');
@@ -73,8 +219,102 @@ export const OwnerBikes = () => {
       console.error('Error parsing user from localStorage', e);
     }
   }, []);
+  useEffect(() => {
+    if (!isModalOpen) {
+      if (modalMapRef.current) {
+        modalMapRef.current.remove();
+        modalMapRef.current = null;
+      }
+      modalMarkerRef.current = null;
+      return;
+    }
 
+    // Initialize map after the modal is rendered in DOM
+    const initModalMap = async () => {
+      try {
+        const L = await loadLeaflet();
+        
+        setTimeout(() => {
+          const mapEl = document.getElementById('modal-leaflet-map');
+          if (!mapEl || modalMapRef.current) return;
+
+          const startLat = parseFloat(latitude) || 16.068;
+          const startLng = parseFloat(longitude) || 108.22;
+
+          const map = L.map('modal-leaflet-map').setView([startLat, startLng], 13);
+          
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+          }).addTo(map);
+
+          // Restrict map panning bounds to Da Nang region
+          const southWest = L.latLng(DANANG_BOUNDS.minLat, DANANG_BOUNDS.minLng);
+          const northEast = L.latLng(DANANG_BOUNDS.maxLat, DANANG_BOUNDS.maxLng);
+          const bounds = L.latLngBounds(southWest, northEast);
+          map.setMaxBounds(bounds);
+          map.on('drag', () => {
+            map.panInsideBounds(bounds, { animate: false });
+          });
+
+          // Custom indicator marker
+          const bikeIcon = L.divIcon({
+            className: 'modal-bike-marker',
+            html: `<div style="background-color: #ccff00; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #000; box-shadow: 0 0 10px #ccff00;"></div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+          });
+
+          const marker = L.marker([startLat, startLng], {
+            icon: bikeIcon,
+            draggable: true
+          }).addTo(map);
+
+          modalMarkerRef.current = marker;
+          modalMapRef.current = map;
+
+          // Drag marker to update coordinates
+          marker.on('dragend', async () => {
+            const position = marker.getLatLng();
+            const lat = position.lat;
+            const lng = position.lng;
+
+            if (checkInDaNang(lat, lng)) {
+              setLatitude(lat.toFixed(6));
+              setLongitude(lng.toFixed(6));
+              reverseGeocode(lat, lng);
+            } else {
+              setErrorMsg('Vị trí phải nằm trong địa phận Đà Nẵng!');
+              marker.setLatLng([parseFloat(latitude), parseFloat(longitude)]);
+              setTimeout(() => setErrorMsg(null), 4000);
+            }
+          });
+
+          // Click map to reposition marker
+          map.on('click', (e: any) => {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            if (checkInDaNang(lat, lng)) {
+              marker.setLatLng(e.latlng);
+              setLatitude(lat.toFixed(6));
+              setLongitude(lng.toFixed(6));
+              reverseGeocode(lat, lng);
+            } else {
+              setErrorMsg('Vị trí chọn phải nằm trong địa phận Đà Nẵng!');
+              setTimeout(() => setErrorMsg(null), 4000);
+            }
+          });
+
+        }, 400); // Wait for modal animation to complete
+      } catch (err) {
+        console.error('Lỗi khởi tạo bản đồ modal:', err);
+      }
+    };
+
+    initModalMap();
+  }, [isModalOpen]);
   const openAddModal = () => {
+    setErrorMsg(null);
     setCurrentBike(null);
     setVehicleModel('');
     setLicensePlate('');
@@ -85,10 +325,23 @@ export const OwnerBikes = () => {
     setDescription('');
     setImageInput(DEFAULT_IMAGE);
     setFeaturesInput('Mới 99%, Tiết kiệm xăng, Khóa Smartkey');
+    
+    // Default location to profile address if exists
+    if (profileUser?.citizenIdInfo?.address) {
+      const defaultAddr = profileUser.citizenIdInfo.address;
+      setBikeAddress(defaultAddr);
+      geocodeAddress(defaultAddr);
+    } else {
+      setBikeAddress('Đà Nẵng, Việt Nam');
+      setLatitude('16.068');
+      setLongitude('108.22');
+    }
+    
     setIsModalOpen(true);
   };
 
   const openEditModal = (bike: Motorbike) => {
+    setErrorMsg(null);
     setCurrentBike(bike);
     setVehicleModel(bike.vehicleModel);
     setLicensePlate(bike.licensePlate);
@@ -96,9 +349,25 @@ export const OwnerBikes = () => {
     setTransmissionType(bike.transmissionType || 'Automatic');
     setRentalPrice(bike.rentalPrice.toString());
     setSeats((bike.seats || 2).toString());
-    setDescription(bike.description || '');
     setImageInput(bike.imageUrls && bike.imageUrls.length > 0 ? bike.imageUrls[0] : '');
     setFeaturesInput(bike.features ? bike.features.join(', ') : '');
+    
+    // Set location fields
+    const coords = bike.location?.coordinates || [108.22, 16.068];
+    setLongitude(coords[0].toString());
+    setLatitude(coords[1].toString());
+    
+    // Parse address from description if it matches "Địa chỉ xe: ..."
+    const addressMatch = bike.description?.match(/Địa chỉ xe: (.*?)(?:\n|$)/);
+    if (addressMatch) {
+      setBikeAddress(addressMatch[1]);
+      const cleanDesc = bike.description?.replace(/Địa chỉ xe: .*?(\n|$)/, '');
+      setDescription(cleanDesc || '');
+    } else {
+      setBikeAddress('');
+      setDescription(bike.description || '');
+    }
+    
     setIsModalOpen(true);
   };
 
@@ -139,10 +408,57 @@ export const OwnerBikes = () => {
       return;
     }
 
-    // Process inputs
-    const parsedPrice = parseFloat(rentalPrice.replace(/\./g, '').replace(/,/g, ''));
-    if (isNaN(parsedPrice) || parsedPrice <= 0) {
-      setErrorMsg('Giá thuê phải là một số dương hợp lệ.');
+    // Validate inputs
+    if (!vehicleModel || vehicleModel.trim() === '') {
+      setErrorMsg('Tên dòng xe máy không được để trống.');
+      return;
+    }
+
+    const cleanPlate = licensePlate.trim().toUpperCase();
+    if (!cleanPlate) {
+      setErrorMsg('Biển số xe không được để trống.');
+      return;
+    }
+    
+    // Strict regular expression for Vietnamese motorcycle license plates:
+    // Region code (2 digits) + Series (either Letter+Number like C1 or 2 Letters like AA) + Separator (space/hyphen/empty) + Number (4 digits, 5 digits, or 3 digits + dot + 2 digits)
+    const plateRegex = /^[0-9]{2}-?([A-Z][0-9]|[A-Z]{2})[\s-]?([0-9]{4}|[0-9]{5}|[0-9]{3}\.[0-9]{2})$/;
+    if (!plateRegex.test(cleanPlate)) {
+      setErrorMsg('Biển số xe máy không hợp lệ. Ví dụ đúng: 43-C1 123.45 hoặc 43C1-12345 (phải có 4 hoặc 5 số).');
+      return;
+    }
+
+    if (!category) {
+      setErrorMsg('Vui lòng chọn danh mục nhóm xe.');
+      return;
+    }
+
+    // Process price
+    const parsedPrice = parseFloat(rentalPrice.toString().replace(/\./g, '').replace(/,/g, ''));
+    if (isNaN(parsedPrice) || parsedPrice < 30000 || parsedPrice > 5000000) {
+      setErrorMsg('Giá thuê phải nằm trong khoảng từ 30.000 VNĐ đến 5.000.000 VNĐ / ngày.');
+      return;
+    }
+
+    if (!bikeAddress || bikeAddress.trim() === '') {
+      setErrorMsg('Địa chỉ đặt xe máy không được để trống.');
+      return;
+    }
+
+    const latVal = parseFloat(latitude);
+    const lngVal = parseFloat(longitude);
+    if (isNaN(latVal) || isNaN(lngVal) || !checkInDaNang(latVal, lngVal)) {
+      setErrorMsg('Vị trí xe máy phải nằm trong địa phận Đà Nẵng. Vui lòng định vị lại trên bản đồ.');
+      return;
+    }
+
+    if (!imageInput || !imageInput.startsWith('http')) {
+      setErrorMsg('Đường dẫn hình ảnh xe máy (URL) không hợp lệ (phải bắt đầu bằng http:// hoặc https://).');
+      return;
+    }
+
+    if (!description || description.trim().length < 10) {
+      setErrorMsg('Mô tả chi tiết tình trạng xe phải có ít nhất 10 ký tự.');
       return;
     }
 
@@ -160,12 +476,15 @@ export const OwnerBikes = () => {
       rentalPrice: parsedPrice,
       category,
       transmissionType,
-      description,
+      description: bikeAddress ? `Địa chỉ xe: ${bikeAddress}\n${description}` : description,
       imageUrls,
       features: parsedFeatures,
       odometer: currentBike?.odometer || 0,
       requiresMaintenance: currentBike?.requiresMaintenance || false,
-      location: currentBike?.location || { type: 'Point', coordinates: [108.22, 16.068] }
+      location: {
+        type: 'Point',
+        coordinates: [parseFloat(longitude) || 108.22, parseFloat(latitude) || 16.068]
+      }
     };
 
     try {
@@ -502,17 +821,131 @@ export const OwnerBikes = () => {
                     </div>
                   </div>
 
+                  {/* Địa chỉ và Định vị */}
+                  <div className="space-y-3 p-3 bg-black/30 border border-gray-800 rounded-xl">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <MapPin size={14} className="text-neon" />
+                        Địa chỉ đặt xe máy
+                      </label>
+                      {profileUser?.citizenIdInfo?.address && (
+                        <button
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => {
+                            setBikeAddress(profileUser.citizenIdInfo.address);
+                            geocodeAddress(profileUser.citizenIdInfo.address);
+                          }}
+                          className="text-[10px] text-neon hover:underline bg-transparent border-none cursor-pointer"
+                        >
+                          Lấy địa chỉ từ CCCD
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        disabled={isSubmitting}
+                        placeholder="Nhập địa chỉ xe, ví dụ: 120 Hùng Vương, Đà Nẵng"
+                        value={bikeAddress}
+                        onChange={(e) => setBikeAddress(e.target.value)}
+                        className="flex-grow bg-black/50 border border-gray-800 text-gray-300 rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-neon focus:border-transparent transition-all"
+                      />
+                      <button
+                        type="button"
+                        disabled={isSubmitting || isGeocoding || !bikeAddress}
+                        onClick={() => geocodeAddress(bikeAddress)}
+                        className="bg-gray-800 hover:bg-gray-700 text-white font-semibold px-4 rounded-lg flex items-center gap-1.5 transition-all text-xs cursor-pointer disabled:opacity-50"
+                      >
+                        {isGeocoding ? (
+                          <Loader size={12} className="animate-spin" />
+                        ) : (
+                          <Search size={12} />
+                        )}
+                        Định vị
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-gray-500 uppercase">Kinh độ (Longitude)</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="108.22"
+                          value={longitude}
+                          onChange={(e) => setLongitude(e.target.value)}
+                          className="w-full bg-black/50 border border-gray-800 text-gray-300 rounded-lg p-2.5 text-xs font-mono outline-none focus:ring-1 focus:ring-neon focus:border-transparent transition-all"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-gray-500 uppercase">Vĩ độ (Latitude)</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="16.068"
+                          value={latitude}
+                          onChange={(e) => setLatitude(e.target.value)}
+                          className="w-full bg-black/50 border border-gray-800 text-gray-300 rounded-lg p-2.5 text-xs font-mono outline-none focus:ring-1 focus:ring-neon focus:border-transparent transition-all"
+                        />
+                      </div>
+                    </div>
+                    <div id="modal-leaflet-map" style={{ height: '200px', width: '100%', borderRadius: '8px', marginTop: '12px', border: '1px solid #374151', zIndex: 10 }}></div>
+                    <p className="text-[10px] text-gray-500 leading-tight">
+                      * Nhấn &ldquo;Định vị&rdquo; để tự động xác định từ địa chỉ, hoặc kéo ghim/click trực tiếp trên bản đồ để chọn vị trí đỗ xe máy (chỉ giới hạn trong khu vực Đà Nẵng).
+                    </p>
+                  </div>
+
                   {/* Image */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Hình ảnh xe máy (URL)</label>
-                    <input
-                      type="url"
-                      disabled={isSubmitting}
-                      placeholder="https://images.unsplash.com/..."
-                      value={imageInput}
-                      onChange={(e) => setImageInput(e.target.value)}
-                      className="w-full bg-black/50 border border-gray-800 text-gray-300 rounded-lg p-3 outline-none focus:ring-1 focus:ring-neon focus:border-transparent transition-all disabled:opacity-50 font-mono"
-                    />
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Hình ảnh xe máy</label>
+                    <div className="flex flex-col sm:flex-row items-center gap-4 p-4 bg-black/30 border border-gray-800 rounded-xl">
+                      {imageInput ? (
+                        <div className="relative w-28 h-20 bg-gray-950 rounded-lg overflow-hidden border border-gray-800 shrink-0">
+                          <img src={imageInput} alt="Xe máy preview" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-28 h-20 bg-gray-950 rounded-lg border border-dashed border-gray-800 flex items-center justify-center text-gray-600 shrink-0 text-xs font-semibold">
+                          Chưa có ảnh
+                        </div>
+                      )}
+                      
+                      <div className="flex-1 w-full space-y-2">
+                        <div className="flex gap-2 items-center">
+                          <label className="shrink-0">
+                            <span className="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2.5 px-4 rounded-lg text-xs cursor-pointer inline-flex items-center gap-1.5 transition-all disabled:opacity-50 select-none">
+                              {isUploadingImage ? (
+                                <>
+                                  <Loader size={12} className="animate-spin" />
+                                  Đang tải...
+                                </>
+                              ) : (
+                                <>
+                                  <Plus size={12} />
+                                  Chọn ảnh từ máy
+                                </>
+                              )}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              disabled={isUploadingImage || isSubmitting}
+                              onChange={handleImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Hoặc nhập URL ảnh tại đây..."
+                            disabled={isSubmitting || isUploadingImage}
+                            value={imageInput}
+                            onChange={(e) => setImageInput(e.target.value)}
+                            className="flex-grow bg-black/50 border border-gray-800 text-gray-300 rounded-lg px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-neon focus:border-transparent transition-all font-mono"
+                          />
+                        </div>
+                        <p className="text-[10px] text-gray-500">Hỗ trợ định dạng JPG, PNG, WEBP. Ảnh tự tải lên sẽ được lưu trữ trực tiếp trên máy chủ.</p>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Features */}
@@ -540,6 +973,13 @@ export const OwnerBikes = () => {
                       className="w-full bg-black/50 border border-gray-800 text-gray-300 rounded-lg p-3 outline-none focus:ring-1 focus:ring-neon focus:border-transparent transition-all disabled:opacity-50 resize-none"
                     />
                   </div>
+
+                  {errorMsg && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs flex items-center gap-2 mt-4 animate-pulse">
+                      <AlertCircle size={14} className="shrink-0" />
+                      <span>{errorMsg}</span>
+                    </div>
+                  )}
 
                   {/* Actions */}
                   <div className="flex gap-3 pt-4 border-t border-gray-800 mt-4">

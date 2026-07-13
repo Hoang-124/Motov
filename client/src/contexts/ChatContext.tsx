@@ -91,6 +91,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       setMessages(data.reverse()); // Assume BE returns latest first, we want chronological
       await chatService.markAsRead(conversation._id);
 
+      // Reset unread count locally for this conversation
+      setConversations((prev) =>
+        prev.map((c) => (c._id === conversation._id ? { ...c, unreadCount: 0 } : c))
+      );
+      
+      // Dispatch custom event to notify Header/other components to update their badge count
+      window.dispatchEvent(new Event('chatReadUpdated'));
+
       // Join socket room
       if (socket) {
         socket.emit('join_conversation', conversation._id);
@@ -142,25 +150,74 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       });
       // Optionally mark as read immediately if window is focused
       if (activeConversation) {
-        chatService.markAsRead(activeConversation._id).catch(console.error);
+        chatService.markAsRead(activeConversation._id)
+          .then(() => {
+            // Reset unread count locally for active conversation
+            setConversations((prev) =>
+              prev.map((c) => (c._id === activeConversation._id ? { ...c, unreadCount: 0 } : c))
+            );
+            window.dispatchEvent(new Event('chatReadUpdated'));
+          })
+          .catch(console.error);
       }
     };
 
     // conversation_updated is emitted to personal rooms for sidebar/list updates
     const handleConversationUpdated = (data: { conversationId: string; lastMessage: ChatMessage }) => {
-      setConversations((prev) => prev.map(c =>
-        c._id === data.conversationId ? { ...c, lastMessage: data.lastMessage, unreadCount: (c.unreadCount || 0) + 1 } : c
-      ));
+      setConversations((prev) => {
+        const existingIndex = prev.findIndex(c => c._id === data.conversationId);
+        if (existingIndex >= 0) {
+          // Conversation exists in list — update it
+          const updated = prev.map(c => {
+            if (c._id === data.conversationId) {
+              const isCurrentActive = activeConversation && activeConversation._id === data.conversationId;
+              return {
+                ...c,
+                lastMessage: data.lastMessage,
+                unreadCount: isCurrentActive ? 0 : (c.unreadCount || 0) + 1
+              };
+            }
+            return c;
+          });
+          return updated;
+        }
+        // Conversation NOT in list — will re-fetch below
+        return prev;
+      });
+
+      // If conversation is not yet in the list, re-fetch conversations from server
+      setConversations((prev) => {
+        const exists = prev.some(c => c._id === data.conversationId);
+        if (!exists) {
+          // Re-fetch in background to pick up the new conversation
+          fetchConversations();
+        }
+        return prev;
+      });
+
+      // Dispatch chatReadUpdated when unread status changes
+      window.dispatchEvent(new Event('chatReadUpdated'));
+    };
+
+    // Handle brand-new conversation created by another user
+    const handleNewConversation = (conversation: ConversationItem) => {
+      setConversations((prev) => {
+        // Dedup: don't add if already in list
+        if (prev.some(c => c._id === conversation._id)) return prev;
+        return [{ ...conversation, unreadCount: 0 }, ...prev];
+      });
     };
 
     socket.on('new_message', handleNewMessage);
     socket.on('conversation_updated', handleConversationUpdated);
+    socket.on('new_conversation', handleNewConversation);
 
     return () => {
       socket.off('new_message', handleNewMessage);
       socket.off('conversation_updated', handleConversationUpdated);
+      socket.off('new_conversation', handleNewConversation);
     };
-  }, [socket, activeConversation]);
+  }, [socket, activeConversation, fetchConversations]);
 
   // Initial fetch
   useEffect(() => {

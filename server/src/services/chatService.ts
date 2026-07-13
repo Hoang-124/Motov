@@ -77,6 +77,26 @@ export const createOrGetConversation = async (participantIds: string[], type: 'c
       createData.relatedVehicle = new mongoose.Types.ObjectId(relatedVehicleId);
     }
     conversation = await Conversation.create(createData);
+
+    // Populate before emitting so clients receive full conversation data
+    await conversation.populate([
+      { path: 'participants', select: 'firstName lastName email username' },
+      { path: 'relatedBooking', select: 'bookingCode status pickupDateTime returnDateTime vehicleSnapshot' },
+      { path: 'relatedVehicle', select: 'vehicleModel imageUrls licensePlate' },
+      { path: 'lastMessage' }
+    ]);
+
+    // Emit new_conversation event to all participants so their chat list updates in real-time
+    try {
+      const io = getIO();
+      participantsObjIds.forEach(pId => {
+        io.to(`user_${pId.toString()}`).emit('new_conversation', conversation);
+      });
+    } catch (e) {
+      // Socket may not be initialized in tests
+    }
+
+    return conversation;
   }
 
   // Populate conversation fields to match client-side expectations

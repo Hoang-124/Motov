@@ -198,6 +198,16 @@ export const Header = () => {
     };
   }, [user]);
 
+  useEffect(() => {
+    const handleChatReadUpdate = () => {
+      fetchUnreadChatsCount();
+    };
+    window.addEventListener('chatReadUpdated', handleChatReadUpdate);
+    return () => {
+      window.removeEventListener('chatReadUpdated', handleChatReadUpdate);
+    };
+  }, []);
+
   // Thiết lập kết nối SSE (Server-Sent Events) thời gian thực
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
