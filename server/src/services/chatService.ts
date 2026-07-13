@@ -11,7 +11,7 @@ export const getUserBasicInfo = async (userId: string) => {
 
 export const createOrGetConversation = async (participantIds: string[], type: 'customer-owner' | 'customer-staff', relatedBookingId?: string, relatedVehicleId?: string) => {
   const participantsObjIds = participantIds.map(id => new mongoose.Types.ObjectId(id));
-  
+
   // Validation: Check if the related booking exists if provided
   if (relatedBookingId) {
     const booking = await Booking.findById(relatedBookingId).populate('vehicleId');
@@ -24,19 +24,19 @@ export const createOrGetConversation = async (participantIds: string[], type: 'c
     const ownerId = (booking.vehicleId as any).ownerId.toString();
 
     const strParticipants = participantIds.map(id => id.toString());
-    
+
     if (type === 'customer-owner') {
       if (!strParticipants.includes(customerId) || !strParticipants.includes(ownerId)) {
         throw new Error('Forbidden: Participants do not match the booking customer and owner');
       }
     }
   }
-  
+
   const query: any = {
     participants: { $all: participantsObjIds, $size: participantsObjIds.length },
     type
   };
-  
+
   if (relatedBookingId) {
     query.relatedBooking = new mongoose.Types.ObjectId(relatedBookingId);
   } else {
@@ -83,8 +83,8 @@ export const getUserConversations = async (userId: string, skip: number = 0, lim
 
   const conversationIds = conversations.map(c => c._id);
   const unreadCounts = await Message.aggregate([
-    { 
-      $match: { 
+    {
+      $match: {
         conversationId: { $in: conversationIds },
         readBy: { $ne: new mongoose.Types.ObjectId(userId) }
       }
@@ -187,8 +187,8 @@ export const markMessagesAsRead = async (conversationId: string, userId: string)
   }
 
   await Message.updateMany(
-    { 
-      conversationId: new mongoose.Types.ObjectId(conversationId), 
+    {
+      conversationId: new mongoose.Types.ObjectId(conversationId),
       readBy: { $ne: new mongoose.Types.ObjectId(userId) }
     },
     { $push: { readBy: new mongoose.Types.ObjectId(userId) } }

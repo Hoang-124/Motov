@@ -38,7 +38,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         try {
           const user = JSON.parse(storedUser);
           token = user?.token;
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -90,7 +90,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       const { data } = await chatService.getMessages(conversation._id, 0, limit);
       setMessages(data.reverse()); // Assume BE returns latest first, we want chronological
       await chatService.markAsRead(conversation._id);
-      
+
       // Join socket room
       if (socket) {
         socket.emit('join_conversation', conversation._id);
@@ -114,7 +114,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const sendMessage = useCallback(async (content: string) => {
     if (!activeConversation) return;
-    
+
     // Sanitize input to prevent XSS
     const cleanContent = DOMPurify.sanitize(content.trim());
     if (!cleanContent) return;
@@ -122,7 +122,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data: newMessage } = await chatService.sendMessage(activeConversation._id, cleanContent);
       // Update the lastMessage in conversations list
-      setConversations((prev) => prev.map(c => 
+      setConversations((prev) => prev.map(c =>
         c._id === activeConversation._id ? { ...c, lastMessage: newMessage } : c
       ));
     } catch (err) {
@@ -174,7 +174,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const params = new URLSearchParams(window.location.search);
     const partnerId = params.get('with');
     const vehicleId = params.get('vehicle');
-    
+
     if (!partnerId) {
       parsedWithRef.current = null;
       return;

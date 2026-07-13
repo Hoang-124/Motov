@@ -189,7 +189,7 @@ describe('chatService - Unit Tests', () => {
     it('should return user conversations with unread counts', async () => {
       const u1 = await User.create({ username: 'u1', email: 'u1@test.com', status: 'Active' });
       const u2 = await User.create({ username: 'u2', email: 'u2@test.com', status: 'Active' });
-      
+
       const conv = await Conversation.create({
         participants: [u1._id, u2._id],
         type: 'customer-owner',
@@ -221,7 +221,7 @@ describe('chatService - Unit Tests', () => {
     it('should mark unread messages as read', async () => {
       const u1 = await User.create({ username: 'u1', email: 'u1@test.com', status: 'Active' });
       const u2 = await User.create({ username: 'u2', email: 'u2@test.com', status: 'Active' });
-      
+
       const conv = await Conversation.create({
         participants: [u1._id, u2._id],
         type: 'customer-owner',
@@ -229,7 +229,7 @@ describe('chatService - Unit Tests', () => {
       });
 
       const msg1 = await Message.create({ conversationId: conv._id, senderId: u2._id, content: 'unread1', readBy: [u2._id] });
-      
+
       await markMessagesAsRead(conv._id.toString(), u1._id.toString());
 
       const updatedMsg1 = await Message.findById(msg1._id);
