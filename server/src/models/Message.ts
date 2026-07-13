@@ -21,24 +21,7 @@ const MessageSchema = new Schema<IMessage>({
 // Optimize query for fetching conversation messages ordered by time
 MessageSchema.index({ conversationId: 1, createdAt: -1 });
 
-// Post-save hook to trigger real-time chat messages via SSE
-MessageSchema.post('save', async function(doc) {
-  try {
-    const service = await import('../services/realtimeService.js');
-    const { Conversation } = await import('./Conversation.js');
-    
-    const conversation = await Conversation.findById(doc.conversationId);
-    if (conversation) {
-      conversation.participants.forEach(p => {
-        // Send SSE event to other participants (not the sender)
-        if (p.toString() !== doc.senderId.toString()) {
-          service.sendRealtimeMessage(p.toString(), doc);
-        }
-      });
-    }
-  } catch (err) {
-    console.error('Lỗi trong post-save hook của Message:', err);
-  }
-});
+// Real-time broadcasting is handled by Socket.io in chatService.sendMessage()
+// to avoid dual notification channels
 
 export const Message = mongoose.model<IMessage>('Message', MessageSchema);

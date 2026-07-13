@@ -29,7 +29,11 @@ export const BookingChatModal: React.FC<BookingChatModalProps> = ({ isOpen, onCl
           )}
           <h3 className="text-white font-semibold flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-neon animate-pulse"></span>
-            {activeConversation ? (activeConversation.relatedBooking?.bookingCode || 'Chi tiết Chat') : 'Chat Hỗ Trợ'}
+          {activeConversation ? (
+            typeof activeConversation.relatedBooking === 'object'
+              ? ((activeConversation.relatedBooking as any).bookingCode || 'Chi tiết Chat')
+              : 'Chi tiết Chat'
+          ) : 'Chat Hỗ Trợ'}
           </h3>
         </div>
         <button 

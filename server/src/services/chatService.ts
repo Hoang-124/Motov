@@ -159,12 +159,16 @@ export const sendMessage = async (conversationId: string, senderId: string, cont
 
   // Emit real-time message via socket.io
   const io = getIO();
-  // Emit to the conversation room (for clients currently in the conversation)
+  // Emit to the conversation room (for clients currently viewing this conversation)
   io.to(conversationId.toString()).emit('new_message', populatedMessage);
-  // Emit to personal rooms of all participants (for real-time updates in header/list)
+  // Also emit to personal rooms of all participants (for header unread count / conversation list updates)
+  // This is separate from the conversation room event to update the sidebar even when not in chat
   if (conversation && conversation.participants) {
     conversation.participants.forEach(p => {
-      io.to(`user_${p.toString()}`).emit('new_message', populatedMessage);
+      io.to(`user_${p.toString()}`).emit('conversation_updated', {
+        conversationId: conversationId.toString(),
+        lastMessage: populatedMessage
+      });
     });
   }
 
