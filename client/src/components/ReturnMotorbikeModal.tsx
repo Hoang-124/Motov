@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar } from 'lucide-react';
+import { X, Calendar, Camera, Upload } from 'lucide-react';
 import { useReturnMotorbike } from '../hooks/useReturnMotorbike';
 
 interface ReturnMotorbikeModalProps {
@@ -23,6 +23,18 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
   const [actualReturnTime, setActualReturnTime] = useState('');
   const [returnReason, setReturnReason] = useState('');
   const [endOdometer, setEndOdometer] = useState('');
+  const [checklist, setChecklist] = useState({
+    helmetsReturned: false,
+    mirrorsIntact: false,
+    noNewScratches: false
+  });
+  const [photos, setPhotos] = useState<{ [key: string]: string }>({
+    front: '',
+    back: '',
+    left: '',
+    right: ''
+  });
+
   const { executeReturn, isSubmitting, error, success, setError, setSuccess } = useReturnMotorbike();
 
   // Reset states when opened
@@ -34,10 +46,35 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
       setActualReturnTime(localDateTime);
       setReturnReason('');
       setEndOdometer(startOdometer ? startOdometer.toString() : '');
+      setChecklist({
+        helmetsReturned: false,
+        mirrorsIntact: false,
+        noNewScratches: false
+      });
+      setPhotos({
+        front: '',
+        back: '',
+        left: '',
+        right: ''
+      });
       setError(null);
       setSuccess(null);
     }
   }, [isOpen, setError, setSuccess, startOdometer]);
+
+  const handlePhotoUpload = (direction: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotos(prev => ({
+          ...prev,
+          [direction]: reader.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,12 +101,32 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
       return;
     }
 
+    if (!checklist.helmetsReturned || !checklist.mirrorsIntact || !checklist.noNewScratches) {
+      setError('Vui lòng kiểm tra và xác nhận đầy đủ hiện trạng thiết bị thu hồi.');
+      return;
+    }
+
+    if (!photos.front || !photos.back || !photos.left || !photos.right) {
+      setError('Vui lòng chụp đầy đủ 4 hướng góc ảnh của xe lúc thu hồi.');
+      return;
+    }
+
     if (!returnReason.trim()) {
       setError('Vui lòng nhập lý do thu hồi xe.');
       return;
     }
 
     try {
+      // Save return inspection data locally
+      const returnData = {
+        bookingId,
+        endOdometer: endOdoVal,
+        checklist,
+        photos,
+        timestamp: new Date().toISOString()
+      };
+      localStorage.setItem(`return_${bookingId}`, JSON.stringify(returnData));
+
       await executeReturn(bookingId, new Date(actualReturnTime).toISOString(), endOdoVal, returnReason.trim());
       if (onSuccess) {
         onSuccess();
@@ -90,18 +147,18 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="w-full max-w-md bg-surface border border-white/10 rounded-2xl shadow-2xl relative overflow-hidden text-gray-300"
+            className="w-full max-w-lg bg-surface border border-white/10 rounded-2xl shadow-2xl relative overflow-hidden text-gray-300 flex flex-col max-h-[90vh]"
           >
             <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
             
-            <div className="flex justify-between items-center p-4 border-b border-gray-800">
+            <div className="flex justify-between items-center p-4 border-b border-gray-800 shrink-0">
               <h2 className="text-lg font-display font-black text-white uppercase tracking-wider">Thu hồi xe</h2>
               <button onClick={onClose} className="p-1 rounded-full hover:bg-white/5 transition-colors cursor-pointer text-gray-400 hover:text-white bg-transparent border-none">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-grow">
               {error && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-xs">
                   {error}
@@ -155,12 +212,95 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
                 </p>
               </div>
 
-              <div className="space-y-1.5">
+              {/* Checklist thu hồi */}
+              <div className="space-y-2 border-t border-gray-800 pt-3">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
+                  Kiểm tra khi thu hồi xe *
+                </label>
+                <div className="bg-black/40 border border-gray-800 rounded-xl p-3 space-y-2.5">
+                  <label className="flex items-center gap-2.5 text-xs text-gray-300 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={checklist.helmetsReturned}
+                      onChange={(e) => setChecklist(prev => ({ ...prev, helmetsReturned: e.target.checked }))}
+                      className="accent-neon w-4 h-4 rounded"
+                    />
+                    <span>Khách trả đủ 02 Mũ bảo hiểm đã giao</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 text-xs text-gray-300 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={checklist.mirrorsIntact}
+                      onChange={(e) => setChecklist(prev => ({ ...prev, mirrorsIntact: e.target.checked }))}
+                      className="accent-neon w-4 h-4 rounded"
+                    />
+                    <span>02 Gương chiếu hậu nguyên vẹn, không vỡ</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 text-xs text-gray-300 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={checklist.noNewScratches}
+                      onChange={(e) => setChecklist(prev => ({ ...prev, noNewScratches: e.target.checked }))}
+                      className="accent-neon w-4 h-4 rounded"
+                    />
+                    <span>Xác nhận không phát sinh thêm vết móp/xước mới</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Ảnh chụp thu hồi */}
+              <div className="space-y-2 border-t border-gray-800 pt-3">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                  <Camera size={12} className="text-neon" />
+                  Ảnh chụp hiện trạng lúc thu hồi xe *
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { key: 'front', label: 'Trước' },
+                    { key: 'back', label: 'Sau' },
+                    { key: 'left', label: 'Trái' },
+                    { key: 'right', label: 'Phải' }
+                  ].map((dir) => (
+                    <div key={dir.key} className="flex flex-col gap-1 text-center">
+                      <span className="text-[8px] text-gray-400 font-bold uppercase">{dir.label}</span>
+                      <div className="aspect-[4/3] w-full bg-black/60 border border-dashed border-gray-800 rounded-lg overflow-hidden relative flex flex-col items-center justify-center cursor-pointer hover:border-neon/40 transition-colors group">
+                        {photos[dir.key] ? (
+                          <>
+                            <img src={photos[dir.key]} alt={dir.label} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPhotos(prev => ({ ...prev, [dir.key]: '' }));
+                              }}
+                              className="absolute top-0.5 right-0.5 bg-black/80 hover:bg-red-500 text-white rounded-full p-0.5 border-none cursor-pointer"
+                            >
+                              <X size={8} />
+                            </button>
+                          </>
+                        ) : (
+                          <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
+                            <Upload size={14} className="text-gray-600 group-hover:text-neon" />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handlePhotoUpload(dir.key, e)}
+                              className="hidden"
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5 border-t border-gray-800 pt-3">
                 <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">
                   Lý do thu hồi xe
                 </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={returnReason}
                   onChange={(e) => setReturnReason(e.target.value)}
                   placeholder="Nhập lý do thu hồi xe (ví dụ: Trả xe đúng hẹn, Trả xe sớm, Hỏng hóc cần sửa chữa...)"
@@ -169,7 +309,7 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
                 />
               </div>
 
-              <div className="mt-6 flex justify-end gap-3 border-t border-gray-800 pt-4">
+              <div className="mt-6 flex justify-end gap-3 border-t border-gray-800 pt-4 shrink-0">
                 <button
                   type="button"
                   onClick={onClose}

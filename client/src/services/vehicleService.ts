@@ -267,9 +267,20 @@ export async function getRecommendations(token?: string): Promise<{ vehicles: Mo
 // FAVORITE MOTORBIKES SERVICES
 // ==========================================
 
+let cachedFavorites: ApiResponse<Motorbike[]> | null = null;
+let activeFavoritesPromise: Promise<ApiResponse<Motorbike[]>> | null = null;
+
+// Lắng nghe sự kiện để xóa cache khi có cập nhật từ các component khác
+if (typeof window !== 'undefined') {
+  window.addEventListener('favoritesUpdated', () => {
+    cachedFavorites = null;
+  });
+}
+
 // 1. Thêm xe vào danh sách yêu thích
 export async function addToFavorites(token: string, vehicleId: string): Promise<ApiResponse<any>> {
   try {
+    cachedFavorites = null; // Invalidate cache
     const response = await fetch(`${API_URL}/users/favorites`, {
       method: 'POST',
       headers: {
@@ -294,6 +305,7 @@ export async function addToFavorites(token: string, vehicleId: string): Promise<
 // 2. Xóa xe khỏi danh sách yêu thích
 export async function removeFromFavorites(token: string, vehicleId: string): Promise<ApiResponse<any>> {
   try {
+    cachedFavorites = null; // Invalidate cache
     const response = await fetch(`${API_URL}/users/favorites/${vehicleId}`, {
       method: 'DELETE',
       headers: {
@@ -315,19 +327,34 @@ export async function removeFromFavorites(token: string, vehicleId: string): Pro
 
 // 3. Lấy toàn bộ danh sách xe đã yêu thích của User
 export async function getUserFavorites(token: string): Promise<ApiResponse<Motorbike[]>> {
-  try {
-    const response = await fetch(`${API_URL}/users/favorites`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (!response.ok) throw new Error('Failed to fetch favorite motorbikes');
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching favorite motorbikes:', error);
-    throw error;
+  if (cachedFavorites) {
+    return cachedFavorites;
   }
+  if (activeFavoritesPromise) {
+    return activeFavoritesPromise;
+  }
+
+  activeFavoritesPromise = (async () => {
+    try {
+      const response = await fetch(`${API_URL}/users/favorites`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch favorite motorbikes');
+
+      const data = await response.json();
+      cachedFavorites = data;
+      return data;
+    } catch (error) {
+      console.error('Error fetching favorite motorbikes:', error);
+      throw error;
+    } finally {
+      activeFavoritesPromise = null;
+    }
+  })();
+
+  return activeFavoritesPromise;
 }

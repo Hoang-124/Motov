@@ -730,7 +730,7 @@ export const AdminUsers = () => {
                           </button>
                           <button
                             onClick={() => handleOpenEdit(user)}
-                            className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-neon hover:bg-white/10 transition-all cursor-pointer"
+                            className="p-2 rounded-lg bg-neon/10 text-neon border border-neon/20 hover:bg-neon/20 hover:text-white transition-all cursor-pointer"
                             title="Sửa thành viên"
                           >
                             <Edit2 size={14} />

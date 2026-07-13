@@ -228,7 +228,7 @@ export const login = async (req: Request, res: Response) => {
     // Tìm user bằng email hoặc tên đăng nhập
     const user = await User.findOne({ $or: [{ email }, { username: email }] });
     if (!user) {
-      return res.status(400).json({ success: false, message: 'Email hoặc mật khẩu không chính xác' });
+      return res.status(400).json({ success: false, message: 'Tên đăng nhập hoặc mật khẩu không chính xác' });
     }
 
     if (user.status === 'Suspended') {
@@ -249,7 +249,7 @@ export const login = async (req: Request, res: Response) => {
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: 'Email hoặc mật khẩu không chính xác' });
+      return res.status(400).json({ success: false, message: 'Tên đăng nhập hoặc mật khẩu không chính xác' });
     }
 
     // Sinh token JWT
@@ -842,7 +842,7 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
 
     const isMatch = await bcrypt.compare(oldPassword, user.passwordHash);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: 'Mật khẩu cũ không chính xác' });
+      return res.status(400).json({ success: false, message: 'Mật khẩu hiện tại không chính xác' });
     }
 
     const salt = await bcrypt.genSalt(10);

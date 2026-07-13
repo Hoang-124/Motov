@@ -105,7 +105,8 @@ export function validateUpdateBooking(
   const validTransitions: Record<string, string[]> = {
     'Pending': ['Confirmed', 'Cancelled'],
     'Confirmed': ['Ongoing', 'Cancelled'],
-    'Ongoing': ['Completed'],
+    'Ongoing': ['Returning', 'Completed'],
+    'Returning': ['Completed'],
     'Completed': [],
     'Cancelled': []
   };

@@ -61,6 +61,9 @@ export const AdminBookings = () => {
   const [returningPickupTime, setReturningPickupTime] = useState<string | undefined>(undefined);
   const [viewingContractRequest, setViewingContractRequest] = useState<OwnerRequest | null>(null);
   const [reminderBooking, setReminderBooking] = useState<Booking | null>(null);
+  const [viewingReturnReasonBooking, setViewingReturnReasonBooking] = useState<Booking | null>(null);
+  const [returnReplyText, setReturnReplyText] = useState('');
+  const [submittingReply, setSubmittingReply] = useState(false);
 
   const getAuthHeaders = () => {
     let token = localStorage.getItem('token');
@@ -237,6 +240,30 @@ export const AdminBookings = () => {
     setReturningBookingId(null);
   };
 
+  const handleSendReturnResponse = async (warnUser: boolean) => {
+    if (!viewingReturnReasonBooking) return;
+    try {
+      setSubmittingReply(true);
+      await bookingService.replyToReturnReason(
+        viewingReturnReasonBooking.id, 
+        returnReplyText, 
+        warnUser
+      );
+      showToast(
+        warnUser 
+          ? 'Đã gửi phản hồi và gửi cảnh cáo thô tục tới người dùng thành công!' 
+          : 'Gửi phản hồi yêu cầu trả xe thành công!', 
+        'success'
+      );
+      setViewingReturnReasonBooking(null);
+      await loadBookings();
+    } catch (err: any) {
+      showToast(err.response?.data?.message || err.message || 'Không thể phản hồi yêu cầu!', 'error');
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
   const formatDate = (isoString: string) => {
     const d = new Date(isoString);
     if (isNaN(d.getTime())) return 'N/A';
@@ -248,6 +275,7 @@ export const AdminBookings = () => {
       case 'Pending': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
       case 'Confirmed': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
       case 'Ongoing': return 'bg-green-500/10 text-green-500 border-green-500/20';
+      case 'Returning': return 'bg-neon/10 text-neon border-neon/30 animate-pulse shadow-[0_0_8px_rgba(204,255,0,0.2)]';
       case 'Completed': return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
       case 'Cancelled': return 'bg-red-500/10 text-red-500 border-red-500/20';
       default: return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
@@ -352,24 +380,63 @@ export const AdminBookings = () => {
                 { key: 'Pending', label: 'Chờ duyệt' },
                 { key: 'Confirmed', label: 'Đã xác nhận' },
                 { key: 'Ongoing', label: 'Đang thuê' },
+                { key: 'Returning', label: 'Yêu cầu trả' },
                 { key: 'Completed', label: 'Hoàn thành' },
                 { key: 'Cancelled', label: 'Đã hủy' }
-              ].map((status) => (
-                <button
-                  key={status.key}
-                  onClick={() => setFilterStatus(status.key)}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                    filterStatus === status.key
-                      ? 'bg-neon text-dark font-bold'
-                      : 'bg-surface border border-gray-800 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {status.label}
-                </button>
-              ))}
+              ].map((status) => {
+                const count = status.key === 'All'
+                  ? bookings.length
+                  : bookings.filter(b => b.status === status.key).length;
+                const isSelected = filterStatus === status.key;
+                
+                return (
+                  <button
+                    key={status.key}
+                    onClick={() => setFilterStatus(status.key)}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isSelected 
+                        ? 'bg-neon text-dark font-bold shadow-[0_0_12px_rgba(204,255,0,0.4)]' 
+                        : status.key === 'Returning' && count > 0
+                          ? 'bg-neon/10 border border-neon/30 text-neon hover:border-neon/50 animate-pulse font-bold'
+                          : 'bg-surface border border-gray-800 text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <span>{status.label}</span>
+                    {count > 0 && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+                        isSelected 
+                          ? 'bg-dark text-neon' 
+                          : status.key === 'Returning'
+                            ? 'bg-neon text-dark'
+                            : 'bg-gray-800 text-gray-400'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
+
+        {/* Cảnh báo yêu cầu trả xe cho Admin */}
+        {activeTab === 'bookings' && bookings.filter(b => b.status === 'Returning').length > 0 && (
+          <div className="mb-6 p-4 bg-neon/10 border border-neon/30 rounded-2xl text-neon text-xs sm:text-sm flex items-center justify-between gap-3 animate-pulse shadow-[0_0_15px_rgba(204,255,0,0.15)] font-sans">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2 h-2 rounded-full bg-neon animate-ping"></span>
+              <span className="font-bold">
+                Có {bookings.filter(b => b.status === 'Returning').length} đơn đặt xe đang yêu cầu trả xe. Vui lòng thông báo nhân viên thu hồi!
+              </span>
+            </div>
+            <button
+              onClick={() => setFilterStatus('Returning')}
+              className="bg-neon hover:bg-[#bbf000] text-dark font-bold py-1.5 px-3 rounded-lg text-[10px] uppercase tracking-wider transition-all border-none cursor-pointer shrink-0"
+            >
+              Xem ngay
+            </button>
+          </div>
+        )}
 
         {/* Render Tab Bookings */}
         {activeTab === 'bookings' && (
@@ -417,8 +484,20 @@ export const AdminBookings = () => {
                       </td>
                       <td className="py-4 px-6">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${getStatusColorClass(booking.status)}`}>
-                          {booking.statusLabel}
+                          {booking.status === 'Returning' ? '⏳ Chờ trả xe' : booking.statusLabel}
                         </span>
+                        {booking.returnReason && (
+                          <button
+                            onClick={() => {
+                              setViewingReturnReasonBooking(booking);
+                              setReturnReplyText(booking.returnReasonReply || '');
+                            }}
+                            className="mt-1.5 px-2 py-1 rounded-lg bg-neon/10 hover:bg-neon/20 text-neon border border-neon/20 text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1 mx-auto"
+                            title="Bấm để xem lý do trả xe"
+                          >
+                            <FileText size={11} /> Lý do trả
+                          </button>
+                        )}
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex justify-end gap-2">
@@ -427,7 +506,7 @@ export const AdminBookings = () => {
                             <>
                               <button
                                 onClick={() => handleUpdateStatus(booking.id, 'Confirmed')}
-                                className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                                className="px-3 py-1.5 rounded-lg bg-neon hover:bg-[#bbf000] text-dark text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                                 title="Phê duyệt đơn"
                               >
                                 <Check size={12} /> Phê duyệt
@@ -447,7 +526,7 @@ export const AdminBookings = () => {
                             <>
                               <button
                                 onClick={() => handleUpdateStatus(booking.id, 'Ongoing')}
-                                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                                className="px-3 py-1.5 rounded-lg bg-neon hover:bg-[#bbf000] text-dark text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                                 title="Bàn giao xe"
                               >
                                 Bàn giao
@@ -469,18 +548,22 @@ export const AdminBookings = () => {
                             </>
                           )}
 
-                          {/* Nhận xe Ongoing (Thu hồi xe qua Modal) */}
-                          {booking.status === 'Ongoing' && (
+                          {/* Nhận xe Ongoing hoặc Returning (Thu hồi xe qua Modal) */}
+                          {(booking.status === 'Ongoing' || booking.status === 'Returning') && (
                             <>
                               <button
                                 onClick={() => {
                                   setReturningBookingId(booking.id);
                                   setReturningPickupTime(booking.pickupDateTime);
                                 }}
-                                className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                                title="Xác nhận khách trả xe"
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                                  booking.status === 'Returning'
+                                    ? 'bg-neon hover:bg-[#bbf000] text-dark animate-pulse shadow-[0_0_12px_rgba(204,255,0,0.4)]'
+                                    : 'bg-neon hover:bg-[#bbf000] text-dark'
+                                }`}
+                                title={booking.status === 'Returning' ? 'Khách yêu cầu trả xe - click để tiến hành thu hồi' : 'Xác nhận khách trả xe'}
                               >
-                                <Key size={12} /> Thu hồi xe
+                                <Key size={12} /> {booking.status === 'Returning' ? 'Tiến hành thu hồi' : 'Thu hồi xe'}
                               </button>
                               <button
                                 onClick={() => setReminderBooking(booking)}
@@ -757,6 +840,75 @@ export const AdminBookings = () => {
         booking={reminderBooking}
         onClose={() => setReminderBooking(null)}
       />
+
+      {/* Modal hiển thị Lý do trả xe và Phản hồi/Cảnh cáo */}
+      {viewingReturnReasonBooking && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            onClick={() => setViewingReturnReasonBooking(null)}
+          />
+          <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-md z-10 overflow-hidden relative shadow-2xl p-5 space-y-4 font-sans">
+            <div className="flex justify-between items-center pb-2 border-b border-white/5">
+              <h3 className="font-display font-black text-xs text-neon uppercase tracking-wider flex items-center gap-1.5">
+                <FileText size={14} /> Lý do trả xe & Phản hồi
+              </h3>
+              <button 
+                onClick={() => setViewingReturnReasonBooking(null)} 
+                className="text-gray-400 hover:text-white cursor-pointer transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div>
+              <span className="font-bold text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Lý do khách gửi:</span>
+              <div className="text-gray-300 text-xs leading-relaxed bg-black/50 border border-white/5 p-4 rounded-xl font-mono whitespace-pre-wrap min-h-[60px]">
+                {viewingReturnReasonBooking.returnReason}
+              </div>
+            </div>
+
+            <div>
+              <span className="font-bold text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Phản hồi của Admin:</span>
+              <textarea
+                value={returnReplyText}
+                onChange={(e) => setReturnReplyText(e.target.value)}
+                placeholder="Nhập nội dung phản hồi cho khách hàng..."
+                className="w-full text-xs text-gray-200 bg-black/50 border border-white/10 focus:border-neon focus:ring-1 focus:ring-neon rounded-xl p-3 outline-none resize-none h-20 transition-all font-mono"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2 pt-1">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleSendReturnResponse(false)}
+                  disabled={submittingReply}
+                  className="flex-1 py-2 px-3 rounded-lg bg-neon hover:bg-[#bbf000] text-dark text-xs font-bold uppercase transition-all cursor-pointer border-none disabled:opacity-50 text-center"
+                >
+                  {submittingReply ? 'Đang gửi...' : 'Gửi Phản Hồi'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm('Cảnh cáo tài khoản khách hàng vì ngôn từ thô tục? (Đủ 3 lần cảnh cáo sẽ tự động khóa tài khoản)')) {
+                      handleSendReturnResponse(true);
+                    }
+                  }}
+                  disabled={submittingReply}
+                  className="py-2 px-3 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-500 border border-red-500/20 text-xs font-bold uppercase transition-all cursor-pointer disabled:opacity-50 text-center"
+                >
+                  ⚠️ Cảnh cáo thô tục
+                </button>
+              </div>
+              <button
+                onClick={() => setViewingReturnReasonBooking(null)}
+                className="w-full py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-semibold uppercase transition-all cursor-pointer border border-white/5"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

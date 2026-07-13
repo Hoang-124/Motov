@@ -627,9 +627,12 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
     const isVehicleOwner = await checkIfVehicleOwner(booking.vehicleId._id as any, userId);
     const isAdmin = userRoles.includes('Admin');
     const isStaff = userRoles.includes('Staff');
+    const isBookingOwner = booking.userId.toString() === userId;
 
     if (!isVehicleOwner && !isAdmin && !isStaff) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền cập nhật booking này' });
+      if (!isBookingOwner || status !== 'Returning') {
+        return res.status(403).json({ success: false, message: 'Bạn không có quyền cập nhật booking này' });
+      }
     }
 
     // Validate status transition
@@ -649,6 +652,15 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
         booking.returnDateTime
       );
     } else if (status === 'Confirmed') {
+      // BỔ SUNG: Kiểm tra xem xe có còn khả dụng trùng lịch không trước khi phê duyệt
+      const isAvailable = await checkVehicleAvailability(vehicleId.toString(), booking.pickupDateTime, booking.returnDateTime);
+      if (!isAvailable) {
+        return res.status(400).json({
+          success: false,
+          message: 'Không thể duyệt đơn do chiếc xe này đã được xác nhận thuê trùng lịch vào khoảng thời gian trên.'
+        });
+      }
+
       await handleBookingStatusTransitionReminders(
         booking._id,
         'Confirmed',
@@ -670,9 +682,13 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
       );
     }
 
+    if (status === 'Returning') {
+      booking.returnReason = notes || 'Khách hàng yêu cầu trả xe sớm';
+    }
+
     // Update booking
     booking.status = status as any;
-    if (notes) {
+    if (notes && status !== 'Returning') {
       booking.surcharges.push({
         surchargeType: 'Ghi chú từ chủ xe',
         amount: 0,
@@ -1131,7 +1147,7 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ success: false, message: 'Chỉ nhân viên, quản trị viên hoặc chính khách hàng thuê mới có thể xác nhận trả xe' });
     }
 
-    if (booking.status !== 'Ongoing' && booking.status !== 'Confirmed') {
+    if (booking.status !== 'Ongoing' && booking.status !== 'Returning' && booking.status !== 'Confirmed') {
       return res.status(400).json({ success: false, message: `Không thể trả xe cho booking đang ở trạng thái ${booking.status}` });
     }
 
@@ -1339,6 +1355,7 @@ function formatBookingResponse(booking: any) {
     surcharges: booking.surcharges,
     cancelReason: booking.cancelReason,
     returnReason: booking.returnReason,
+    returnReasonReply: booking.returnReasonReply,
     depositAmount: booking.depositAmount,
     remainingAmount: booking.remainingAmount,
     paymentMethod: booking.paymentMethod,
@@ -1755,6 +1772,69 @@ export const processVNPayIPN = async (req: any, res: Response) => {
   }
 };
 
+export const replyToReturnReason = async (req: any, res: Response) => {
+  try {
+    const bookingId = req.params.id;
+    const { replyText, warnUser } = req.body;
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+    }
+
+    if (replyText !== undefined) {
+      booking.returnReasonReply = replyText;
+    }
+    await booking.save();
+
+    // Nếu yêu cầu cảnh cáo người dùng
+    if (warnUser) {
+      const user = await User.findById(booking.userId);
+      if (user) {
+        user.strikes = (user.strikes || 0) + 1;
+        let isSuspendedNow = false;
+        if (user.strikes >= 3) {
+          user.status = 'Suspended';
+          isSuspendedNow = true;
+        }
+        await user.save();
+
+        const notiMessage = `Yêu cầu trả xe của bạn có nội dung thô tục (Lý do: "${booking.returnReason}"). Tài khoản của bạn đã bị cảnh cáo lần thứ ${user.strikes}/3. ${
+          isSuspendedNow 
+            ? 'Tài khoản của bạn đã bị tạm khóa do vi phạm quá 3 lần.' 
+            : 'Lưu ý: Nếu vi phạm đủ 3 lần, tài khoản của bạn sẽ bị tạm khóa.'
+        }`;
+
+        await Notification.create({
+          userId: user._id,
+          title: 'Cảnh báo vi phạm nội dung',
+          message: notiMessage,
+          type: 'System'
+        });
+      }
+    }
+
+    // Gửi thông báo có phản hồi mới từ Admin cho khách hàng
+    if (replyText) {
+      await Notification.create({
+        userId: booking.userId,
+        title: 'Phản hồi yêu cầu trả xe sớm',
+        message: `Admin đã phản hồi về yêu cầu trả xe sớm của đơn hàng ${booking.bookingCode}: "${replyText}"`,
+        type: 'System'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Cập nhật phản hồi thành công',
+      data: booking
+    });
+  } catch (error: any) {
+    console.error('Lỗi khi phản hồi lý do trả xe:', error);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ', error: error.message });
+  }
+};
+
 export default {
   createBooking,
   getBookingById,
@@ -1769,5 +1849,6 @@ export default {
   getBookingTracking,
   returnMotorbike,
   createVNPayUrl,
-  processVNPayIPN
+  processVNPayIPN,
+  replyToReturnReason
 };

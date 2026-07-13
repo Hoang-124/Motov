@@ -48,10 +48,11 @@ export interface Booking {
   totalAmount: number;
   depositAmount?: number;
   remainingAmount?: number;
-  status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled'; // Đúng Enum viết hoa chữ cái đầu của bạn
+  status: 'Pending' | 'Confirmed' | 'Ongoing' | 'Returning' | 'Completed' | 'Cancelled'; // Đúng Enum viết hoa chữ cái đầu của bạn
   statusLabel: string;   // Nhãn tiếng Việt có icon do BE tạo sẵn (ví dụ: "⏳ Chờ xác nhận")
   cancelReason?: string;
   returnReason?: string;
+  returnReasonReply?: string;
   startOdometer?: number;
   endOdometer?: number;
   createdAt: string;
@@ -128,6 +129,12 @@ export const bookingService = {
   // 10. Gửi IPN VNPAY thật -> GET /api/bookings/vnpay-ipn
   verifyVNPayPayment: async (queryParams: string) => {
     const res = await axios.get(`${API_URL}/vnpay-ipn${queryParams}`);
+    return res.data;
+  },
+
+  // 11. Admin/Staff phản hồi lý do trả xe và cảnh cáo
+  replyToReturnReason: async (id: string, replyText: string, warnUser: boolean) => {
+    const res = await axios.put(`${API_URL}/${id}/return-response`, { replyText, warnUser });
     return res.data;
   }
 };

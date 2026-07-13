@@ -381,9 +381,9 @@ export const MotorbikeDetail = () => {
                   <button
                     onClick={() => {
                       if (!currentUser) {
-                        navigate(`/auth?redirect=chat?with=${ownerId}`);
+                        navigate(`/auth?redirect=${encodeURIComponent(`/chat?with=${ownerId}&vehicle=${id}`)}`);
                       } else {
-                        navigate(`/chat?with=${ownerId}`);
+                        navigate(`/chat?with=${ownerId}&vehicle=${id}`);
                       }
                     }}
                     className="flex items-center justify-center gap-2 bg-black/40 border border-neon/30 hover:bg-neon hover:text-dark text-neon text-xs font-bold px-6 py-3 rounded-lg transition-all duration-300 cursor-pointer"
