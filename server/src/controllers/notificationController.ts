@@ -59,7 +59,6 @@ export const getMyNotifications = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Lỗi khi lấy danh sách thông báo',
-      error: error.message
     });
   }
 };
@@ -103,7 +102,6 @@ export const markAsRead = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Lỗi khi đánh dấu đã đọc thông báo',
-      error: error.message
     });
   }
 };
@@ -134,7 +132,6 @@ export const markAllAsRead = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Lỗi khi đánh dấu đọc tất cả thông báo',
-      error: error.message
     });
   }
 };
@@ -173,7 +170,6 @@ export const deleteNotification = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Lỗi khi xóa thông báo',
-      error: error.message
     });
   }
 };
@@ -201,7 +197,6 @@ export const deleteAllNotifications = async (req: AuthRequest, res: Response) =>
     return res.status(500).json({
       success: false,
       message: 'Lỗi khi xóa toàn bộ thông báo',
-      error: error.message
     });
   }
 };

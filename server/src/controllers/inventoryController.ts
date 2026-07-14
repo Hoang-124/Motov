@@ -40,7 +40,7 @@ export const getAllInventory = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch inventory items',
-      message: error.message
+      message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™'
     });
   }
 };
@@ -75,7 +75,7 @@ export const getInventoryById = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch inventory item',
-      message: error.message
+      message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™'
     });
   }
 };
@@ -129,7 +129,7 @@ export const createInventory = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to create inventory item',
-      message: error.message
+      message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™'
     });
   }
 };
@@ -196,7 +196,7 @@ export const updateInventory = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update inventory item',
-      message: error.message
+      message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™'
     });
   }
 };
@@ -225,7 +225,7 @@ export const deleteInventory = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to delete inventory item',
-      message: error.message
+      message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™'
     });
   }
 };
@@ -286,7 +286,7 @@ export const updateStock = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update stock quantity',
-      message: error.message
+      message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™'
     });
   }
 };

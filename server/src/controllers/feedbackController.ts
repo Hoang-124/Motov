@@ -89,7 +89,6 @@ export const createFeedback = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi gửi đánh giá',
-      error: error.message
     });
   }
 };
@@ -122,7 +121,6 @@ export const getVehicleFeedbacks = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi tải đánh giá của xe',
-      error: error.message
     });
   }
 };
@@ -169,7 +167,6 @@ export const getAllFeedbacksForAdmin = async (req: AuthRequest, res: Response) =
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi lấy danh sách đánh giá',
-      error: error.message
     });
   }
 };
@@ -259,7 +256,6 @@ export const blockFeedback = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi ẩn đánh giá',
-      error: error.message
     });
   }
 };
@@ -330,7 +326,6 @@ export const unblockFeedback = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi khôi phục đánh giá',
-      error: error.message
     });
   }
 };
@@ -380,7 +375,6 @@ export const deleteFeedback = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi xóa đánh giá',
-      error: error.message
     });
   }
 };
@@ -409,7 +403,6 @@ export const getMyFeedbacks = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi lấy danh sách đánh giá của bạn',
-      error: error.message
     });
   }
 };

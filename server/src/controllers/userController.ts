@@ -70,7 +70,6 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi tải danh sách thành viên',
-      error: error.message,
     });
   }
 };
@@ -97,7 +96,6 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi lấy thông tin thành viên',
-      error: error.message,
     });
   }
 };
@@ -197,7 +195,6 @@ export const createUser = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi tạo tài khoản thành viên',
-      error: error.message,
     });
   }
 };
@@ -318,7 +315,6 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi cập nhật thông tin thành viên',
-      error: error.message,
     });
   }
 };
@@ -358,7 +354,6 @@ export const banUser = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi khóa tài khoản thành viên',
-      error: error.message,
     });
   }
 };
@@ -389,7 +384,6 @@ export const unbanUser = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi mở khóa tài khoản thành viên',
-      error: error.message,
     });
   }
 };
@@ -430,7 +424,6 @@ export const addFavoriteVehicle = async (req: AuthRequest, res: Response): Promi
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi thêm xe vào danh sách yêu thích',
-      error: error.message,
     });
   }
 };
@@ -464,7 +457,6 @@ export const removeFavoriteVehicle = async (req: AuthRequest, res: Response): Pr
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi xóa xe khỏi danh sách yêu thích',
-      error: error.message,
     });
   }
 };
@@ -499,7 +491,6 @@ export const getFavoriteVehicles = async (req: AuthRequest, res: Response): Prom
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi tải danh sách xe yêu thích',
-      error: error.message,
     });
   }
 };

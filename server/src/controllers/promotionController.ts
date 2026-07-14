@@ -117,7 +117,6 @@ export const createPromotion = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi tạo khuyến mãi',
-      error: error.message
     });
   }
 };
@@ -169,7 +168,6 @@ export const getAllPromotionsForAdmin = async (req: AuthRequest, res: Response) 
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi tải danh sách khuyến mãi',
-      error: error.message
     });
   }
 };
@@ -203,7 +201,6 @@ export const getActivePromotions = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi lấy danh sách khuyến mãi',
-      error: error.message
     });
   }
 };
@@ -232,7 +229,6 @@ export const getPromotionById = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi lấy thông tin chi tiết khuyến mãi',
-      error: error.message
     });
   }
 };
@@ -359,7 +355,6 @@ export const updatePromotion = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi cập nhật khuyến mãi',
-      error: error.message
     });
   }
 };
@@ -402,7 +397,6 @@ export const deletePromotion = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi xóa khuyến mãi',
-      error: error.message
     });
   }
 };
@@ -524,7 +518,6 @@ export const validatePromoCode = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ khi áp dụng mã giảm giá',
-      error: error.message
     });
   }
 };
