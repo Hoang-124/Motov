@@ -103,11 +103,7 @@ export const Booking = () => {
 
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) {
-      setPromoError('Vui lòng nhập mã giảm giá.');
-      return;
-    }
-    if (totalAmountBeforeDiscount <= 0) {
-      setPromoError('Vui lòng chọn thời gian thuê xe hợp lệ trước.');
+      setPromoError('Vui l\u00f2ng nh\u1eadp m\u00e3 gi\u1ea3m gi\u00e1.');
       return;
     }
 
@@ -116,12 +112,18 @@ export const Booking = () => {
     setValidatingPromo(true);
 
     try {
-      const promo = await promotionService.validatePromoCode(promoCode, totalAmountBeforeDiscount);
+      // If no dates selected, validate with a large placeholder amount to just check code validity
+      const amountToValidate = totalAmountBeforeDiscount > 0 ? totalAmountBeforeDiscount : 999999;
+      const promo = await promotionService.validatePromoCode(promoCode, amountToValidate);
       setAppliedPromo(promo);
-      setPromoSuccess(`Áp dụng thành công! Được giảm ${promo.discountAmount.toLocaleString()} VNĐ`);
+      if (totalAmountBeforeDiscount > 0) {
+        setPromoSuccess(`\u00c1p d\u1ee5ng th\u00e0nh c\u00f4ng! \u0110\u01b0\u1ee3c gi\u1ea3m ${promo.discountAmount.toLocaleString()} VN\u0110`);
+      } else {
+        setPromoSuccess(`M\u00e3 h\u1ee3p l\u1ec7! S\u1ed1 ti\u1ec1n gi\u1ea3m s\u1ebd hi\u1ec3n th\u1ecb sau khi ch\u1ecdn ng\u00e0y thu\u00ea.`);
+      }
     } catch (err: any) {
       console.error(err);
-      setPromoError(err.response?.data?.message || 'Mã giảm giá không hợp lệ hoặc đã hết hạn.');
+      setPromoError(err.response?.data?.message || 'M\u00e3 gi\u1ea3m gi\u00e1 kh\u00f4ng h\u1ee3p l\u1ec7 ho\u1eb7c \u0111\u00e3 h\u1ebft h\u1ea1n.');
       setAppliedPromo(null);
     } finally {
       setValidatingPromo(false);
@@ -659,6 +661,68 @@ export const Booking = () => {
                       />
                     </div>
                   </div>
+
+                  {/* === Promo Code Section === */}
+                  <div className="pt-2 border-t border-white/5">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2">
+                      <Ticket size={15} className="text-neon" />
+                      {language === 'vi' ? 'Mã giảm giá / Voucher' : 'Promo / Voucher Code'}
+                      <span className="text-xs text-gray-500 font-normal">(không bắt buộc)</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-grow">
+                        <input
+                          type="text"
+                          placeholder={totalAmountBeforeDiscount > 0 ? (t('bookingPage.promoPlaceholder') || 'Nhập mã giảm giá') : (language === 'vi' ? 'Nhập mã giảm giá' : 'Enter promo code')}
+                          value={promoCode}
+                          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                          disabled={appliedPromo !== null || validatingPromo}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyPromo(); } }}
+                          className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-neon focus:border-transparent block pl-3 p-3.5 outline-none uppercase font-mono tracking-wider disabled:opacity-60 transition-all"
+                        />
+                        {appliedPromo && (
+                          <button
+                            type="button"
+                            onClick={() => { setAppliedPromo(null); setPromoSuccess(null); setPromoCode(''); setPromoError(null); }}
+                            className="absolute right-2 top-3.5 text-gray-500 hover:text-red-400 transition-colors cursor-pointer"
+                          >
+                            <XIcon size={16} />
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={appliedPromo !== null || validatingPromo || !promoCode.trim()}
+                        onClick={handleApplyPromo}
+                        className="bg-surface border border-gray-700 text-white hover:border-neon hover:text-neon disabled:opacity-40 disabled:cursor-not-allowed font-bold px-4 py-2.5 rounded-lg transition-all text-xs uppercase cursor-pointer shrink-0"
+                      >
+                        {validatingPromo ? '...' : (t('bookingPage.applyBtn') || 'Áp dụng')}
+                      </button>
+                    </div>
+
+                    {totalAmountBeforeDiscount <= 0 && !appliedPromo && (
+                      <p className="text-[11px] text-gray-500 mt-1.5 flex items-center gap-1">
+                        ⚡ {language === 'vi' ? 'Mã sẽ áp dụng khi tính tiền (cần chọn ngày ở bước 1)' : 'Code will apply when dates are selected'}
+                      </p>
+                    )}
+
+                    {promoError && (
+                      <p className="text-xs text-red-400 font-medium mt-1.5 flex items-center gap-1">⚠️ {promoError}</p>
+                    )}
+                    {promoSuccess && (
+                      <p className="text-xs text-green-400 font-semibold mt-1.5 flex items-center gap-1">✓ {promoSuccess}</p>
+                    )}
+
+                    {appliedPromo && (
+                      <div className="mt-2 flex items-center gap-2 bg-neon/5 border border-neon/20 rounded-lg px-3 py-2">
+                        <Ticket size={14} className="text-neon flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-neon text-xs font-bold font-mono">{appliedPromo.voucherCode}</p>
+                          <p className="text-gray-400 text-xs">{appliedPromo.discountName} — giảm {appliedPromo.discountAmount.toLocaleString()} VNĐ</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 
@@ -844,8 +908,17 @@ export const Booking = () => {
                 </div>
               </div>
             ) : (
-              <div className="border-t border-gray-800 pt-4 text-center">
+              <div className="border-t border-gray-800 pt-4 space-y-3">
                 <p className="text-gray-500 text-xs italic">{t('bookingPage.billingInstruction')}</p>
+                {/* Hint: promo code available in step 2 */}
+                <div className="flex items-center gap-2 bg-neon/5 border border-neon/10 rounded-lg px-3 py-2.5 mt-2">
+                  <Ticket size={14} className="text-neon flex-shrink-0" />
+                  <p className="text-gray-400 text-xs">
+                    {language === 'vi'
+                      ? 'Có mã giảm giá? Nhập mã ở bước 2 “Thông tin khách hàng”'
+                      : 'Have a promo code? Enter it in Step 2'}
+                  </p>
+                </div>
               </div>
             )}
           </div>
