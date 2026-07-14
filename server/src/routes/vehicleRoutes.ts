@@ -9,7 +9,8 @@ import {
   updateVehicleStatus,
   resetMaintenance,
   getRecommendations,
-  getNearbyVehicles
+  getNearbyVehicles,
+  compareVehicles
 } from '../controllers/vehicleController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
@@ -22,6 +23,7 @@ const router = Router();
 // Public routes (no auth required)
 router.get('/recommendations', getRecommendations as any);
 router.get('/nearby', getNearbyVehicles as any);
+router.post('/compare', compareVehicles as any); // So sánh xe: POST body { vehicleIds: string[] }
 router.get('/', getAllVehicles as any);
 router.get('/:id', getVehicleById as any);
 

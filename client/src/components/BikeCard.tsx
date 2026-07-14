@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Motorbike, addToFavorites, removeFromFavorites, getUserFavorites } from '../services/vehicleService';
-import { MapPin, Heart } from 'lucide-react';
+import { MapPin, Heart, SlidersHorizontal } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage';
+import { useCompare } from '../contexts/CompareContext';
 
 interface BikeCardProps {
   bike: Motorbike;
@@ -13,6 +14,8 @@ interface BikeCardProps {
 export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
   const { language, t } = useLanguage();
   const [isFavorite, setIsFavorite] = useState(false);
+  const { addToCompare, removeFromCompare, isInCompare, canAddMore } = useCompare();
+  const inCompare = isInCompare(bike._id || '');
 
   // 1. Kiểm tra xem xe này đã nằm trong danh sách yêu thích của người dùng chưa
   useEffect(() => {
@@ -172,6 +175,30 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
               size={15} 
               className={isFavorite ? "fill-red-500 text-red-500" : "text-white/80"} 
             />
+          </button>
+
+          {/* Compare Button */}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (inCompare) {
+                removeFromCompare(bike._id || '');
+              } else if (canAddMore) {
+                const added = addToCompare(bike);
+                if (!added) alert('Chỉ có thể so sánh tối đa 3 xe!');
+              } else {
+                alert('Chỉ có thể so sánh tối đa 3 xe!');
+              }
+            }}
+            title={inCompare ? 'Bỏ so sánh' : 'Thêm vào so sánh'}
+            className={`p-2 rounded-lg backdrop-blur-md border transition-all cursor-pointer shadow-lg ${
+              inCompare
+                ? 'bg-neon/20 border-neon/40 text-neon'
+                : 'bg-dark/70 border-white/10 text-gray-400 hover:text-neon hover:scale-110'
+            }`}
+          >
+            <SlidersHorizontal size={15} />
           </button>
 
           <div className={`px-3 py-1 rounded-full text-xs font-bold border neon-badge-pulse transition-all duration-300 ${
