@@ -38,7 +38,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         try {
           const user = JSON.parse(storedUser);
           token = user?.token;
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -90,7 +90,15 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       const { data } = await chatService.getMessages(conversation._id, 0, limit);
       setMessages(data.reverse()); // Assume BE returns latest first, we want chronological
       await chatService.markAsRead(conversation._id);
+
+      // Reset unread count locally for this conversation
+      setConversations((prev) =>
+        prev.map((c) => (c._id === conversation._id ? { ...c, unreadCount: 0 } : c))
+      );
       
+      // Dispatch custom event to notify Header/other components to update their badge count
+      window.dispatchEvent(new Event('chatReadUpdated'));
+
       // Join socket room
       if (socket) {
         socket.emit('join_conversation', conversation._id);
@@ -114,7 +122,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const sendMessage = useCallback(async (content: string) => {
     if (!activeConversation) return;
-    
+
     // Sanitize input to prevent XSS
     const cleanContent = DOMPurify.sanitize(content.trim());
     if (!cleanContent) return;
@@ -122,7 +130,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data: newMessage } = await chatService.sendMessage(activeConversation._id, cleanContent);
       // Update the lastMessage in conversations list
-      setConversations((prev) => prev.map(c => 
+      setConversations((prev) => prev.map(c =>
         c._id === activeConversation._id ? { ...c, lastMessage: newMessage } : c
       ));
     } catch (err) {
@@ -142,25 +150,74 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       });
       // Optionally mark as read immediately if window is focused
       if (activeConversation) {
-        chatService.markAsRead(activeConversation._id).catch(console.error);
+        chatService.markAsRead(activeConversation._id)
+          .then(() => {
+            // Reset unread count locally for active conversation
+            setConversations((prev) =>
+              prev.map((c) => (c._id === activeConversation._id ? { ...c, unreadCount: 0 } : c))
+            );
+            window.dispatchEvent(new Event('chatReadUpdated'));
+          })
+          .catch(console.error);
       }
     };
 
     // conversation_updated is emitted to personal rooms for sidebar/list updates
     const handleConversationUpdated = (data: { conversationId: string; lastMessage: ChatMessage }) => {
-      setConversations((prev) => prev.map(c =>
-        c._id === data.conversationId ? { ...c, lastMessage: data.lastMessage, unreadCount: (c.unreadCount || 0) + 1 } : c
-      ));
+      setConversations((prev) => {
+        const existingIndex = prev.findIndex(c => c._id === data.conversationId);
+        if (existingIndex >= 0) {
+          // Conversation exists in list — update it
+          const updated = prev.map(c => {
+            if (c._id === data.conversationId) {
+              const isCurrentActive = activeConversation && activeConversation._id === data.conversationId;
+              return {
+                ...c,
+                lastMessage: data.lastMessage,
+                unreadCount: isCurrentActive ? 0 : (c.unreadCount || 0) + 1
+              };
+            }
+            return c;
+          });
+          return updated;
+        }
+        // Conversation NOT in list — will re-fetch below
+        return prev;
+      });
+
+      // If conversation is not yet in the list, re-fetch conversations from server
+      setConversations((prev) => {
+        const exists = prev.some(c => c._id === data.conversationId);
+        if (!exists) {
+          // Re-fetch in background to pick up the new conversation
+          fetchConversations();
+        }
+        return prev;
+      });
+
+      // Dispatch chatReadUpdated when unread status changes
+      window.dispatchEvent(new Event('chatReadUpdated'));
+    };
+
+    // Handle brand-new conversation created by another user
+    const handleNewConversation = (conversation: ConversationItem) => {
+      setConversations((prev) => {
+        // Dedup: don't add if already in list
+        if (prev.some(c => c._id === conversation._id)) return prev;
+        return [{ ...conversation, unreadCount: 0 }, ...prev];
+      });
     };
 
     socket.on('new_message', handleNewMessage);
     socket.on('conversation_updated', handleConversationUpdated);
+    socket.on('new_conversation', handleNewConversation);
 
     return () => {
       socket.off('new_message', handleNewMessage);
       socket.off('conversation_updated', handleConversationUpdated);
+      socket.off('new_conversation', handleNewConversation);
     };
-  }, [socket, activeConversation]);
+  }, [socket, activeConversation, fetchConversations]);
 
   // Initial fetch
   useEffect(() => {
@@ -174,34 +231,54 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const params = new URLSearchParams(window.location.search);
     const partnerId = params.get('with');
     const vehicleId = params.get('vehicle');
-    
+
     if (!partnerId) {
       parsedWithRef.current = null;
       return;
     }
 
-    // Use composite key so switching between different vehicles of same owner creates correct conversations
+    // Use composite key to detect changes in partner and vehicle to trigger context updates
     const compositeKey = vehicleId ? `${partnerId}_${vehicleId}` : partnerId;
     if (!conversationsLoaded || parsedWithRef.current === compositeKey) return;
 
     parsedWithRef.current = compositeKey;
 
-    // Check if we already have a conversation with this partner (and optionally this vehicle)
+    // Check if we already have a conversation with this partner (regardless of vehicle)
     const existing = conversations.find(c => {
-      const hasPartner = c.participants && c.participants.some(p => p._id === partnerId);
-      if (!hasPartner) return false;
-      // If vehicleId provided, match on relatedVehicle too
-      if (vehicleId) {
-        const convVehicleId = typeof c.relatedVehicle === 'object'
-          ? (c.relatedVehicle as any)?._id
-          : c.relatedVehicle;
-        return convVehicleId === vehicleId || !convVehicleId; // prefer vehicle-specific, fallback to generic
-      }
-      return true;
+      const hasPartner = c.participants && Array.isArray(c.participants) && c.participants.some(p => {
+        const pId = typeof p === 'object' && p ? (p as any)._id : p;
+        return pId === partnerId;
+      });
+      return hasPartner;
     });
 
     if (existing) {
-      selectConversation(existing);
+      const convVehicleId = typeof existing.relatedVehicle === 'object'
+        ? (existing.relatedVehicle as any)?._id
+        : existing.relatedVehicle;
+
+      // If a vehicle context was passed and it differs from the current conversation's vehicle context,
+      // update the context on the backend so the sidebar/header displays the correct vehicle info.
+      if (vehicleId && convVehicleId !== vehicleId) {
+        const updateContext = async () => {
+          try {
+            const res = await chatService.createConversation(partnerId, null, 'customer-owner', vehicleId);
+            if (res.success && res.data) {
+              setConversations(prev => {
+                const filtered = prev.filter(c => c._id !== res.data._id);
+                return [res.data, ...filtered];
+              });
+              selectConversation(res.data);
+            }
+          } catch (err) {
+            console.error('Lỗi khi cập nhật ngữ cảnh xe cho cuộc trò chuyện:', err);
+            selectConversation(existing);
+          }
+        };
+        updateContext();
+      } else {
+        selectConversation(existing);
+      }
     } else {
       // Create new conversation
       const initNewConv = async () => {

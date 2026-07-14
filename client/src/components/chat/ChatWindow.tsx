@@ -4,6 +4,33 @@ import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
 import { Image as ImageIcon, ShieldCheck } from 'lucide-react';
 
+const formatDividerTime = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const now = new Date();
+  
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  if (msgDate.getTime() === today.getTime()) {
+    return `${timeStr}`;
+  } else if (msgDate.getTime() === yesterday.getTime()) {
+    return `Hôm qua, ${timeStr}`;
+  } else {
+    const diffTime = today.getTime() - msgDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays < 7) {
+      const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+      return `${days[date.getDay()]} ${timeStr}`;
+    } else {
+      return `${date.getDate()} thg ${date.getMonth() + 1}, ${date.getFullYear()} ${timeStr}`;
+    }
+  }
+};
+
 export const ChatWindow = () => {
   const { messages, activeConversation, loadMoreMessages } = useChat();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -18,8 +45,13 @@ export const ChatWindow = () => {
     }
   }, [messages]);
 
-  const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-  const myId = storedUser.id || storedUser._id;
+  let myId = '';
+  try {
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    myId = storedUser.id || storedUser._id || '';
+  } catch (e) {
+    console.error('Error parsing stored user in ChatWindow:', e);
+  }
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (e.currentTarget.scrollTop === 0) {
@@ -27,7 +59,11 @@ export const ChatWindow = () => {
     }
   };
 
-  const otherParticipant = activeConversation?.participants?.find(p => p._id !== myId);
+  const otherParticipant = activeConversation?.participants?.find(p => {
+    if (!p) return false;
+    const pId = typeof p === 'object' ? p._id : p;
+    return pId !== myId;
+  }) || null;
 
   let contextText = 'Booking';
   if (activeConversation?.relatedVehicle) {
@@ -102,9 +138,30 @@ export const ChatWindow = () => {
           </div>
         ) : (
           messages.map((msg, idx) => {
-            const senderIdValue = typeof msg.senderId === 'string' ? msg.senderId : msg.senderId._id;
+            const senderIdValue = typeof msg.senderId === 'string'
+              ? msg.senderId
+              : (msg.senderId ? msg.senderId._id : '');
             const isMine = senderIdValue === myId;
-            return <MessageBubble key={msg._id || idx} message={msg} isMine={isMine} />;
+
+            const prevMsg = idx > 0 ? messages[idx - 1] : null;
+            const showTimeDivider = !prevMsg || (() => {
+              const prevDate = new Date(prevMsg.createdAt);
+              const currDate = new Date(msg.createdAt);
+              return currDate.getTime() - prevDate.getTime() > 15 * 60 * 1000;
+            })();
+
+            return (
+              <React.Fragment key={msg._id || idx}>
+                {showTimeDivider && (
+                  <div className="flex justify-center my-2">
+                    <span className="text-[11px] font-medium text-gray-500 bg-gray-800/20 px-3 py-1 rounded-full border border-gray-800/30">
+                      {formatDividerTime(msg.createdAt)}
+                    </span>
+                  </div>
+                )}
+                <MessageBubble message={msg} isMine={isMine} />
+              </React.Fragment>
+            );
           })
         )}
       </div>

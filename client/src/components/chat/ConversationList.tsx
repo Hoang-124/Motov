@@ -11,15 +11,20 @@ export const ConversationList = () => {
     let myId = '';
     if (storedUser) {
       try {
-        myId = JSON.parse(storedUser).id;
+        const parsed = JSON.parse(storedUser);
+        myId = parsed.id || parsed._id || '';
       } catch (e) {}
     }
     
-    if (!myId) {
-      myId = JSON.parse(localStorage.getItem('user') || '{}')._id;
+    if (!conversation.participants || !Array.isArray(conversation.participants)) {
+      return null;
     }
 
-    return conversation.participants.find(p => p._id !== myId) || conversation.participants[0];
+    return conversation.participants.find(p => {
+      if (!p) return false;
+      const pId = typeof p === 'object' ? p._id : p;
+      return pId !== myId;
+    }) || conversation.participants[0] || null;
   };
 
   const formatTime = (dateStr?: string) => {

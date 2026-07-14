@@ -66,8 +66,10 @@ describe('chatService - Unit Tests', () => {
     });
 
     it('should create a new conversation if one does not exist', async () => {
-      const u1 = new mongoose.Types.ObjectId();
-      const u2 = new mongoose.Types.ObjectId();
+      const user1 = await User.create({ username: 'user1', email: 'user1@test.com', status: 'Active' });
+      const user2 = await User.create({ username: 'user2', email: 'user2@test.com', status: 'Active' });
+      const u1 = user1._id;
+      const u2 = user2._id;
       const vehicle = await Vehicle.create({
         ownerId: u2,
         vehicleModel: 'Wave',
@@ -90,12 +92,14 @@ describe('chatService - Unit Tests', () => {
       expect(conv).toBeDefined();
       expect(conv.participants.length).toBe(2);
       expect(conv.type).toBe('customer-owner');
-      expect(conv.relatedBooking?.toString()).toBe(booking._id.toString());
+      expect((conv.relatedBooking as any)?._id?.toString()).toBe(booking._id.toString());
     });
 
     it('should return existing conversation if one exists', async () => {
-      const u1 = new mongoose.Types.ObjectId();
-      const u2 = new mongoose.Types.ObjectId();
+      const user1 = await User.create({ username: 'user1', email: 'user1@test.com', status: 'Active' });
+      const user2 = await User.create({ username: 'user2', email: 'user2@test.com', status: 'Active' });
+      const u1 = user1._id;
+      const u2 = user2._id;
       const vehicle = await Vehicle.create({
         ownerId: u2,
         vehicleModel: 'Wave',
@@ -118,6 +122,56 @@ describe('chatService - Unit Tests', () => {
       const conv2 = await createOrGetConversation([u2.toString(), u1.toString()], 'customer-owner', booking._id.toString()); // Order might matter depending on `$all`, `$all` doesn't care about order
 
       expect(conv1?._id.toString()).toBe(conv2?._id.toString());
+    });
+
+    it('should merge conversation and update/clear context when switching between booking and vehicle', async () => {
+      const user1 = await User.create({ username: 'user1', email: 'user1@test.com', status: 'Active' });
+      const user2 = await User.create({ username: 'user2', email: 'user2@test.com', status: 'Active' });
+      const u1 = user1._id;
+      const u2 = user2._id;
+      
+      const vehicle1 = await Vehicle.create({
+        ownerId: u2,
+        vehicleModel: 'Wave',
+        licensePlate: '29A-11111',
+        rentalPrice: 50,
+        category: new mongoose.Types.ObjectId(),
+        transmissionType: 'Manual',
+      });
+
+      const vehicle2 = await Vehicle.create({
+        ownerId: u2,
+        vehicleModel: 'SH',
+        licensePlate: '29A-22222',
+        rentalPrice: 100,
+        category: new mongoose.Types.ObjectId(),
+        transmissionType: 'Automatic',
+      });
+
+      const booking = await Booking.create({
+        bookingCode: 'BK123', status: 'Pending',
+        userId: u1, vehicleId: vehicle1._id, ownerId: u2,
+        totalPrice: 100, totalAmount: 100, returnDateTime: new Date(), pickupDateTime: new Date(),
+        vehicleSnapshot: { brand: 'Honda', model: 'Wave', year: 2020, name: 'Honda Wave', rentalPrice: 50, image: 'img.jpg' },
+        pickupLocation: { type: 'Point', coordinates: [0, 0], address: 'test' }
+      });
+
+      // Start conversation from vehicle1 detail page
+      const convVehicle = await createOrGetConversation([u1.toString(), u2.toString()], 'customer-owner', undefined, vehicle1._id.toString());
+      expect(convVehicle.relatedVehicle?._id.toString()).toBe(vehicle1._id.toString());
+      expect(convVehicle.relatedBooking).toBeUndefined();
+
+      // Switch context to booking
+      const convBooking = await createOrGetConversation([u1.toString(), u2.toString()], 'customer-owner', booking._id.toString());
+      expect(convBooking._id.toString()).toBe(convVehicle._id.toString()); // Merged thread
+      expect(convBooking.relatedBooking?._id.toString()).toBe(booking._id.toString());
+      expect(convBooking.relatedVehicle).toBeUndefined(); // Cleared vehicle context
+
+      // Switch context to vehicle2
+      const convVehicle2 = await createOrGetConversation([u1.toString(), u2.toString()], 'customer-owner', undefined, vehicle2._id.toString());
+      expect(convVehicle2._id.toString()).toBe(convVehicle._id.toString()); // Merged thread
+      expect(convVehicle2.relatedVehicle?._id.toString()).toBe(vehicle2._id.toString());
+      expect(convVehicle2.relatedBooking).toBeUndefined(); // Cleared booking context
     });
   });
 
@@ -189,7 +243,7 @@ describe('chatService - Unit Tests', () => {
     it('should return user conversations with unread counts', async () => {
       const u1 = await User.create({ username: 'u1', email: 'u1@test.com', status: 'Active' });
       const u2 = await User.create({ username: 'u2', email: 'u2@test.com', status: 'Active' });
-      
+
       const conv = await Conversation.create({
         participants: [u1._id, u2._id],
         type: 'customer-owner',
@@ -221,7 +275,7 @@ describe('chatService - Unit Tests', () => {
     it('should mark unread messages as read', async () => {
       const u1 = await User.create({ username: 'u1', email: 'u1@test.com', status: 'Active' });
       const u2 = await User.create({ username: 'u2', email: 'u2@test.com', status: 'Active' });
-      
+
       const conv = await Conversation.create({
         participants: [u1._id, u2._id],
         type: 'customer-owner',
@@ -229,7 +283,7 @@ describe('chatService - Unit Tests', () => {
       });
 
       const msg1 = await Message.create({ conversationId: conv._id, senderId: u2._id, content: 'unread1', readBy: [u2._id] });
-      
+
       await markMessagesAsRead(conv._id.toString(), u1._id.toString());
 
       const updatedMsg1 = await Message.findById(msg1._id);

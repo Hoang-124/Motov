@@ -254,6 +254,13 @@ export const Booking = () => {
       return 'Thời gian trả xe phải sau thời gian lấy xe ít nhất 1 giờ!';
     }
 
+    // Thời gian thuê tối đa là 30 ngày
+    const maxRentalDays = 30;
+    const rentalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    if (rentalDays > maxRentalDays) {
+      return `Thời gian cho thuê tối đa là ${maxRentalDays} ngày!`;
+    }
+
     return null;
   };
 
@@ -277,7 +284,7 @@ export const Booking = () => {
         setApiError('Vui lòng nhập số điện thoại liên lạc!');
         return;
       }
-      const phoneRegex = /^(03|05|07|08|09)+([0-9]{8})$/;
+      const phoneRegex = /^(03|05|07|08|09)([0-9]{8})$/;
       if (!phoneRegex.test(phone.trim())) {
         setApiError('Số điện thoại không đúng định dạng Việt Nam (10 chữ số, bắt đầu bằng 03, 05, 07, 08, 09)!');
         return;
