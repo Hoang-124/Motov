@@ -52,3 +52,19 @@ export const restrictTo = (...allowedRoles: ('Admin' | 'Staff' | 'Owner' | 'Cust
     next();
   };
 };
+
+// SEC-FIX: CSRF protection via custom header check
+// Browsers won't send custom headers in cross-origin simple requests (forms),
+// so requiring this header blocks CSRF attacks without needing a token
+export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
+  const method = req.method.toUpperCase();
+  // Only check state-changing methods
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    const hasCustomHeader = req.headers['x-requested-with'] === 'XMLHttpRequest' ||
+                            req.headers['content-type']?.includes('application/json');
+    if (!hasCustomHeader) {
+      return res.status(403).json({ success: false, message: 'Forbidden: missing required headers' });
+    }
+  }
+  next();
+};

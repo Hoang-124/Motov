@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import mongoSanitize from 'express-mongo-sanitize';
 import path from 'path';
 import fs from 'fs';
 import mongoose from 'mongoose';
@@ -23,7 +24,7 @@ import categoryRoutes from './routes/categoryRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import { Category } from './models/Category.js';
-import { authMiddleware } from './middlewares/authMiddleware.js';
+import { authMiddleware, csrfProtection } from './middlewares/authMiddleware.js';
 import { initBookingReminderScheduler } from './utils/bookingReminderScheduler.js';
 import { Discount } from './models/Discount.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -42,7 +43,8 @@ initSocket(httpServer);
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/Motov';
 
-// FIX [SEC-5]: Restrict CORS to configured frontend origin only, supporting multiple ports in development
+// SEC-FIX: CORS — strict in production, permissive in development
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const ALLOWED_ORIGINS = [
   process.env.CLIENT_ORIGIN || 'http://localhost:3000',
   'http://localhost:3001',
@@ -55,6 +57,16 @@ app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
 
+    // In production: only allow explicitly listed origins
+    if (IS_PRODUCTION) {
+      if (ALLOWED_ORIGINS.includes(origin)) {
+        return callback(null, true);
+      }
+      console.error(`[CORS Blocked] Origin: ${origin}`);
+      return callback(new Error(`Not allowed by CORS: ${origin}`));
+    }
+
+    // In development: also allow localhost/LAN IPs for convenience
     const isAllowed =
       ALLOWED_ORIGINS.includes(origin) ||
       /^http:\/\/localhost:\d+$/.test(origin) ||
@@ -73,6 +85,16 @@ app.use(cors({
   credentials: true
 }));
 
+// SEC-FIX: HTTPS enforcement in production
+if (IS_PRODUCTION) {
+  app.use((req: any, res: any, next: any) => {
+    if (req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect(301, `https://${req.headers.host}${req.url}`);
+    }
+    next();
+  });
+}
+
 // SEC-FIX: Add HTTP security headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow uploads to be served cross-origin
@@ -80,6 +102,12 @@ app.use(helmet({
 }));
 
 app.use(express.json({ limit: '10kb' })); // SEC-FIX: Explicit body size limit
+
+// SEC-FIX: Sanitize MongoDB queries to prevent NoSQL injection
+app.use(mongoSanitize());
+
+// SEC-FIX: CSRF protection for all API mutation requests
+app.use('/api', csrfProtection as any);
 
 // SEC-FIX: Rate limiting for auth endpoints (brute force protection)
 const authLimiter = rateLimit({
@@ -153,13 +181,40 @@ const upload = multer({
   }
 });
 
-// FIX [SEC-2]: Upload endpoint now requires authentication + rate limiting
+// SEC-FIX: Magic bytes signatures for image validation
+const IMAGE_SIGNATURES: Record<string, number[][]> = {
+  'jpeg': [[0xFF, 0xD8, 0xFF]],
+  'png': [[0x89, 0x50, 0x4E, 0x47]],
+  'webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF header
+};
+
+function validateImageMagicBytes(filePath: string): boolean {
+  try {
+    const buffer = fs.readFileSync(filePath);
+    if (buffer.length < 4) return false;
+    for (const signatures of Object.values(IMAGE_SIGNATURES)) {
+      for (const sig of signatures) {
+        if (sig.every((byte, i) => buffer[i] === byte)) return true;
+      }
+    }
+    return false;
+  } catch { return false; }
+}
+
+// FIX [SEC-2]: Upload endpoint — auth + rate limit + magic bytes validation
 app.post('/api/upload', uploadLimiter as any, authMiddleware as any, upload.single('image'), (req: any, res: any) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Vui lòng cung cấp file ảnh' });
     }
-    // FIX [BUG-10]: Build URL from request instead of hardcoded localhost
+
+    // SEC-FIX: Validate file content via magic bytes, not just MIME/extension
+    if (!validateImageMagicBytes(req.file.path)) {
+      // Delete the invalid file
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ success: false, message: 'File không phải ảnh hợp lệ' });
+    }
+
     const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
     const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
     res.status(200).json({ success: true, url: fileUrl });
