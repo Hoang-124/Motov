@@ -957,7 +957,8 @@ export const resetPasswordPhone = async (req: Request, res: Response) => {
     }
 
     // Mock mode for local testing without Firebase config
-    if (idToken.startsWith('mock-token-')) {
+    // SEC-FIX: Only allow mock tokens in non-production environments
+    if (process.env.NODE_ENV !== 'production' && idToken.startsWith('mock-token-')) {
       const phoneNumber = idToken.replace('mock-token-', '');
       let user = await User.findOne({ phoneNumber });
       if (!user) {
