@@ -820,3 +820,52 @@ export const getNearbyVehicles = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+/**
+ * So sánh nhiều xe (max 3 xe)
+ * POST /api/vehicles/compare
+ * Body: { vehicleIds: string[] }
+ */
+export const compareVehicles = async (req: Request, res: Response) => {
+  try {
+    const { vehicleIds } = req.body;
+
+    if (!vehicleIds || !Array.isArray(vehicleIds) || vehicleIds.length < 2) {
+      return res.status(400).json({ success: false, message: 'Cần ít nhất 2 xe để so sánh' });
+    }
+
+    if (vehicleIds.length > 3) {
+      return res.status(400).json({ success: false, message: 'Chỉ có thể so sánh tối đa 3 xe cùng một lúc' });
+    }
+
+    const validIds = vehicleIds.filter((id: string) => mongoose.Types.ObjectId.isValid(id));
+    if (validIds.length !== vehicleIds.length) {
+      return res.status(400).json({ success: false, message: 'Một hoặc nhiều ID xe không hợp lệ' });
+    }
+
+    const vehicles = await Vehicle.find({
+      _id: { $in: validIds },
+      isDeleted: { $ne: true }
+    })
+      .populate('ownerId', 'firstName lastName username avatarUrl')
+      .populate('category', 'name slug')
+      .lean();
+
+    // Lấy thống kê booking cho mỗi xe
+    const vehiclesWithStats = await Promise.all(
+      vehicles.map(async (vehicle) => {
+        const completedBookings = await Booking.countDocuments({ vehicleId: vehicle._id, status: 'Completed' });
+        const totalBookings = await Booking.countDocuments({ vehicleId: vehicle._id });
+        return { ...vehicle, completedBookings, totalBookings };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: vehiclesWithStats
+    });
+  } catch (error: any) {
+    console.error('Lỗi khi so sánh xe:', error);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi so sánh xe', error: error.message });
+  }
+};
