@@ -82,7 +82,6 @@ export const confirmCODPaymentByStaff = async (req: AuthRequest, res: Response) 
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ nội bộ khi xác nhận thanh toán',
-      error: error.message
     });
   }
 };

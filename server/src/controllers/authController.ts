@@ -212,7 +212,7 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Lỗi khi đăng ký:', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ khi đăng ký tài khoản', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ khi đăng ký tài khoản' });
   }
 };
 
@@ -294,7 +294,7 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Lỗi khi đăng nhập:', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ khi đăng nhập', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ khi đăng nhập' });
   }
 };
 
@@ -345,7 +345,7 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Lỗi khi lấy thông tin người dùng:', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ khi lấy thông tin người dùng', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ khi lấy thông tin người dùng' });
   }
 };
 
@@ -489,7 +489,7 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
     });
   } catch (error: any) {
     console.error('Lỗi khi nâng cấp lên chủ xe:', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi đăng ký làm chủ xe đối tác', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi đăng ký làm chủ xe đối tác' });
   }
 };
 
@@ -535,7 +535,7 @@ export const getOwnerRequests = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Lỗi lấy danh sách yêu cầu làm chủ xe:', error);
-    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
 
@@ -582,7 +582,7 @@ export const approveOwnerRequest = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Lỗi phê duyệt yêu cầu làm chủ xe:', error);
-    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
 
@@ -623,7 +623,7 @@ export const rejectOwnerRequest = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Lỗi từ chối yêu cầu làm chủ xe:', error);
-    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
 
@@ -756,7 +756,7 @@ export const googleLogin = async (req: Request, res: Response) => {
 
   } catch (error: any) {
     console.error('Lỗi khi đăng nhập bằng Google:', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ khi đăng nhập bằng Google', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ khi đăng nhập bằng Google' });
   }
 };
 
@@ -809,7 +809,7 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
   } catch (error: any) {
     console.error('Lỗi khi cập nhật thông tin cá nhân:', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi cập nhật thông tin cá nhân', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi cập nhật thông tin cá nhân' });
   }
 };
 
@@ -852,7 +852,7 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     res.status(200).json({ success: true, message: 'Đổi mật khẩu thành công' });
   } catch (error: any) {
     console.error('Lỗi khi đổi mật khẩu:', error);
-    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
 
@@ -897,7 +897,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Lỗi quên mật khẩu:', error);
-    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
 
@@ -939,7 +939,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     res.status(200).json({ success: true, message: 'Đặt lại mật khẩu thành công' });
   } catch (error: any) {
     console.error('Lỗi đặt lại mật khẩu:', error);
-    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
 
@@ -1016,7 +1016,7 @@ export const resetPasswordPhone = async (req: Request, res: Response) => {
     res.status(200).json({ success: true, message: 'Đặt lại mật khẩu thành công' });
   } catch (error: any) {
     console.error('Lỗi đặt lại mật khẩu qua điện thoại:', error);
-    res.status(500).json({ success: false, message: 'Xác thực token thất bại hoặc lỗi server', error: error.message });
+    res.status(500).json({ success: false, message: 'Xác thực token thất bại hoặc lỗi server' });
   }
 };
 
@@ -1102,7 +1102,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
     res.status(200).json({ success: true, message: 'Kích hoạt tài khoản thành công! Bạn có thể đăng nhập ngay bây giờ.' });
   } catch (error: any) {
     console.error('Lỗi xác minh email:', error);
-    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
 
@@ -1122,7 +1122,7 @@ export const checkVerificationStatus = async (req: Request, res: Response) => {
     res.status(200).json({ success: true, isVerified: false });
   } catch (error: any) {
     console.error('Lỗi kiểm tra trạng thái xác minh:', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi kiểm tra trạng thái xác minh', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi kiểm tra trạng thái xác minh' });
   }
 };
 
@@ -1218,7 +1218,7 @@ export const submitIdentityVerification = async (req: AuthRequest, res: Response
 
   } catch (error: any) {
     console.error('Lỗi khi nộp eKYC:', error);
-    res.status(500).json({ success: false, message: 'Lỗi server khi nộp xác minh danh tính', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi server khi nộp xác minh danh tính' });
   }
 };
 
@@ -1258,7 +1258,7 @@ export const getIdentityRequests = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Lỗi lấy danh sách yêu cầu eKYC:', error);
-    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
 
@@ -1321,7 +1321,7 @@ export const approveIdentityRequest = async (req: AuthRequest, res: Response) =>
 
   } catch (error: any) {
     console.error('Lỗi phê duyệt eKYC:', error);
-    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
 
@@ -1368,6 +1368,6 @@ export const rejectIdentityRequest = async (req: AuthRequest, res: Response) => 
 
   } catch (error: any) {
     console.error('Lỗi từ chối eKYC:', error);
-    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };

@@ -20,7 +20,7 @@ export const createConversationController = async (req: AuthRequest, res: Respon
     return res.status(200).json({ success: true, data: conversation });
   } catch (error: any) {
     console.error('Error in createConversationController:', error);
-    return res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™' });
   }
 };
 
@@ -34,7 +34,7 @@ export const getUserBasicInfoController = async (req: AuthRequest, res: Response
     return res.status(200).json({ success: true, data: user });
   } catch (error: any) {
     console.error('Error in getUserBasicInfoController:', error);
-    return res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™' });
   }
 };
 
@@ -53,7 +53,7 @@ export const getUserConversationsController = async (req: AuthRequest, res: Resp
     return res.status(200).json({ success: true, data: conversations });
   } catch (error: any) {
     console.error('Error in getUserConversationsController:', error);
-    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
@@ -73,7 +73,7 @@ export const getConversationMessagesController = async (req: AuthRequest, res: R
     return res.status(200).json({ success: true, data: messages });
   } catch (error: any) {
     console.error('Error in getConversationMessagesController:', error);
-    return res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™' });
   }
 };
 
@@ -95,7 +95,7 @@ export const sendMessageController = async (req: AuthRequest, res: Response) => 
     return res.status(201).json({ success: true, data: message });
   } catch (error: any) {
     console.error('Error in sendMessageController:', error);
-    return res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™' });
   }
 };
 
@@ -113,6 +113,6 @@ export const markMessagesAsReadController = async (req: AuthRequest, res: Respon
     return res.status(200).json({ success: true, message: 'Messages marked as read' });
   } catch (error: any) {
     console.error('Error in markMessagesAsReadController:', error);
-    return res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™' });
   }
 };

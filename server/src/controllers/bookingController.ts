@@ -417,7 +417,6 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ nội bộ khi tạo đặt chỗ',
-      error: error.message
     });
   }
 };
@@ -471,7 +470,6 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ nội bộ khi lấy thông tin booking',
-      error: error.message
     });
   }
 };
@@ -520,7 +518,6 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ nội bộ khi lấy danh sách booking',
-      error: error.message
     });
   }
 };
@@ -597,7 +594,6 @@ export const getAllBookings = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ nội bộ',
-      error: error.message
     });
   }
 };
@@ -785,7 +781,6 @@ export const updateBooking = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ nội bộ khi cập nhật booking',
-      error: error.message
     });
   }
 };
@@ -926,7 +921,6 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ nội bộ khi hủy booking',
-      error: error.message
     });
   }
 };
@@ -971,7 +965,6 @@ export const deleteBooking = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ nội bộ khi xóa booking',
-      error: error.message
     });
   }
 };
@@ -1036,7 +1029,6 @@ export const getBookingsByVehicle = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ nội bộ',
-      error: error.message
     });
   }
 };
@@ -1110,7 +1102,7 @@ export const getBookingTracking = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Lỗi khi lấy tracking:', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
   }
 };
 
@@ -1305,7 +1297,7 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
 
   } catch (error: any) {
     console.error('Lỗi khi trả xe:', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
   }
 };
 
@@ -1472,7 +1464,6 @@ export const confirmBookingByStaff = async (req: AuthRequest, res: Response) => 
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ nội bộ khi duyệt đơn',
-      error: error.message
     });
   }
 };
@@ -1554,7 +1545,6 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
     res.status(500).json({
       success: false,
       message: 'Lỗi máy chủ nội bộ khi xác nhận nhận xe',
-      error: error.message
     });
   }
 };
@@ -1654,7 +1644,7 @@ export const createVNPayUrl = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Lỗi tạo URL VNPAY:', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
   }
 };
 
@@ -1768,7 +1758,7 @@ export const processVNPayIPN = async (req: any, res: Response) => {
     }
   } catch (error: any) {
     console.error('Lỗi xử lý IPN VNPAY:', error);
-    res.status(500).json({ RspCode: '99', Message: 'Internal server error', error: error.message });
+    res.status(500).json({ RspCode: '99', Message: 'Internal server error' });
   }
 };
 
@@ -1831,7 +1821,7 @@ export const replyToReturnReason = async (req: any, res: Response) => {
     });
   } catch (error: any) {
     console.error('Lỗi khi phản hồi lý do trả xe:', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
   }
 };
 

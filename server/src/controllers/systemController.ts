@@ -35,7 +35,6 @@ export const getSystemSettings = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Lỗi khi lấy cấu hình hệ thống',
-      error: error.message
     });
   }
 };
@@ -73,7 +72,6 @@ export const updateSystemSetting = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Lỗi khi cập nhật cấu hình hệ thống',
-      error: error.message
     });
   }
 };

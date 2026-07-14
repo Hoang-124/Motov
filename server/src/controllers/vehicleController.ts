@@ -823,7 +823,6 @@ export const getNearbyVehicles = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Không thể tìm kiếm danh sách xe máy gần đây.',
-      error: error.message
     });
   }
 };
@@ -873,6 +872,6 @@ export const compareVehicles = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Lỗi khi so sánh xe:', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi so sánh xe', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi so sánh xe' });
   }
 };
