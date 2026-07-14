@@ -3,159 +3,176 @@ import { Feedback } from '../models/Feedback.js';
 import { Booking } from '../models/Booking.js';
 import { Vehicle } from '../models/Vehicle.js';
 import { User } from '../models/User.js';
+import bcrypt from 'bcryptjs';
 
-// Predefined realistic feedback reviews for each bike type/name
-const REVIEWS_POOL = [
-  {
-    rating: 5,
-    content: 'Xe chạy êm ru, sạc đầy pin đi thoải mái cả ngày. Nhân viên hỗ trợ giao xe siêu nhanh và thân thiện!'
-  },
-  {
-    rating: 5,
-    content: 'Xe mới tinh, phanh ABS hoạt động nhạy bén, cảm giác lái an tâm. Sẽ tiếp tục thuê khi quay lại Đà Nẵng.'
-  },
-  {
-    rating: 4,
-    content: 'Dịch vụ tốt, xe đi mượt mà. Tuy nhiên cốp xe hơi nhỏ một chút nhưng bù lại xe rất tiết kiệm xăng.'
-  },
-  {
-    rating: 5,
-    content: 'Thiết kế xe rất thời thượng, máy bốc, chụp ảnh sống ảo siêu đẹp. Các bạn hỗ trợ thủ tục vô cùng nhanh gọn.'
-  },
-  {
-    rating: 5,
-    content: 'Xe côn đi cực bốc, phuộc nhún êm ái, chạy đường dài không mỏi. Giá cả thuê xe rất hợp lý so với chất lượng.'
-  },
-  {
-    rating: 4,
-    content: 'Xe đi rất đầm máy và ổn định. Giao xe đúng giờ, bình xăng đầy ắp. Rất hài lòng với trải nghiệm này.'
-  },
-  {
-    rating: 5,
-    content: 'Dịch vụ của Motov làm mình rất ấn tượng. Ứng dụng mượt mà, xe sạch đẹp như mới. 10 điểm không có nhưng!'
-  }
+// Pool of Vietnamese names and corresponding avatars for diverse reviewers
+const REVIEWER_PROFILES = [
+  { firstName: 'Thành', lastName: 'Nguyễn Tiến', username: 'thanh.nguyen', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120' },
+  { firstName: 'Lan', lastName: 'Phạm Thị', username: 'lan.pham', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120' },
+  { firstName: 'Nam', lastName: 'Trần Hoài', username: 'nam.tran', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120' },
+  { firstName: 'Hương', lastName: 'Lê Mai', username: 'huong.le', avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=120' },
+  { firstName: 'Dũng', lastName: 'Hoàng Quốc', username: 'dung.hoang', avatarUrl: 'https://images.unsplash.com/photo-1500048993953-d23a436266cf?auto=format&fit=crop&q=80&w=120' },
+  { firstName: 'Vy', lastName: 'Đỗ Thảo', username: 'vy.do', avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=120' },
+  { firstName: 'Tuấn', lastName: 'Bùi Anh', username: 'tuan.bui', avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=120' },
+  { firstName: 'Trang', lastName: 'Nguyễn Huyền', username: 'trang.nguyen', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120' }
 ];
+
+// Contextual review comments based on vehicle style
+const REVIEWS_BY_TYPE: Record<string, Array<{ rating: number; content: string }>> = {
+  electric: [
+    { rating: 5, content: 'Xe điện đi cực kỳ êm và mượt, không hề có tiếng ồn động cơ. Hệ thống pin còn rất mới, đi cả ngày quanh Đà Nẵng không lo hết điện. Rất đáng trải nghiệm!' },
+    { rating: 5, content: 'Xe sạch sẽ, được sạc đầy 100% pin khi bàn giao. Nhân viên của Motov nhiệt tình hướng dẫn cách sạc pin và vận hành xe rất chu đáo.' },
+    { rating: 4, content: 'Xe chạy êm và tiết kiệm. Tuy nhiên cốp xe hơi nhỏ hơn mong đợi một chút, bù lại trải nghiệm lái xe điện rất hiện đại.' }
+  ],
+  scooter: [
+    { rating: 5, content: 'Xe tay ga đi rất tiện lợi, cốp siêu rộng tha hồ đựng balo và đồ mua sắm. Xe chạy đầm, máy êm và tiết kiệm xăng cực kỳ.' },
+    { rating: 5, content: 'Giá thuê xe rất tốt so với chất lượng. Xe chạy rất mượt, phanh và lốp xe còn rất mới, đi lại cực kỳ an tâm.' },
+    { rating: 4, content: 'Xe chạy tốt, mẫu mã đẹp và thời trang. Thủ tục nhận xe và trả xe của hệ thống rất nhanh chóng và chuyên nghiệp.' }
+  ],
+  manual: [
+    { rating: 5, content: 'Xe số chạy bốc, máy khỏe đi rất tiết kiệm nhiên liệu. Rất thích hợp để đi phượt đèo Hải Vân hay các địa điểm xa thành phố.' },
+    { rating: 5, content: 'Phuộc nhún xe êm, xích xe đã được tra dầu đầy đủ chạy rất mượt mà. Xe khỏe leo dốc rất tốt.' },
+    { rating: 4, content: 'Xe đi ổn định, máy khỏe, tuy nhiên ngoại hình xe hơi xước nhẹ một chút. Tổng quan dịch vụ vẫn rất tốt, hỗ trợ chu đáo.' }
+  ],
+  sport: [
+    { rating: 5, content: 'Xe côn tay chạy cực kỳ bốc, tiếng máy giòn giã nghe rất thích. Hệ thống phanh ABS hoạt động nhạy, xe bảo dưỡng tốt.' },
+    { rating: 5, content: 'Trải nghiệm lái tuyệt vời, dáng xe thể thao mạnh mẽ. Xe đi đầm và đè cua rất vững vàng. Dịch vụ tuyệt vời từ Motov!' },
+    { rating: 4, content: 'Xe rất bốc và ngầu, máy móc hoạt động hoàn hảo. Phù hợp cho những ai đam mê tốc độ và thích trải nghiệm cảm giác mạnh.' }
+  ]
+};
 
 export async function seedFeedbacks() {
   try {
-    const feedbackCount = await Feedback.countDocuments();
-    if (feedbackCount > 0) {
-      console.log('ℹ️ Feedbacks đã tồn tại trong database. Bỏ qua seeding.');
-      return;
-    }
+    console.log('🌱 Đang bắt đầu kiểm tra và seed dữ liệu mẫu feedbacks...');
 
-    console.log('🌱 Đang bắt đầu seeding feedbacks...');
-
-    // 1. Tìm các user mẫu
-    const customerUser = await User.findOne({ email: 'khachhang@motov.com' });
-    const adminUser = await User.findOne({ email: 'admin@motov.com' });
+    // 1. Tạo hoặc tìm các tài khoản người đánh giá đa dạng
+    const passwordHash = await bcrypt.hash('customer123', 10);
+    const reviewers: any[] = [];
     
-    if (!customerUser || !adminUser) {
-      console.log('⚠️ Không tìm thấy người dùng mẫu khachhang@motov.com hoặc admin@motov.com. Không thể seed.');
-      return;
+    for (const profile of REVIEWER_PROFILES) {
+      const email = `${profile.username}@motov-reviewer.com`;
+      let user = await User.findOne({ email });
+      if (!user) {
+        user = await User.create({
+          username: profile.username,
+          email,
+          passwordHash,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          phoneNumber: `0987${Math.floor(100000 + Math.random() * 900000)}`,
+          roles: ['Customer'],
+          status: 'Active',
+          identityStatus: 'Verified',
+          avatarUrl: profile.avatarUrl
+        });
+        console.log(`👤 Đã tạo tài khoản reviewer: ${user.username}`);
+      }
+      reviewers.push(user);
     }
 
-    // 2. Lấy danh sách xe trong hệ thống
+    // Lấy thêm các user mặc định sẵn có
+    const defaultCustomer = await User.findOne({ email: 'khachhang@motov.com' });
+    const defaultAdmin = await User.findOne({ email: 'admin@motov.com' });
+    if (defaultCustomer) reviewers.push(defaultCustomer);
+    if (defaultAdmin) reviewers.push(defaultAdmin);
+
+    // 2. Lấy danh sách xe
     const vehicles = await Vehicle.find({ isDeleted: { $ne: true } });
     if (vehicles.length === 0) {
-      console.log('⚠️ Không tìm thấy xe nào trong hệ thống để tạo đơn và feedback.');
+      console.log('⚠️ Không tìm thấy xe nào trong hệ thống để tạo review.');
       return;
     }
 
-    // 3. Xử lý các đơn hàng hiện có ở trạng thái Completed nhưng chưa có feedback
-    const existingCompletedBookings = await Booking.find({ status: 'Completed' });
-    console.log(`Tìm thấy ${existingCompletedBookings.length} đơn hàng Completed sẵn có.`);
-    
-    let seededCount = 0;
-    for (const booking of existingCompletedBookings) {
-      const fbExists = await Feedback.findOne({ bookingId: booking._id });
-      if (!fbExists) {
-        const review = REVIEWS_POOL[seededCount % REVIEWS_POOL.length];
+    // 3. Quét qua TẤT CẢ các xe để đảm bảo mỗi xe đều có ít nhất 1-2 reviews mẫu
+    let totalBookingsSeeded = 0;
+    let totalFeedbacksSeeded = 0;
+
+    for (const vehicle of vehicles) {
+      // Đếm số feedback hiện có của xe này
+      const currentFbCount = await Feedback.countDocuments({ vehicleId: vehicle._id });
+      
+      // Nếu xe chưa có review, hãy tạo 1 đến 2 reviews mẫu cho nó
+      if (currentFbCount === 0) {
+        const numReviewsToCreate = Math.floor(Math.random() * 2) + 1; // 1 hoặc 2 reviews
         
-        await Feedback.create({
-          userId: booking.userId,
-          vehicleId: booking.vehicleId,
-          bookingId: booking._id,
-          rating: review.rating,
-          content: review.content
-        });
-        seededCount++;
+        for (let r = 0; r < numReviewsToCreate; r++) {
+          // Lấy ngẫu nhiên reviewer
+          const reviewer = reviewers[Math.floor(Math.random() * reviewers.length)];
+          
+          // Tạo booking code độc nhất
+          const randomStr = Math.floor(1000 + Math.random() * 9000);
+          const bookingCode = `BK-SEED-${vehicle.vehicleModel.substring(0, 3).toUpperCase()}-${randomStr}`;
+          
+          // Xác định ngày thuê
+          const pickupDate = new Date();
+          pickupDate.setDate(pickupDate.getDate() - 10 - r * 5); // Đã kết thúc nhiều ngày trước
+          const returnDate = new Date(pickupDate);
+          returnDate.setDate(returnDate.getDate() + 2); // Thuê 2 ngày
+          
+          // Tạo đơn đặt xe đã hoàn thành (Completed Booking)
+          const booking = await Booking.create({
+            userId: reviewer._id,
+            vehicleId: vehicle._id,
+            vehicleSnapshot: {
+              name: vehicle.vehicleModel,
+              image: vehicle.imageUrls[0] || 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&q=80&w=800',
+              rentalPrice: vehicle.rentalPrice
+            },
+            pickupDateTime: pickupDate,
+            returnDateTime: returnDate,
+            pickupLocation: { address: 'Trụ sở Motov Đà Nẵng', coordinates: [108.22, 16.068] },
+            returnLocation: { address: 'Trụ sở Motov Đà Nẵng', coordinates: [108.22, 16.068] },
+            totalAmount: vehicle.rentalPrice * 2,
+            depositAmount: Math.round(vehicle.rentalPrice * 2 * 0.3),
+            remainingAmount: Math.round(vehicle.rentalPrice * 2 * 0.7),
+            status: 'Completed',
+            bookingCode,
+            startOdometer: vehicle.odometer - 150,
+            endOdometer: vehicle.odometer,
+            isPaid: true
+          });
+          totalBookingsSeeded++;
+
+          // Xác định nhóm review dựa trên loại xe
+          let reviewPool = REVIEWS_BY_TYPE.scooter; // Mặc định là xe ga
+          
+          const modelLower = vehicle.vehicleModel.toLowerCase();
+          const transmission = vehicle.transmissionType;
+          
+          if (modelLower.includes('vinfast') || modelLower.includes('klara') || modelLower.includes('evo') || modelLower.includes('feliz')) {
+            reviewPool = REVIEWS_BY_TYPE.electric;
+          } else if (transmission === 'Manual' && (modelLower.includes('exciter') || modelLower.includes('nvx') || modelLower.includes('winner') || modelLower.includes('cb150') || modelLower.includes('r15'))) {
+            reviewPool = REVIEWS_BY_TYPE.sport;
+          } else if (transmission === 'Manual' || transmission === 'Semi-Automatic') {
+            reviewPool = REVIEWS_BY_TYPE.manual;
+          }
+
+          const reviewTemplate = reviewPool[Math.floor(Math.random() * reviewPool.length)];
+          
+          // Tạo nội dung đánh giá cụ thể hơn bằng cách ghép tên xe
+          let content = reviewTemplate.content;
+          if (content.includes('xe điện') && !modelLower.includes('vinfast')) {
+            content = content.replace('xe điện', `xe ${vehicle.vehicleModel}`);
+          }
+          
+          await Feedback.create({
+            userId: reviewer._id,
+            vehicleId: vehicle._id,
+            bookingId: booking._id,
+            rating: reviewTemplate.rating,
+            content: `[Dữ liệu mẫu] ${content}`,
+            createdAt: returnDate, // Đánh giá ngay sau khi trả xe
+            updatedAt: returnDate
+          });
+          totalFeedbacksSeeded++;
+        }
       }
     }
-    console.log(`✅ Đã tạo feedback cho ${seededCount} đơn hàng Completed sẵn có.`);
 
-    // 4. Nếu số lượng feedback tạo ra vẫn ít (ví dụ dưới 5), tự động tạo thêm đơn Completed mẫu và feedback tương ứng
-    // Điều này đảm bảo khi khởi động dự án từ đầu, hệ thống sẽ có sẵn dữ liệu review phong phú.
-    const desiredTotal = 6;
-    const needed = desiredTotal - await Feedback.countDocuments();
-    
-    if (needed > 0) {
-      console.log(`Hệ thống cần thêm ${needed} feedback để làm phong phú giao diện. Đang tạo đơn và review mẫu...`);
-      
-      // Chọn ra các xe khác nhau để tạo feedback phong phú
-      const vehiclesToReview = vehicles.slice(0, Math.min(needed, vehicles.length));
-      
-      for (let i = 0; i < vehiclesToReview.length; i++) {
-        const vehicle = vehiclesToReview[i];
-        
-        // Tạo booking code độc nhất
-        const randomStr = Math.floor(1000 + Math.random() * 9000);
-        const bookingCode = `BK-SEED-${vehicle.vehicleModel.substring(0, 3).toUpperCase()}-${randomStr}`;
-        
-        // Xác định thông tin ngày thuê
-        const pickupDate = new Date();
-        pickupDate.setDate(pickupDate.getDate() - 5 - i); // Đã đi 5 ngày trước
-        const returnDate = new Date(pickupDate);
-        returnDate.setDate(returnDate.getDate() + 2); // Thuê 2 ngày
-        
-        // Tạo đơn Completed
-        const booking = await Booking.create({
-          userId: customerUser._id,
-          vehicleId: vehicle._id,
-          vehicleSnapshot: {
-            name: vehicle.vehicleModel,
-            image: vehicle.imageUrls[0] || 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&q=80&w=800',
-            rentalPrice: vehicle.rentalPrice
-          },
-          pickupDateTime: pickupDate,
-          returnDateTime: returnDate,
-          pickupLocation: { address: 'Trụ sở Motov Đà Nẵng', coordinates: [108.22, 16.068] },
-          returnLocation: { address: 'Trụ sở Motov Đà Nẵng', coordinates: [108.22, 16.068] },
-          totalAmount: vehicle.rentalPrice * 2,
-          depositAmount: Math.round(vehicle.rentalPrice * 2 * 0.3),
-          remainingAmount: Math.round(vehicle.rentalPrice * 2 * 0.7),
-          status: 'Completed',
-          bookingCode,
-          startOdometer: vehicle.odometer - 150,
-          endOdometer: vehicle.odometer,
-          isPaid: true
-        });
-
-        // Tạo feedback tương ứng cho đơn hàng này
-        const review = REVIEWS_POOL[(seededCount + i) % REVIEWS_POOL.length];
-        
-        // Tạo lời bình cụ thể hơn nếu khớp tên xe
-        let customizedContent = review.content;
-        if (vehicle.vehicleModel.includes('VinFast')) {
-          customizedContent = `Thuê chiếc ${vehicle.vehicleModel} này đi siêu sướng, chạy cực êm không tiếng ồn. Pin trạm sạc quanh thành phố Đà Nẵng cũng rất tiện lợi!`;
-        } else if (vehicle.vehicleModel.includes('Vision') || vehicle.vehicleModel.includes('Lead') || vehicle.vehicleModel.includes('Grande')) {
-          customizedContent = `Xe ${vehicle.vehicleModel} nhỏ gọn, thích hợp cho các bạn nữ đi lại trong phố. Xe rất tiết kiệm xăng và cốp rộng thoải mái đựng đồ.`;
-        } else if (vehicle.vehicleModel.includes('Vespa')) {
-          customizedContent = `Chiếc Vespa ${vehicle.vehicleModel} này chụp hình check-in cực kỳ sang xịn mịn luôn nha. Xe chạy êm, chủ xe hỗ trợ siêu nhiệt tình.`;
-        } else if (vehicle.vehicleModel.includes('Exciter') || vehicle.vehicleModel.includes('NVX') || vehicle.vehicleModel.includes('Winner')) {
-          customizedContent = `Máy bốc, ga nhẹ, phanh đĩa trước sau ăn. Đi đường trường hay phượt đèo Hải Vân bằng xe ${vehicle.vehicleModel} này thì đúng bài!`;
-        }
-
-        await Feedback.create({
-          userId: customerUser._id,
-          vehicleId: vehicle._id,
-          bookingId: booking._id,
-          rating: i % 3 === 0 ? 4 : 5, // Trộn lẫn đánh giá 4 và 5 sao
-          content: customizedContent
-        });
-      }
-      
-      console.log(`✅ Đã tạo thêm đơn hàng và feedback mẫu thành công!`);
+    if (totalFeedbacksSeeded > 0) {
+      console.log(`✅ Đã tạo thành công ${totalBookingsSeeded} đơn hàng và ${totalFeedbacksSeeded} đánh giá mẫu cho toàn bộ các xe chưa có review!`);
+    } else {
+      console.log('ℹ️ Tất cả các xe trong hệ thống đã có đánh giá mẫu. Không cần tạo thêm.');
     }
   } catch (error) {
     console.error('❌ Lỗi khi seed feedbacks:', error);

@@ -89,7 +89,11 @@ export const Header = () => {
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error('Error parsing stored user in Header:', e);
+      }
     }
   }, []);
 
@@ -193,6 +197,16 @@ export const Header = () => {
       window.removeEventListener('favoritesUpdated', handleUpdate);
     };
   }, [user]);
+
+  useEffect(() => {
+    const handleChatReadUpdate = () => {
+      fetchUnreadChatsCount();
+    };
+    window.addEventListener('chatReadUpdated', handleChatReadUpdate);
+    return () => {
+      window.removeEventListener('chatReadUpdated', handleChatReadUpdate);
+    };
+  }, []);
 
   // Thiết lập kết nối SSE (Server-Sent Events) thời gian thực
   useEffect(() => {

@@ -11,7 +11,7 @@ export const getUserBasicInfo = async (userId: string) => {
 
 export const createOrGetConversation = async (participantIds: string[], type: 'customer-owner' | 'customer-staff', relatedBookingId?: string, relatedVehicleId?: string) => {
   const participantsObjIds = participantIds.map(id => new mongoose.Types.ObjectId(id));
-  
+
   // Validation: Check if the related booking exists if provided
   if (relatedBookingId) {
     const booking = await Booking.findById(relatedBookingId).populate('vehicleId');
@@ -24,34 +24,48 @@ export const createOrGetConversation = async (participantIds: string[], type: 'c
     const ownerId = (booking.vehicleId as any).ownerId.toString();
 
     const strParticipants = participantIds.map(id => id.toString());
-    
+
     if (type === 'customer-owner') {
       if (!strParticipants.includes(customerId) || !strParticipants.includes(ownerId)) {
         throw new Error('Forbidden: Participants do not match the booking customer and owner');
       }
     }
   }
-  
+
   const query: any = {
     participants: { $all: participantsObjIds, $size: participantsObjIds.length },
     type
   };
-  
-  if (relatedBookingId) {
-    query.relatedBooking = new mongoose.Types.ObjectId(relatedBookingId);
-  } else {
-    query.relatedBooking = { $exists: false };
-  }
-
-  if (relatedVehicleId) {
-    query.relatedVehicle = new mongoose.Types.ObjectId(relatedVehicleId);
-  } else {
-    query.relatedVehicle = { $exists: false };
-  }
 
   let conversation = await Conversation.findOne(query);
 
-  if (!conversation) {
+  if (conversation) {
+    let needsUpdate = false;
+    if (relatedBookingId) {
+      const bookingObjId = new mongoose.Types.ObjectId(relatedBookingId);
+      if (conversation.relatedBooking?.toString() !== relatedBookingId) {
+        conversation.relatedBooking = bookingObjId;
+        needsUpdate = true;
+      }
+      if (conversation.relatedVehicle) {
+        conversation.relatedVehicle = undefined;
+        needsUpdate = true;
+      }
+    } else if (relatedVehicleId) {
+      const vehicleObjId = new mongoose.Types.ObjectId(relatedVehicleId);
+      if (conversation.relatedVehicle?.toString() !== relatedVehicleId) {
+        conversation.relatedVehicle = vehicleObjId;
+        needsUpdate = true;
+      }
+      if (conversation.relatedBooking) {
+        conversation.relatedBooking = undefined;
+        needsUpdate = true;
+      }
+    }
+    if (needsUpdate) {
+      await conversation.save();
+    }
+  } else {
     const createData: any = {
       participants: participantsObjIds,
       type
@@ -63,7 +77,35 @@ export const createOrGetConversation = async (participantIds: string[], type: 'c
       createData.relatedVehicle = new mongoose.Types.ObjectId(relatedVehicleId);
     }
     conversation = await Conversation.create(createData);
+
+    // Populate before emitting so clients receive full conversation data
+    await conversation.populate([
+      { path: 'participants', select: 'firstName lastName email username' },
+      { path: 'relatedBooking', select: 'bookingCode status pickupDateTime returnDateTime vehicleSnapshot' },
+      { path: 'relatedVehicle', select: 'vehicleModel imageUrls licensePlate' },
+      { path: 'lastMessage' }
+    ]);
+
+    // Emit new_conversation event to all participants so their chat list updates in real-time
+    try {
+      const io = getIO();
+      participantsObjIds.forEach(pId => {
+        io.to(`user_${pId.toString()}`).emit('new_conversation', conversation);
+      });
+    } catch (e) {
+      // Socket may not be initialized in tests
+    }
+
+    return conversation;
   }
+
+  // Populate conversation fields to match client-side expectations
+  await conversation.populate([
+    { path: 'participants', select: 'firstName lastName email username' },
+    { path: 'relatedBooking', select: 'bookingCode status pickupDateTime returnDateTime vehicleSnapshot' },
+    { path: 'relatedVehicle', select: 'vehicleModel imageUrls licensePlate' },
+    { path: 'lastMessage' }
+  ]);
 
   return conversation;
 };
@@ -83,8 +125,8 @@ export const getUserConversations = async (userId: string, skip: number = 0, lim
 
   const conversationIds = conversations.map(c => c._id);
   const unreadCounts = await Message.aggregate([
-    { 
-      $match: { 
+    {
+      $match: {
         conversationId: { $in: conversationIds },
         readBy: { $ne: new mongoose.Types.ObjectId(userId) }
       }
@@ -187,8 +229,8 @@ export const markMessagesAsRead = async (conversationId: string, userId: string)
   }
 
   await Message.updateMany(
-    { 
-      conversationId: new mongoose.Types.ObjectId(conversationId), 
+    {
+      conversationId: new mongoose.Types.ObjectId(conversationId),
       readBy: { $ne: new mongoose.Types.ObjectId(userId) }
     },
     { $push: { readBy: new mongoose.Types.ObjectId(userId) } }

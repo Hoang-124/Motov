@@ -38,6 +38,9 @@ export const BikesMap = () => {
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const userMarkerRef = useRef<any>(null);
+  const radiusCircleRef = useRef<any>(null);
+  const mapRadiusRef = useRef<number>(mapRadius);
+  mapRadiusRef.current = mapRadius;
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
 
@@ -136,8 +139,16 @@ export const BikesMap = () => {
           }).addTo(map);
 
           mapRef.current = map;
+          
+          // Force invalidateSize after a short timeout to prevent rendering crashes due to 0-size container
+          setTimeout(() => {
+            map.invalidateSize();
+          }, 200);
         } else {
           mapRef.current.setView(coords, mapRef.current.getZoom());
+          setTimeout(() => {
+            if (mapRef.current) mapRef.current.invalidateSize();
+          }, 200);
         }
 
         setLoading(false);
@@ -155,6 +166,7 @@ export const BikesMap = () => {
         mapRef.current.remove();
         mapRef.current = null;
       }
+      radiusCircleRef.current = null;
     };
   }, []);
 
@@ -198,10 +210,31 @@ export const BikesMap = () => {
         const position = marker.getLatLng();
         const newCoords: [number, number] = [position.lat, position.lng];
         setUserCoords(newCoords);
-        await fetchNearbyBikes(newCoords[0], newCoords[1], mapRadius);
+        await fetchNearbyBikes(newCoords[0], newCoords[1], mapRadiusRef.current);
       });
 
       userMarkerRef.current = userMarker;
+    }
+
+    // Plot or Update Scan Radius Circle
+    if (radiusCircleRef.current) {
+      radiusCircleRef.current.setLatLng(userCoords);
+      radiusCircleRef.current.setRadius(mapRadius);
+    } else {
+      const radiusCircle = L.circle(userCoords, {
+        radius: mapRadius,
+        color: '#00e5ff',
+        fillColor: '#00e5ff',
+        fillOpacity: 0.08,
+        weight: 2,
+        dashArray: '6, 8'
+      }).addTo(mapRef.current);
+      radiusCircleRef.current = radiusCircle;
+    }
+
+    // Adjust map zoom/bounds to fit the scanning area
+    if (radiusCircleRef.current && mapRef.current) {
+      mapRef.current.fitBounds(radiusCircleRef.current.getBounds(), { padding: [20, 20] });
     }
 
     // 2. Plot Bikes Markers
@@ -263,7 +296,7 @@ export const BikesMap = () => {
         markersRef.current.push(marker);
       }
     });
-  }, [loading, bikes, userCoords]);
+  }, [loading, bikes, userCoords, mapRadius]);
 
   // Recenter map to user location
   const handleRecenter = async () => {
@@ -434,7 +467,7 @@ export const BikesMap = () => {
             )}
             
             {/* The Leaflet Map element */}
-            <div id="bikes-leaflet-map" className="w-full h-full min-h-[500px] lg:min-h-[600px] z-0" style={{ filter: 'brightness(0.65) contrast(1.35) saturate(0.8)' }}></div>
+            <div id="bikes-leaflet-map" className="w-full z-0" style={{ height: '600px', minHeight: '500px', filter: 'brightness(0.65) contrast(1.35) saturate(0.8)' }}></div>
 
             {/* Float Recenter Button */}
             {!loading && (
