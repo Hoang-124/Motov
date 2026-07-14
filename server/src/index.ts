@@ -1,6 +1,8 @@
 import './loadEnv.js';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
 import mongoose from 'mongoose';
@@ -70,7 +72,31 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json());
+
+// SEC-FIX: Add HTTP security headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow uploads to be served cross-origin
+  contentSecurityPolicy: false // Disable CSP to avoid breaking inline scripts in development
+}));
+
+app.use(express.json({ limit: '10kb' })); // SEC-FIX: Explicit body size limit
+
+// SEC-FIX: Rate limiting for auth endpoints (brute force protection)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // max 20 requests per windowMs
+  message: { success: false, message: 'Quá nhiều yêu cầu, vui lòng thử lại sau 15 phút' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { success: false, message: 'Quá nhiều yêu cầu upload, vui lòng thử lại sau' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 // Phục vụ file tĩnh trong thư mục uploads
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -79,8 +105,8 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
-// Routes xác thực (Auth APIs)
-app.use('/api/auth', authRoutes);
+// Routes xác thực (Auth APIs) — with rate limiting
+app.use('/api/auth', authLimiter, authRoutes);
 // Routes Booking (Booking APIs)
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/users', userRoutes);
@@ -127,8 +153,8 @@ const upload = multer({
   }
 });
 
-// FIX [SEC-2]: Upload endpoint now requires authentication
-app.post('/api/upload', authMiddleware as any, upload.single('image'), (req: any, res: any) => {
+// FIX [SEC-2]: Upload endpoint now requires authentication + rate limiting
+app.post('/api/upload', uploadLimiter as any, authMiddleware as any, upload.single('image'), (req: any, res: any) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Vui lòng cung cấp file ảnh' });
@@ -138,7 +164,7 @@ app.post('/api/upload', authMiddleware as any, upload.single('image'), (req: any
     const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
     res.status(200).json({ success: true, url: fileUrl });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Lỗi tải ảnh lên server', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi tải ảnh lên server' });
   }
 });
 
