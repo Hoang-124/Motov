@@ -24,7 +24,7 @@ if (!process.env.JWT_SECRET) {
   throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start.');
 }
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h'; // SEC-FIX: Reduced from 7d to 24h
 
 // Đăng ký tài khoản
 export const register = async (req: Request, res: Response) => {
@@ -628,8 +628,12 @@ export const rejectOwnerRequest = async (req: AuthRequest, res: Response) => {
 };
 
 // Khởi tạo Google OAuth2 Client
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '927292562825-91mdr6b51b97kutl1d6fpqt4c0clm9sg.apps.googleusercontent.com';
-const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+// SEC-FIX: No hardcoded fallback — fail fast if not configured
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+if (!GOOGLE_CLIENT_ID) {
+  console.warn('[WARN] GOOGLE_CLIENT_ID is not set — Google login will not work');
+}
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID || 'not-configured');
 
 // Đăng nhập bằng Google
 export const googleLogin = async (req: Request, res: Response) => {
