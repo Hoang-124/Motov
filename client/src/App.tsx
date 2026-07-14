@@ -34,6 +34,9 @@ import { OwnerBookings } from './pages/owner/OwnerBookings';
 
 import { Promotions } from './pages/Promotions';
 import { VNPayReturn } from './pages/VNPayReturn';
+import { CompareBikes } from './pages/CompareBikes';
+import { CompareProvider } from './contexts/CompareContext';
+import { CompareBar } from './components/CompareBar';
 
 // Admin pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -83,6 +86,7 @@ export default function App() {
       <LanguageProvider>
         <ToastProvider>
           <ChatProvider>
+            <CompareProvider>
             <div className="min-h-screen bg-dark text-white flex flex-col font-sans selection:bg-neon selection:text-dark">
               {/* Header Navigation */}
               <Header />
@@ -224,15 +228,19 @@ export default function App() {
                 } />
                 <Route path="/promotions" element={<Promotions />} />
                 <Route path="/vnpay-return" element={<VNPayReturn />} />
+                <Route path="/compare" element={<CompareBikes />} />
 
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </main>
+              </main>
 
-            {/* Footer */}
-            <Footer />
-            </div>
+              {/* Footer */}
+              <Footer />
+              {/* Compare Bar - appears when bikes are selected for comparison */}
+              <CompareBar />
+              </div>
+            </CompareProvider>
           </ChatProvider>
         </ToastProvider>
       </LanguageProvider>
