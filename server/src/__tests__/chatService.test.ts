@@ -82,8 +82,8 @@ describe('chatService - Unit Tests', () => {
       const booking = await Booking.create({
         bookingCode: 'BK123', status: 'Pending',
 
-        userId: u1, vehicleId: vehicle._id, ownerId: u2,
-        totalPrice: 100, totalAmount: 100, returnDateTime: new Date(), pickupDateTime: new Date(),
+        userId: u1, vehicleId: vehicle._id,
+        totalAmount: 100, returnDateTime: new Date(), pickupDateTime: new Date(),
         vehicleSnapshot: { brand: 'Honda', model: 'Wave', year: 2020, name: 'Honda Wave', rentalPrice: 50, image: 'img.jpg' },
         pickupLocation: { type: 'Point', coordinates: [0, 0], address: 'test' }
       });
@@ -112,8 +112,8 @@ describe('chatService - Unit Tests', () => {
       const booking = await Booking.create({
         bookingCode: 'BK123', status: 'Pending',
 
-        userId: u1, vehicleId: vehicle._id, ownerId: u2,
-        totalPrice: 100, totalAmount: 100, returnDateTime: new Date(), pickupDateTime: new Date(),
+        userId: u1, vehicleId: vehicle._id,
+        totalAmount: 100, returnDateTime: new Date(), pickupDateTime: new Date(),
         vehicleSnapshot: { brand: 'Honda', model: 'Wave', year: 2020, name: 'Honda Wave', rentalPrice: 50, image: 'img.jpg' },
         pickupLocation: { type: 'Point', coordinates: [0, 0], address: 'test' }
       });
@@ -150,8 +150,8 @@ describe('chatService - Unit Tests', () => {
 
       const booking = await Booking.create({
         bookingCode: 'BK123', status: 'Pending',
-        userId: u1, vehicleId: vehicle1._id, ownerId: u2,
-        totalPrice: 100, totalAmount: 100, returnDateTime: new Date(), pickupDateTime: new Date(),
+        userId: u1, vehicleId: vehicle1._id,
+        totalAmount: 100, returnDateTime: new Date(), pickupDateTime: new Date(),
         vehicleSnapshot: { brand: 'Honda', model: 'Wave', year: 2020, name: 'Honda Wave', rentalPrice: 50, image: 'img.jpg' },
         pickupLocation: { type: 'Point', coordinates: [0, 0], address: 'test' }
       });

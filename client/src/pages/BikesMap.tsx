@@ -34,6 +34,7 @@ export const BikesMap = () => {
   const [bikes, setBikes] = useState<NearbyBike[]>([]);
   const [mapRadius, setMapRadius] = useState<number>(5000); // 5km radius
   const [isGpsLoading, setIsGpsLoading] = useState(false);
+  const [userAddress, setUserAddress] = useState<string>('Đang xác định địa chỉ...');
 
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -69,6 +70,18 @@ export const BikesMap = () => {
       script.onerror = (e) => reject(e);
       document.body.appendChild(script);
     });
+  };
+
+  // Reverse Geocoding with Nominatim API
+  const fetchAddress = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=vi`);
+      const data = await response.json();
+      return data.display_name || 'Vị trí của bạn';
+    } catch (err) {
+      console.error('Error fetching address:', err);
+      return 'Vị trí của bạn';
+    }
   };
 
   // Get user GPS coordinates
@@ -113,6 +126,8 @@ export const BikesMap = () => {
 
   // Initialize Map and Load Data
   useEffect(() => {
+    let active = true;
+
     const initFlow = async () => {
       try {
         setLoading(true);
@@ -120,17 +135,27 @@ export const BikesMap = () => {
 
         // 1. Get GPS coordinates
         const coords = await getUserLocation();
+        if (!active) return;
         setUserCoords(coords);
+
+        // Fetch initial address matching GPS coords
+        const addr = await fetchAddress(coords[0], coords[1]);
+        if (!active) return;
+        setUserAddress(addr);
 
         // 2. Fetch nearby vehicles
         await fetchNearbyBikes(coords[0], coords[1], mapRadius);
+        if (!active) return;
 
         // 3. Load Leaflet library
         const L = await loadLeaflet();
+        if (!active) return;
 
         // 4. Initialize Map container if not already initialized
         if (!mapRef.current) {
-          const map = L.map('bikes-leaflet-map').setView(coords, 14);
+          const mapEl = document.getElementById('bikes-leaflet-map');
+          if (!mapEl) return;
+          const map = L.map(mapEl).setView(coords, 14);
 
           // Add OpenStreetMap tile layer to support correct localized names (Vietnamese)
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -142,31 +167,44 @@ export const BikesMap = () => {
           
           // Force invalidateSize after a short timeout to prevent rendering crashes due to 0-size container
           setTimeout(() => {
-            map.invalidateSize();
+            if (active && mapRef.current) {
+              mapRef.current.invalidateSize();
+            }
           }, 200);
         } else {
           mapRef.current.setView(coords, mapRef.current.getZoom());
           setTimeout(() => {
-            if (mapRef.current) mapRef.current.invalidateSize();
+            if (active && mapRef.current) {
+              mapRef.current.invalidateSize();
+            }
           }, 200);
         }
 
-        setLoading(false);
+        if (active) setLoading(false);
       } catch (err: any) {
-        setError(err.message || 'Không thể khởi tạo bản đồ.');
-        setLoading(false);
+        if (active) {
+          setError(err.message || 'Không thể khởi tạo bản đồ.');
+          setLoading(false);
+        }
       }
     };
 
     initFlow();
 
     return () => {
+      active = false;
       // Clean up map resources on unmount
       if (mapRef.current) {
-        mapRef.current.remove();
+        try {
+          mapRef.current.remove();
+        } catch (e) {
+          console.error('Error removing map:', e);
+        }
         mapRef.current = null;
       }
+      userMarkerRef.current = null;
       radiusCircleRef.current = null;
+      markersRef.current = [];
     };
   }, []);
 
@@ -193,48 +231,72 @@ export const BikesMap = () => {
     // 1. Plot or Update User Marker
     if (userMarkerRef.current) {
       userMarkerRef.current.setLatLng(userCoords);
+      userMarkerRef.current.setPopupContent(
+        `<div style="color: #00e5ff; font-weight: bold; text-align: center; font-size: 12px; font-family: sans-serif; padding: 4px;">
+          Vị trí của bạn:<br/>
+          <span style="color:#fff; font-size:11px; font-weight:normal; display:block; margin-top:4px; max-width:180px; word-wrap:break-word;">${userAddress}</span>
+        </div>`
+      );
     } else {
       const userIcon = L.divIcon({
         className: 'custom-user-marker',
-        html: `<div style="background-color: #00e5ff; width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 15px #00e5ff;"></div>`,
+        html: `<div style="background-color: #00e5ff; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 15px #00e5ff;"></div>`,
         iconSize: [20, 20],
         iconAnchor: [10, 10]
       });
 
-      const userMarker = L.marker(userCoords, { icon: userIcon, draggable: true })
+      const userMarker = L.marker(userCoords, { icon: userIcon, draggable: false })
         .addTo(mapRef.current)
-        .bindPopup(`<div style="color: #00e5ff; font-weight: bold; text-align: center; font-size: 12px; font-family: sans-serif; padding: 4px;">Vị trí test của bạn<br/><span style="color:#aaa; font-size:10px; font-weight:normal;">(Kéo thả để di chuyển vị trí test)</span></div>`);
-      
-      userMarker.on('dragend', async (event: any) => {
-        const marker = event.target;
-        const position = marker.getLatLng();
-        const newCoords: [number, number] = [position.lat, position.lng];
-        setUserCoords(newCoords);
-        await fetchNearbyBikes(newCoords[0], newCoords[1], mapRadiusRef.current);
-      });
+        .bindPopup(`<div style="color: #00e5ff; font-weight: bold; text-align: center; font-size: 12px; font-family: sans-serif; padding: 4px;">
+          Vị trí của bạn:<br/>
+          <span style="color:#fff; font-size:11px; font-weight:normal; display:block; margin-top:4px; max-width:180px; word-wrap:break-word;">${userAddress}</span>
+        </div>`);
 
       userMarkerRef.current = userMarker;
     }
 
     // Plot or Update Scan Radius Circle
-    if (radiusCircleRef.current) {
-      radiusCircleRef.current.setLatLng(userCoords);
-      radiusCircleRef.current.setRadius(mapRadius);
+    if (mapRadius > 0) {
+      if (radiusCircleRef.current) {
+        radiusCircleRef.current.setLatLng(userCoords);
+        radiusCircleRef.current.setRadius(mapRadius);
+      } else {
+        const radiusCircle = L.circle(userCoords, {
+          radius: mapRadius,
+          color: '#00e5ff',
+          fillColor: '#00e5ff',
+          fillOpacity: 0.08,
+          weight: 2,
+          dashArray: '6, 8'
+        }).addTo(mapRef.current);
+        radiusCircleRef.current = radiusCircle;
+      }
     } else {
-      const radiusCircle = L.circle(userCoords, {
-        radius: mapRadius,
-        color: '#00e5ff',
-        fillColor: '#00e5ff',
-        fillOpacity: 0.08,
-        weight: 2,
-        dashArray: '6, 8'
-      }).addTo(mapRef.current);
-      radiusCircleRef.current = radiusCircle;
+      if (radiusCircleRef.current) {
+        radiusCircleRef.current.remove();
+        radiusCircleRef.current = null;
+      }
     }
 
-    // Adjust map zoom/bounds to fit the scanning area
-    if (radiusCircleRef.current && mapRef.current) {
-      mapRef.current.fitBounds(radiusCircleRef.current.getBounds(), { padding: [20, 20] });
+    // Adjust map zoom/bounds to fit the scanning area or all markers
+    if (mapRef.current) {
+      if (mapRadius > 0 && radiusCircleRef.current) {
+        mapRef.current.fitBounds(radiusCircleRef.current.getBounds(), { padding: [20, 20] });
+      } else {
+        // Fit all markers (user + bikes)
+        const markersGroup = [
+          L.marker(userCoords),
+          ...bikes.map(bike => {
+            const bikeLng = bike.location?.coordinates?.[0];
+            const bikeLat = bike.location?.coordinates?.[1];
+            return bikeLng && bikeLat ? L.marker([bikeLat, bikeLng]) : null;
+          }).filter(Boolean) as any[]
+        ];
+        const group = L.featureGroup(markersGroup);
+        if (group.getBounds().isValid()) {
+          mapRef.current.fitBounds(group.getBounds(), { padding: [50, 50] });
+        }
+      }
     }
 
     // 2. Plot Bikes Markers
@@ -296,7 +358,7 @@ export const BikesMap = () => {
         markersRef.current.push(marker);
       }
     });
-  }, [loading, bikes, userCoords, mapRadius]);
+  }, [loading, bikes, userCoords, mapRadius, userAddress]);
 
   // Recenter map to user location
   const handleRecenter = async () => {
@@ -305,6 +367,11 @@ export const BikesMap = () => {
       setError(null);
       const coords = await getUserLocation();
       setUserCoords(coords);
+      
+      setUserAddress('Đang xác định địa chỉ...');
+      const addr = await fetchAddress(coords[0], coords[1]);
+      setUserAddress(addr);
+
       mapRef.current.setView(coords, mapRef.current.getZoom());
       await fetchNearbyBikes(coords[0], coords[1], mapRadius);
     } catch (err: any) {
@@ -365,7 +432,7 @@ export const BikesMap = () => {
             </h1>
             <p className="text-gray-400 text-xs mt-1">
               Xem trực quan vị trí các xe máy đối tác đang rảnh và khoảng cách để lựa chọn thuận tiện nhất.
-              <span className="text-neon ml-1">💡 Mẹo test: Bạn có thể kéo thả marker màu xanh Cyan (Vị trí của bạn) trên bản đồ để di chuyển vị trí test!</span>
+              <span className="text-neon ml-1">📍 Vị trí của bạn được xác định chính xác theo GPS thiết bị.</span>
             </p>
           </div>
 
@@ -376,7 +443,8 @@ export const BikesMap = () => {
               { label: '1 km', value: 1000 },
               { label: '3 km', value: 3000 },
               { label: '5 km', value: 5000 },
-              { label: '10 km', value: 10000 }
+              { label: '10 km', value: 10000 },
+              { label: 'Toàn bộ', value: 0 }
             ].map(r => (
               <button
                 key={r.value}

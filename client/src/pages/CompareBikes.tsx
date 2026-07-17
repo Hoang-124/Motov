@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { compareVehicles } from '../services/loyaltyService';
+import { compareVehicles } from '../services/vehicleService';
 import { CheckCircle, XCircle, ArrowLeft, Loader, SlidersHorizontal, Star, Zap, Users, Gauge, Calendar } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
