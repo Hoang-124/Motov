@@ -781,11 +781,16 @@ export const getNearbyVehicles = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Tọa độ vị trí khách hàng không hợp lệ' });
     }
 
+    const isUnlimited = radiusInMeters <= 0;
+
     // Tìm các xe Available gần nhất trong bán kính bằng GeoJSON $near
-    const vehicles = await Vehicle.find({
+    const query: any = {
       status: 'Available',
-      isDeleted: { $ne: true },
-      location: {
+      isDeleted: { $ne: true }
+    };
+
+    if (!isUnlimited) {
+      query.location = {
         $near: {
           $geometry: {
             type: 'Point',
@@ -793,8 +798,10 @@ export const getNearbyVehicles = async (req: AuthRequest, res: Response) => {
           },
           $maxDistance: radiusInMeters
         }
-      }
-    })
+      };
+    }
+
+    const vehicles = await Vehicle.find(query)
     .populate('ownerId', 'firstName lastName email phoneNumber avatarUrl')
     .populate('category')
     .lean();

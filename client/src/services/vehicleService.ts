@@ -358,3 +358,28 @@ export async function getUserFavorites(token: string): Promise<ApiResponse<Motor
 
   return activeFavoritesPromise;
 }
+
+// So sánh danh sách xe máy
+export async function compareVehicles(vehicleIds: string[]): Promise<any[]> {
+  try {
+    const response = await fetch(`${API_URL}/vehicles/compare`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ vehicleIds })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to compare vehicles');
+    }
+
+    const result = await response.json();
+    return result.data || [];
+  } catch (error) {
+    console.error('Error comparing vehicles:', error);
+    throw error;
+  }
+}
+
