@@ -49,6 +49,7 @@ export interface IUser extends Document {
   identitySubmittedAt?: Date;
   identityVerifiedAt?: Date;
   identityVerifiedBy?: mongoose.Types.ObjectId;
+  refreshToken?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -99,7 +100,8 @@ const UserSchema = new Schema<IUser>({
   identityRejectReason: { type: String },
   identitySubmittedAt: { type: Date },
   identityVerifiedAt: { type: Date },
-  identityVerifiedBy: { type: Schema.Types.ObjectId, ref: 'User' }
+  identityVerifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  refreshToken: { type: String }
 }, {
   timestamps: true
 });

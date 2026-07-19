@@ -1,4 +1,12 @@
 import './loadEnv.js';
+
+if (!process.env.JWT_SECRET || !process.env.REFRESH_TOKEN_SECRET || !process.env.MONGODB_URI) {
+  throw new Error('FATAL: Missing required environment variables (JWT_SECRET, REFRESH_TOKEN_SECRET, MONGODB_URI).');
+}
+
+if (!process.env.VNP_TMNCODE || !process.env.VNP_HASHSECRET || !process.env.VNP_RETURNURL) {
+  throw new Error('FATAL: Missing required VNPAY environment variables (VNP_TMNCODE, VNP_HASHSECRET, VNP_RETURNURL).');
+}
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -1056,6 +1064,9 @@ if (process.env.NODE_ENV !== 'production') {
 app.get('/api/bikes', (req, res) => {
   res.json(BIKES);
 });
+
+import { errorHandler } from './middlewares/errorMiddleware.js';
+app.use(errorHandler);
 
 httpServer.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

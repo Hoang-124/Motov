@@ -6,7 +6,7 @@ import {
   updateCategory, 
   deleteCategory 
 } from '../controllers/categoryController.js';
-import { authMiddleware } from '../middlewares/authMiddleware.js';
+import { authMiddleware, restrictTo } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
@@ -15,8 +15,9 @@ router.get('/', getAllCategories);
 router.get('/:id', getCategoryById);
 
 // Protected routes (Only Admin and Staff)
-router.post('/', authMiddleware as any, createCategory as any);
-router.put('/:id', authMiddleware as any, updateCategory as any);
-router.delete('/:id', authMiddleware as any, deleteCategory as any);
+const staffOrAdmin = [authMiddleware, restrictTo('Admin', 'Staff')];
+router.post('/', staffOrAdmin as any, createCategory as any);
+router.put('/:id', staffOrAdmin as any, updateCategory as any);
+router.delete('/:id', staffOrAdmin as any, deleteCategory as any);
 
 export default router;

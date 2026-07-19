@@ -6,34 +6,17 @@
 type BackendRole = 'Admin' | 'Staff' | 'Owner' | 'Customer';
 type FrontendRole = 'admin' | 'staff' | 'owner' | 'customer';
 
-/**
- * Maps a backend roles array to a single frontend role string (uses first role).
- */
 export const mapBackendRoleToFrontend = (backendRoles: string[]): FrontendRole => {
-  const primaryRole = backendRoles[0] || 'Customer';
-  switch (primaryRole) {
-    case 'Admin': return 'admin';
-    case 'Staff': return 'staff';
-    case 'Owner': return 'owner';
-    case 'Customer':
-    default:
-      return 'customer';
-  }
+  if (!backendRoles || backendRoles.length === 0) return 'customer';
+  const rolesLower = backendRoles.map(r => r.toLowerCase());
+  if (rolesLower.includes('admin')) return 'admin';
+  if (rolesLower.includes('staff')) return 'staff';
+  if (rolesLower.includes('owner')) return 'owner';
+  return 'customer';
 };
 
-/**
- * Maps a frontend role string to the canonical backend enum value.
- */
-export const mapFrontendRoleToBackend = (frontendRole: string): BackendRole => {
-  switch (frontendRole) {
-    case 'admin': return 'Admin';
-    case 'staff': return 'Staff';
-    case 'owner': return 'Owner';
-    case 'customer':
-    default:
-      return 'Customer';
-  }
-};
+export const mapFrontendRoleToBackend = (frontendRole: string): BackendRole =>
+  (frontendRole ? (frontendRole.charAt(0).toUpperCase() + frontendRole.slice(1).toLowerCase()) as BackendRole : 'Customer');
 
 /**
  * Escape a user-supplied string for safe use inside a RegExp.

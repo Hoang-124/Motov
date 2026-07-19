@@ -17,6 +17,8 @@ import {
   replyToReturnReason
 } from '../controllers/bookingController.js';
 import { authMiddleware, restrictTo } from '../middlewares/authMiddleware.js';
+import { validateRequest } from '../middlewares/validationMiddleware.js';
+import { createBookingSchema } from '../validators/schemas.js';
 
 const router = Router();
 
@@ -36,7 +38,7 @@ router.use(authMiddleware as any);
  * Create new booking
  * Access: Customer, Owner
  */
-router.post('/', createBooking as any);
+router.post('/', validateRequest(createBookingSchema) as any, createBooking as any);
 
 /**
  * GET /api/bookings/my-bookings

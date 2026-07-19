@@ -255,7 +255,8 @@ describe('Vehicle Controller Tests', () => {
       const vehicle = new Vehicle({
         ownerId: testUserId,
         vehicleModel: 'Edit Test Bike',
-        licensePlate: 'EDIT001',
+        brand: 'Honda',
+        licensePlate: '43C1-99999',
         category: testCategoryId,
         transmissionType: 'Manual',
         rentalPrice: 110000
@@ -265,7 +266,7 @@ describe('Vehicle Controller Tests', () => {
       mockRequest.params = { id: saved._id?.toString() };
       mockRequest.body = {
         vehicleModel: 'Edited Bike',
-        licensePlate: 'EDIT999',
+        licensePlate: '43C1-88888',
         category: testCategoryId,
         transmissionType: 'Automatic'
       };
@@ -276,7 +277,7 @@ describe('Vehicle Controller Tests', () => {
       const callArgs = mockResponse.json.mock.calls[0][0];
       expect(callArgs.success).toBe(true);
       expect(callArgs.data.vehicleModel).toBe('Edited Bike');
-      expect(callArgs.data.licensePlate).toBe('EDIT999');
+      expect(callArgs.data.licensePlate).toBe('43C1-88888');
       expect(callArgs.data.transmissionType).toBe('Automatic');
     });
   });

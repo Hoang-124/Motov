@@ -5,19 +5,12 @@ import { AuthRequest } from '../middlewares/authMiddleware.js';
 // Get all system settings (Admin only)
 export const getSystemSettings = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user || !req.user.roles.includes('Admin')) {
-      return res.status(403).json({
-        success: false,
-        message: 'Bạn không có quyền truy cập thông tin này'
-      });
-    }
-
     // Default VNPAY settings to pre-populate if empty
     const defaultKeys = [
-      { key: 'vnp_TmnCode', value: process.env.VNP_TMNCODE || '5G8G4T6U', description: 'Mã Merchant VNPAY' },
-      { key: 'vnp_HashSecret', value: process.env.VNP_HASHSECRET || 'U3EPGXQEH12AXJ6NBKB7IZLTFWMBOG4T', description: 'Chuỗi khóa bí mật mã hóa VNPAY' },
+      { key: 'vnp_TmnCode', value: process.env.VNP_TMNCODE || '', description: 'Mã Merchant VNPAY' },
+      { key: 'vnp_HashSecret', value: process.env.VNP_HASHSECRET || '', description: 'Chuỗi khóa bí mật mã hóa VNPAY' },
       { key: 'vnp_Url', value: process.env.VNP_URL || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html', description: 'URL Cổng thanh toán VNPAY' },
-      { key: 'vnp_ReturnUrl', value: process.env.VNP_RETURNURL || 'http://localhost:3000/vnpay-return', description: 'URL Redirect nhận kết quả' }
+      { key: 'vnp_ReturnUrl', value: process.env.VNP_RETURNURL || '', description: 'URL Redirect nhận kết quả' }
     ];
 
     // Seed defaults if table is empty
@@ -42,13 +35,6 @@ export const getSystemSettings = async (req: AuthRequest, res: Response) => {
 // Update/Create system setting (Admin only)
 export const updateSystemSetting = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user || !req.user.roles.includes('Admin')) {
-      return res.status(403).json({
-        success: false,
-        message: 'Bạn không có quyền thực hiện hành động này'
-      });
-    }
-
     const { key, value, description } = req.body;
     if (!key || value === undefined) {
       return res.status(400).json({
@@ -59,7 +45,7 @@ export const updateSystemSetting = async (req: AuthRequest, res: Response) => {
 
     const setting = await SystemSetting.findOneAndUpdate(
       { key },
-      { value, description, updatedBy: req.user.id },
+      { value, description, updatedBy: req.user!.id },
       { new: true, upsert: true }
     );
 

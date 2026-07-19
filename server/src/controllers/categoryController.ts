@@ -80,14 +80,6 @@ export const getCategoryById = async (req: Request, res: Response) => {
 // Create a new category (Admin/Staff only)
 export const createCategory = async (req: AuthRequest, res: Response) => {
   try {
-    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
-    if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        error: 'Only staff and admins can manage categories'
-      });
-    }
-
     const { name, description } = req.body;
 
     if (!name || name.trim() === '') {
@@ -136,14 +128,6 @@ export const createCategory = async (req: AuthRequest, res: Response) => {
 // Update category (Admin/Staff only)
 export const updateCategory = async (req: AuthRequest, res: Response) => {
   try {
-    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
-    if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        error: 'Only staff and admins can manage categories'
-      });
-    }
-
     const { id } = req.params;
     const { name, description } = req.body;
 
@@ -205,14 +189,6 @@ export const updateCategory = async (req: AuthRequest, res: Response) => {
 // Delete category (Admin/Staff only)
 export const deleteCategory = async (req: AuthRequest, res: Response) => {
   try {
-    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
-    if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        error: 'Only staff and admins can manage categories'
-      });
-    }
-
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
