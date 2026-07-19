@@ -58,13 +58,16 @@ describe('Zod Validation Middleware', () => {
       body: {
         username: 'validuser',
         email: 'user@test.com',
-        password: 'password123',
+        password: 'Password123!',
         firstName: 'John',
         lastName: 'Doe',
         phoneNumber: '0987654321'
       }
     };
-    const res: any = {};
+    const res: any = {
+      status: () => res,
+      json: () => res
+    };
     let nextCalled = false;
     const next = () => { nextCalled = true; };
 
