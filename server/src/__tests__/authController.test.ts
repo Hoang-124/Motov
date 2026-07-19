@@ -8,7 +8,11 @@ import { EmailVerificationToken } from '../models/EmailVerificationToken.js';
 vi.mock('../utils/emailService.js', () => ({
   sendPasswordReset: vi.fn().mockResolvedValue('https://mock-ethereal-link.com'),
   sendEmailVerification: vi.fn().mockResolvedValue('https://mock-ethereal-link.com'),
-  sendOwnerRequestNotification: vi.fn().mockResolvedValue(true)
+  sendOwnerRequestNotification: vi.fn().mockResolvedValue(true),
+  sendBookingCreatedEmail: vi.fn().mockResolvedValue(true),
+  sendNewBookingAlertToOwnerEmail: vi.fn().mockResolvedValue(true),
+  sendBookingConfirmedEmail: vi.fn().mockResolvedValue(true),
+  sendBookingCancelledEmail: vi.fn().mockResolvedValue(true)
 }));
 
 // ── Setup in-memory MongoDB ───────────────────────────────────────────────────

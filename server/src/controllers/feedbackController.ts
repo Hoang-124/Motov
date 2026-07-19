@@ -70,7 +70,7 @@ export const createFeedback = async (req: AuthRequest, res: Response) => {
 
     // Create feedback
     const feedback = new Feedback({
-      userId: req.user.id,
+      userId: req.user!.id,
       vehicleId: booking.vehicleId,
       bookingId,
       rating,

@@ -141,24 +141,11 @@ export function validateCancellation(currentStatus: string): { valid: boolean; e
   return { valid: true };
 }
 
-/**
- * Calculate total rental amount
- */
-export function calculateTotalAmount(rentalPricePerDay: number, days: number): number {
-  if (days < 1) days = 1;
-  return Math.round(rentalPricePerDay * days);
-}
+export const calculateTotalAmount = (rentalPricePerDay: number, days: number): number =>
+  Math.round(rentalPricePerDay * Math.max(1, days));
 
-/**
- * Generate unique booking code
- */
-export function generateBookingCode(): string {
-  // Format: BK + YYYYMMDD + Random 6 digits
-  const now = new Date();
-  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const randomStr = Math.random().toString().slice(2, 8);
-  return `BK${dateStr}${randomStr}`;
-}
+export const generateBookingCode = (): string =>
+  `BK${new Date().toISOString().slice(0, 10).replace(/-/g, '')}${Math.random().toString().slice(2, 8)}`;
 
 /**
  * Validate surcharge data
@@ -177,14 +164,8 @@ export function validateSurcharge(data: any): { valid: boolean; error?: string }
   return { valid: true };
 }
 
-/**
- * Calculate late return fees
- */
-export function calculateLateFees(returnedTime: Date, scheduledReturnTime: Date, hourlyRate: number): number {
-  const lateHours = Math.ceil((returnedTime.getTime() - scheduledReturnTime.getTime()) / (1000 * 60 * 60));
-  if (lateHours <= 0) return 0;
-  return lateHours * hourlyRate;
-}
+export const calculateLateFees = (returnedTime: Date, scheduledReturnTime: Date, hourlyRate: number): number =>
+  Math.max(0, Math.ceil((returnedTime.getTime() - scheduledReturnTime.getTime()) / 36e5)) * hourlyRate;
 
 /**
  * Calculate damage fees

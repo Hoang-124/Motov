@@ -24,7 +24,8 @@ if (!process.env.JWT_SECRET) {
   throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start.');
 }
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h'; // SEC-FIX: Reduced from 7d to 24h
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '2h';
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || (JWT_SECRET + '_refresh');
 
 // Đăng ký tài khoản
 export const register = async (req: Request, res: Response) => {
@@ -194,11 +195,19 @@ export const register = async (req: Request, res: Response) => {
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN as any }
     );
+    const refreshToken = jwt.sign(
+      { id: savedUser._id },
+      REFRESH_TOKEN_SECRET,
+      { expiresIn: '7d' }
+    );
+    savedUser.refreshToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    await savedUser.save();
 
     res.status(201).json({
       success: true,
       message: 'Đăng ký tài khoản thành công',
       token,
+      refreshToken,
       user: {
         id: savedUser._id,
         username: savedUser.username,
@@ -258,6 +267,13 @@ export const login = async (req: Request, res: Response) => {
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN as any }
     );
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      REFRESH_TOKEN_SECRET,
+      { expiresIn: '7d' }
+    );
+    user.refreshToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    await user.save();
 
     const displayName = user.firstName && user.lastName
       ? `${user.lastName} ${user.firstName}`
@@ -267,6 +283,7 @@ export const login = async (req: Request, res: Response) => {
       success: true,
       message: 'Đăng nhập thành công',
       token,
+      refreshToken,
       user: {
         id: user._id,
         username: user.username,
@@ -496,12 +513,6 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
 // Lấy danh sách yêu cầu đăng ký làm chủ xe (Staff/Admin)
 export const getOwnerRequests = async (req: AuthRequest, res: Response) => {
   try {
-    // Chỉ cho phép Staff hoặc Admin
-    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
-    if (!hasPermission) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền xem các yêu cầu này' });
-    }
-
     const requests = await User.find({ ownerRequestStatus: 'Pending' })
       .select('username email firstName lastName phoneNumber status ownerRequestStatus createdAt ownerContractText ownerContractSignedAt bankName bankAccountNumber bankAccountOwner ownerSignature ownerRejectReason')
       .sort('-updatedAt');
@@ -542,11 +553,6 @@ export const getOwnerRequests = async (req: AuthRequest, res: Response) => {
 // Phê duyệt yêu cầu nâng cấp lên Owner (Staff/Admin)
 export const approveOwnerRequest = async (req: AuthRequest, res: Response) => {
   try {
-    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
-    if (!hasPermission) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện thao tác này' });
-    }
-
     const { id } = req.params;
     const user = await User.findById(id);
     if (!user) {
@@ -589,11 +595,6 @@ export const approveOwnerRequest = async (req: AuthRequest, res: Response) => {
 // Từ chối yêu cầu nâng cấp lên Owner (Staff/Admin)
 export const rejectOwnerRequest = async (req: AuthRequest, res: Response) => {
   try {
-    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
-    if (!hasPermission) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện thao tác này' });
-    }
-
     const { id } = req.params;
     const { rejectReason } = req.body;
     const user = await User.findById(id);
@@ -723,6 +724,13 @@ export const googleLogin = async (req: Request, res: Response) => {
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN as any }
     );
+    const refreshToken = jwt.sign(
+       { id: user._id },
+       REFRESH_TOKEN_SECRET,
+       { expiresIn: '7d' }
+     );
+     user.refreshToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
+     await user.save();
 
     const displayName = user.firstName && user.lastName
       ? `${user.lastName} ${user.firstName}`
@@ -732,6 +740,7 @@ export const googleLogin = async (req: Request, res: Response) => {
       success: true,
       message: 'Đăng nhập bằng Google thành công',
       token,
+      refreshToken,
       user: {
         id: user._id,
         username: user.username,
@@ -818,11 +827,63 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 };
 
 // Đăng xuất tài khoản
-export const logout = async (req: Request, res: Response) => {
-  res.status(200).json({
-    success: true,
-    message: 'Đăng xuất thành công'
-  });
+export const logout = async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user) {
+      await User.findByIdAndUpdate(req.user.id, { $unset: { refreshToken: 1 } });
+    }
+    res.status(200).json({
+      success: true,
+      message: 'Đăng xuất thành công'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi đăng xuất' });
+  }
+};
+
+// Làm mới Access Token (Refresh Token)
+export const refreshAccessToken = async (req: Request, res: Response) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp Refresh Token' });
+    }
+
+    const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET) as any;
+    const user = await User.findById(decoded.id);
+
+    const hashedIncoming = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    if (!user || user.refreshToken !== hashedIncoming) {
+      return res.status(401).json({ success: false, message: 'Refresh Token không hợp lệ hoặc đã hết hạn' });
+    }
+
+    if (user.status === 'Suspended') {
+      return res.status(403).json({ success: false, message: 'Tài khoản của bạn đã bị khóa' });
+    }
+
+    const newAccessToken = jwt.sign(
+      { id: user._id, email: user.email, roles: user.roles },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN as any }
+    );
+
+    const newRefreshToken = jwt.sign(
+      { id: user._id },
+      REFRESH_TOKEN_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    user.refreshToken = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      token: newAccessToken,
+      refreshToken: newRefreshToken
+    });
+  } catch (error) {
+    res.status(401).json({ success: false, message: 'Refresh Token không hợp lệ hoặc đã hết hạn' });
+  }
 };
 
 // Đổi mật khẩu
@@ -1229,11 +1290,6 @@ export const submitIdentityVerification = async (req: AuthRequest, res: Response
 // Lấy danh sách yêu cầu eKYC đang chờ duyệt (Staff/Admin)
 export const getIdentityRequests = async (req: AuthRequest, res: Response) => {
   try {
-    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
-    if (!hasPermission) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập thông tin này' });
-    }
-
     const requests = await User.find({ identityStatus: 'Pending' })
       .select('username email firstName lastName phoneNumber status identityStatus citizenIdInfo identitySubmittedAt')
       .sort('-identitySubmittedAt');
@@ -1269,11 +1325,6 @@ export const getIdentityRequests = async (req: AuthRequest, res: Response) => {
 // Phê duyệt yêu cầu eKYC (Staff/Admin)
 export const approveIdentityRequest = async (req: AuthRequest, res: Response) => {
   try {
-    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
-    if (!hasPermission) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền phê duyệt yêu cầu này' });
-    }
-
     const { id } = req.params;
     const user = await User.findById(id);
     if (!user) {
@@ -1332,11 +1383,6 @@ export const approveIdentityRequest = async (req: AuthRequest, res: Response) =>
 // Từ chối yêu cầu eKYC (Staff/Admin)
 export const rejectIdentityRequest = async (req: AuthRequest, res: Response) => {
   try {
-    const hasPermission = req.user?.roles?.some(role => role === 'Staff' || role === 'Admin');
-    if (!hasPermission) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện thao tác này' });
-    }
-
     const { id } = req.params;
     const { reason } = req.body;
 

@@ -20,7 +20,7 @@ export const createConversationController = async (req: AuthRequest, res: Respon
     return res.status(200).json({ success: true, data: conversation });
   } catch (error: any) {
     console.error('Error in createConversationController:', error);
-    return res.status(400).json({ success: false, message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™' });
+    return res.status(400).json({ success: false, message: error.message || 'Lỗi máy chủ nội bộ' });
   }
 };
 
