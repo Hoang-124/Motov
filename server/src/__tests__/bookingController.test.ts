@@ -10,17 +10,17 @@ vi.mock('../utils/emailService.js', () => ({
   sendBookingConfirmedEmail: vi.fn().mockResolvedValue(true),
   sendBookingCancelledEmail: vi.fn().mockResolvedValue(true)
 }));
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Booking } from '../models/Booking.js';
 import { Vehicle } from '../models/Vehicle.js';
 import { User } from '../models/User.js';
 import { BookingReminder } from '../models/BookingReminder.js';
 
-let mongod: MongoMemoryServer | null = null;
+let mongod: MongoMemoryReplSet | null = null;
 
 beforeAll(async () => {
   try {
-    mongod = await MongoMemoryServer.create();
+    mongod = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
     await mongoose.connect(mongod.getUri());
   } catch (err) {
     console.warn('Could not start MongoMemoryServer. Falling back to local MongoDB test database.');
@@ -181,7 +181,11 @@ describe('confirmBikePickupByStaff()', () => {
 
     const req: any = {
       params: { id: booking._id.toString() },
-      body: {},
+      body: {
+        pickupOdometer: 10001,
+        handoverImages: ['img1.jpg', 'img2.jpg', 'img3.jpg', 'img4.jpg'],
+        equipment: ['Mũ bảo hiểm 1', 'Mũ bảo hiểm 2', 'Áo mưa', 'Giấy tờ xe', 'Chìa khóa', 'Bảo hiểm']
+      },
       user: { id: 'staff-1', roles: ['Staff'] }
     };
     const res = createMockRes();
@@ -192,6 +196,125 @@ describe('confirmBikePickupByStaff()', () => {
     expect(res._status).toBe(200);
     expect(reminders.length).toBeGreaterThan(0);
     expect(reminders.some(r => r.reminderType === '24h_before_return' || r.reminderType === '2h_before_return')).toBe(true);
+  });
+
+  it('should return 400 if pickupOdometer is left blank (Case 1)', async () => {
+    const vehicle = await Vehicle.create({
+      ownerId: new mongoose.Types.ObjectId(),
+      rentalPrice: 100000,
+      status: 'Available',
+      licensePlate: '12-A3 45678',
+      transmissionType: 'Manual',
+      category: new mongoose.Types.ObjectId(),
+      vehicleModel: 'Honda Wave',
+      odometer: 10000
+    });
+
+    const booking = await Booking.create({
+      bookingCode: 'BK-CASE1',
+      userId: new mongoose.Types.ObjectId(),
+      vehicleId: vehicle._id,
+      pickupDateTime: new Date(),
+      returnDateTime: new Date(Date.now() + 86400000),
+      totalAmount: 100000,
+      status: 'Confirmed',
+      vehicleSnapshot: { name: 'Test Bike', licensePlate: '12-A3 45678', rentalPrice: 100000, image: 'test.jpg' }
+    });
+
+    const req: any = {
+      params: { id: booking._id.toString() },
+      body: {
+        handoverImages: ['img1.jpg', 'img2.jpg', 'img3.jpg', 'img4.jpg'],
+        equipment: ['Mũ bảo hiểm 1', 'Mũ bảo hiểm 2', 'Áo mưa', 'Giấy tờ xe', 'Chìa khóa', 'Bảo hiểm']
+      },
+      user: { id: 'staff-1', roles: ['Staff'] }
+    };
+    const res = createMockRes();
+
+    await confirmBikePickupByStaff(req, res);
+
+    expect(res._status).toBe(400);
+    expect(res._body.message).toContain('Odometer');
+  });
+
+  it('should return 400 if handoverImages does not have exactly 4 images (Case 2)', async () => {
+    const vehicle = await Vehicle.create({
+      ownerId: new mongoose.Types.ObjectId(),
+      rentalPrice: 100000,
+      status: 'Available',
+      licensePlate: '12-A3 45678',
+      transmissionType: 'Manual',
+      category: new mongoose.Types.ObjectId(),
+      vehicleModel: 'Honda Wave',
+      odometer: 10000
+    });
+
+    const booking = await Booking.create({
+      bookingCode: 'BK-CASE2',
+      userId: new mongoose.Types.ObjectId(),
+      vehicleId: vehicle._id,
+      pickupDateTime: new Date(),
+      returnDateTime: new Date(Date.now() + 86400000),
+      totalAmount: 100000,
+      status: 'Confirmed',
+      vehicleSnapshot: { name: 'Test Bike', licensePlate: '12-A3 45678', rentalPrice: 100000, image: 'test.jpg' }
+    });
+
+    const req: any = {
+      params: { id: booking._id.toString() },
+      body: {
+        pickupOdometer: 10500,
+        handoverImages: ['img1.jpg'], // Only 1 image
+        equipment: ['Mũ bảo hiểm 1', 'Mũ bảo hiểm 2', 'Áo mưa', 'Giấy tờ xe', 'Chìa khóa', 'Bảo hiểm']
+      },
+      user: { id: 'staff-1', roles: ['Staff'] }
+    };
+    const res = createMockRes();
+
+    await confirmBikePickupByStaff(req, res);
+
+    expect(res._status).toBe(400);
+    expect(res._body.message).toContain('4');
+  });
+
+  it('should return 400 if equipment does not have exactly 6 required items (Case 3)', async () => {
+    const vehicle = await Vehicle.create({
+      ownerId: new mongoose.Types.ObjectId(),
+      rentalPrice: 100000,
+      status: 'Available',
+      licensePlate: '12-A3 45678',
+      transmissionType: 'Manual',
+      category: new mongoose.Types.ObjectId(),
+      vehicleModel: 'Honda Wave',
+      odometer: 10000
+    });
+
+    const booking = await Booking.create({
+      bookingCode: 'BK-CASE3',
+      userId: new mongoose.Types.ObjectId(),
+      vehicleId: vehicle._id,
+      pickupDateTime: new Date(),
+      returnDateTime: new Date(Date.now() + 86400000),
+      totalAmount: 100000,
+      status: 'Confirmed',
+      vehicleSnapshot: { name: 'Test Bike', licensePlate: '12-A3 45678', rentalPrice: 100000, image: 'test.jpg' }
+    });
+
+    const req: any = {
+      params: { id: booking._id.toString() },
+      body: {
+        pickupOdometer: 10500,
+        handoverImages: ['img1.jpg', 'img2.jpg', 'img3.jpg', 'img4.jpg'],
+        equipment: ['Mũ bảo hiểm 1', 'Mũ bảo hiểm 2'] // Not all 6 required
+      },
+      user: { id: 'staff-1', roles: ['Staff'] }
+    };
+    const res = createMockRes();
+
+    await confirmBikePickupByStaff(req, res);
+
+    expect(res._status).toBe(400);
+    expect(res._body.message).toContain('6');
   });
 });
 

@@ -58,12 +58,8 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction) 
   // Only check state-changing methods
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
     const hasCustomHeader = req.headers['x-requested-with'] === 'XMLHttpRequest' ||
-<<<<<<< HEAD
-                            req.headers['content-type']?.includes('application/json');
-=======
                             req.headers['content-type']?.includes('application/json') ||
                             req.headers['authorization'];
->>>>>>> ada1fbe7cad589a365abd150c933404cda5023a6
     if (!hasCustomHeader) {
       return res.status(403).json({ success: false, message: 'Forbidden: missing required headers' });
     }

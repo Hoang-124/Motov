@@ -28,7 +28,7 @@ export interface IVehicle extends Document {
 
 const VehicleSchema = new Schema<IVehicle>({
   ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  vehicleModel: { type: String, required: true },
+  vehicleModel: { type: String, required: true, index: true },
   licensePlate: { type: String, required: true, unique: true, index: true },
   seats: { type: Number, default: 2 },
   odometer: { type: Number, default: 0 },

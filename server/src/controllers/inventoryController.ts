@@ -91,19 +91,29 @@ export const createInventory = async (req: AuthRequest, res: Response) => {
     if (!sku || sku.trim() === '') {
       return res.status(400).json({ success: false, error: 'Mã SKU là bắt buộc' });
     }
-    if (price === undefined || price < 0) {
-      return res.status(400).json({ success: false, error: 'Đơn giá không hợp lệ' });
+    if (price === undefined || typeof price !== 'number' || price < 0) {
+      return res.status(400).json({ success: false, error: 'Giá trị phải là số dương lớn hơn hoặc bằng 0' });
+    }
+    if (quantity !== undefined && (!Number.isInteger(Number(quantity)) || quantity < 0)) {
+      return res.status(400).json({ success: false, error: 'Số lượng phải là số nguyên dương lớn hơn hoặc bằng 0' });
+    }
+    if (minQuantity !== undefined && (!Number.isInteger(Number(minQuantity)) || minQuantity < 0)) {
+      return res.status(400).json({ success: false, error: 'Số lượng tối thiểu phải là số nguyên dương lớn hơn hoặc bằng 0' });
     }
 
-    // Check duplicate
+    // Check duplicate more rigorously (case-insensitive)
     const existing = await Inventory.findOne({
-      $or: [{ name: name.trim() }, { sku: sku.trim().toUpperCase() }]
+      $or: [
+        { name: { $regex: new RegExp(`^${name.trim()}$`, 'i') } },
+        { sku: { $regex: new RegExp(`^${sku.trim()}$`, 'i') } }
+      ]
     });
 
     if (existing) {
+      const isSkuDuplicate = existing.sku.toLowerCase() === sku.trim().toLowerCase();
       return res.status(400).json({
         success: false,
-        error: 'Tên phụ tùng hoặc mã SKU đã tồn tại trong kho'
+        error: isSkuDuplicate ? 'Mã SKU đã tồn tại trong hệ thống' : 'Tên phụ tùng đã tồn tại trong kho'
       });
     }
 
@@ -129,7 +139,7 @@ export const createInventory = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to create inventory item',
-      message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™'
+      message: 'Lỗi máy chủ nội bộ'
     });
   }
 };
@@ -138,7 +148,7 @@ export const createInventory = async (req: AuthRequest, res: Response) => {
 export const updateInventory = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, sku, minQuantity, price, location, description } = req.body;
+    const { name, sku, quantity, minQuantity, price, location, description } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'ID không hợp lệ' });
@@ -149,34 +159,42 @@ export const updateInventory = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, error: 'Không tìm thấy phụ tùng trong kho' });
     }
 
-    if (name && name.trim() !== '' && name.trim() !== item.name) {
-      // Check duplicate name
-      const duplicate = await Inventory.findOne({ _id: { $ne: id }, name: name.trim() });
-      if (duplicate) {
-        return res.status(400).json({ success: false, error: 'Tên phụ tùng này đã tồn tại' });
+    // Support partial updates accurately
+    if (name !== undefined) {
+      if (name.trim() === '') return res.status(400).json({ success: false, error: 'Tên phụ tùng không được để trống' });
+      if (name.trim().toLowerCase() !== item.name.toLowerCase()) {
+        const duplicate = await Inventory.findOne({ _id: { $ne: id }, name: { $regex: new RegExp(`^${name.trim()}$`, 'i') } });
+        if (duplicate) return res.status(400).json({ success: false, error: 'Tên phụ tùng này đã tồn tại' });
+        item.name = name.trim();
       }
-      item.name = name.trim();
     }
 
-    if (sku && sku.trim().toUpperCase() !== item.sku) {
-      // Check duplicate sku
-      const duplicate = await Inventory.findOne({ _id: { $ne: id }, sku: sku.trim().toUpperCase() });
-      if (duplicate) {
-        return res.status(400).json({ success: false, error: 'Mã SKU này đã tồn tại' });
+    if (sku !== undefined) {
+      if (sku.trim() === '') return res.status(400).json({ success: false, error: 'Mã SKU không được để trống' });
+      if (sku.trim().toLowerCase() !== item.sku.toLowerCase()) {
+        const duplicate = await Inventory.findOne({ _id: { $ne: id }, sku: { $regex: new RegExp(`^${sku.trim()}$`, 'i') } });
+        if (duplicate) return res.status(400).json({ success: false, error: 'Mã SKU này đã tồn tại, vui lòng nhập mã khác' });
+        item.sku = sku.trim().toUpperCase();
       }
-      item.sku = sku.trim().toUpperCase();
     }
 
     if (price !== undefined) {
-      if (price < 0) {
-        return res.status(400).json({ success: false, error: 'Đơn giá không hợp lệ' });
+      if (typeof price !== 'number' || price < 0) {
+        return res.status(400).json({ success: false, error: 'Giá trị phải là số dương lớn hơn hoặc bằng 0' });
       }
       item.price = price;
     }
 
+    if (quantity !== undefined) {
+      if (!Number.isInteger(quantity) || quantity < 0) {
+        return res.status(400).json({ success: false, error: 'Số lượng phải là số nguyên dương lớn hơn hoặc bằng 0' });
+      }
+      item.quantity = quantity;
+    }
+
     if (minQuantity !== undefined) {
-      if (minQuantity < 0) {
-        return res.status(400).json({ success: false, error: 'Ngưỡng tối thiểu không hợp lệ' });
+      if (!Number.isInteger(minQuantity) || minQuantity < 0) {
+        return res.status(400).json({ success: false, error: 'Số lượng tối thiểu phải là số nguyên dương lớn hơn hoặc bằng 0' });
       }
       item.minQuantity = minQuantity;
     }
@@ -196,7 +214,7 @@ export const updateInventory = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update inventory item',
-      message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™'
+      message: 'Lỗi máy chủ nội bộ'
     });
   }
 };
@@ -225,7 +243,7 @@ export const deleteInventory = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to delete inventory item',
-      message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™'
+      message: 'Lỗi máy chủ nội bộ'
     });
   }
 };
@@ -247,8 +265,8 @@ export const updateStock = async (req: AuthRequest, res: Response) => {
     }
 
     if (quantity !== undefined) {
-      if (quantity < 0) {
-        return res.status(400).json({ success: false, error: 'Số lượng tồn kho không được âm' });
+      if (!Number.isInteger(quantity) || quantity < 0) {
+        return res.status(400).json({ success: false, error: 'Số lượng tồn kho không được âm và phải là số nguyên' });
       }
       const isRestocked = quantity > item.quantity;
       item.quantity = quantity;
@@ -256,11 +274,18 @@ export const updateStock = async (req: AuthRequest, res: Response) => {
         item.lastRestockedAt = new Date();
       }
     } else if (delta !== undefined) {
+      if (!Number.isInteger(delta)) {
+        return res.status(400).json({ success: false, error: 'Giá trị phải là số nguyên' });
+      }
+      if (delta === 0) {
+        return res.status(400).json({ success: false, error: 'Số lượng thay đổi phải khác 0' });
+      }
+      
       const newQty = item.quantity + delta;
       if (newQty < 0) {
         return res.status(400).json({
           success: false,
-          error: `Số lượng xuất vượt quá tồn kho hiện tại (Hiện tại: ${item.quantity})`
+          error: `Số lượng xuất kho không được vượt quá số lượng tồn kho hiện tại (Tối đa: ${item.quantity})`
         });
       }
       item.quantity = newQty;
@@ -270,7 +295,7 @@ export const updateStock = async (req: AuthRequest, res: Response) => {
     } else {
       return res.status(400).json({
         success: false,
-        error: 'Vui lòng cung cấp delta (số lượng cộng thêm/trừ đi) hoặc quantity (số lượng mới)'
+        error: 'Vui lòng nhập số lượng cần nhập thêm hoặc xuất kho'
       });
     }
 
@@ -286,7 +311,7 @@ export const updateStock = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update stock quantity',
-      message: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™'
+      message: 'Lỗi máy chủ nội bộ'
     });
   }
 };
