@@ -4,90 +4,43 @@
 
 ### Đã làm các chức năng:
 
-**Web (Client):**
-+ Đăng ký / Đăng nhập (Email + Google OAuth)
-+ Real-time validation form đăng ký + Xác thực Email (same-tab)
-+ Quên mật khẩu / Đặt lại mật khẩu / Đổi mật khẩu
-+ Hệ thống phân quyền đa vai trò (Guest/Customer/Owner/Staff/Admin)
-+ Quản lý xe máy (CRUD) + Upload ảnh Cloudinary
-+ Trang chi tiết xe (premium layout, gợi ý xe tương tự)
-+ So sánh xe máy (Compare Bikes — chọn 2-3 xe, bảng so sánh)
-+ Áp mã voucher/khuyến mãi khi đặt xe
-+ Hệ thống đặt xe + Tracking + Trả xe (Early return + hoàn tiền từng phần)
-+ Tích hợp thanh toán VNPay Sandbox
-+ Hủy đơn tự động khi thanh toán thất bại
-+ Custom Toast thay thế window.alert
-+ Redesign admin pages + vertical layout + custom scrollbar
-+ Redesign notifications dropdown (kiểu Facebook)
-+ Premium footer + theme + custom dropdown
-+ Dịch toàn bộ UI sang tiếng Việt + thay emoji bằng Lucide icon
-+ Tự động tạo feedback cho đơn xe thành công
-+ Return reasons + replies + cảnh báo ngôn từ thô tục
-+ Active menu indicator
-
-**Server (API):**
-+ Bảo mật: Helmet, Rate limiting, Body size limit, CORS strict, mongo-sanitize, CSRF, JWT hardening
-+ Loại bỏ lộ error.message khỏi tất cả controller
-+ Guard mock-token backdoor, xóa debug logs
-+ Upload validation
-+ Guard dotenv load trên production
-+ Fix route mismatches (become-owner, staff pickup, auth header CSRF)
+**Web (Client & Server):**
++ Quản lý xe máy (CRUD Motorbike page & APIs)
++ So sánh xe máy (Compare Bikes)
++ Nhập mã khuyến mãi/voucher trong form đặt xe
++ Booking Reminder (Gửi email/SMS tự động nhắc nhở lịch nhận/trả xe)
++ Bảo mật hệ thống: Tích hợp Helmet, giới hạn dung lượng body, Rate Limiting, CORS strict mode, chống tấn công NoSQL Injection (mongo-sanitize), xác thực CSRF, và hardening JWT.
++ Ẩn các chi tiết thông báo lỗi thô (`error.message`) ở toàn bộ controller để tăng bảo mật.
 
 **Mobile (React Native / Expo):**
-+ BikeDetailModal (carousel ảnh, thông số, CTA đặt xe)
-+ CompareBikesModal (chọn 2-3 xe, bảng so sánh qua API)
-+ BikesMapScreen (bản đồ xe gần bạn, interactive pins, popup đặt xe)
-+ StaffDashboardScreen (stats grid, biểu đồ, quick actions)
-+ StaffScheduleScreen (lịch trình hôm nay — pickup/return)
-+ InventoryScreen (CRUD kho phụ tùng, search, filter sắp hết, nhập/xuất kho)
-+ AdminPromotionsScreen (CRUD khuyến mãi qua API)
-+ AdminCategoriesScreen (CRUD danh mục qua API)
-+ AdminFeedbacksScreen (filter, block/unblock, xóa qua API)
-+ AdminManageScreen (sub-nav: Xe/Users/Khuyến mãi/Danh mục/Feedback)
-+ Staff tab navigation (Tổng hợp / Yêu cầu / Lịch trình / Kho / Cá nhân)
-+ Admin tab navigation (Tổng hợp / Đơn hàng / Quản trị / Cá nhân)
++ BikeDetailModal (carousel ảnh xe, thông số, liên hệ chủ xe, CTA đặt xe)
++ CompareBikesModal (giao diện chọn 2-3 xe & bảng thông số so sánh chi tiết)
++ BikesMapScreen (bản đồ xe gần bạn khu vực Đà Nẵng, ghim xe tương tác, popup đặt xe)
++ StaffDashboardScreen (thống kê tổng hợp, biểu đồ trạng thái, hành động nhanh)
++ StaffScheduleScreen (lịch trình hôm nay: Lấy xe / Trả xe, xác nhận giao xe)
++ InventoryScreen (quản lý kho phụ tùng CRUD, nhập/xuất kho nhanh, cảnh báo sắp hết hàng)
++ AdminPromotionsScreen (CRUD khuyến mãi trực quan)
++ AdminCategoriesScreen (CRUD danh mục xe)
++ AdminFeedbacksScreen (quản lý phản hồi, block người dùng/xóa đánh giá)
++ Phân chia luồng Tab Navigation theo vai trò Staff và Admin riêng biệt
 
 ---
 
 ### Những chức năng đã test và fix:
 
-+ Fix Google login flow & token verification
-+ Fix Admin login token sync
-+ Fix mật khẩu ngắn cho tài khoản seed (đổi thành 8 ký tự)
-+ Fix password validation đồng bộ CI test
-+ Admin Users search với debounce 400ms tránh gọi API thừa
-+ Fix validate biển số xe Việt Nam (regex)
-+ Fix validate required fields khi thêm xe (Admin)
-+ Fix import Sparkles icon crash trên MotorbikeDetail
-+ Fix nút Edit/Delete chỉ hiện cho chủ xe, ẩn cho customer
-+ Fix nút Return chỉ hiện cho đơn Ongoing
-+ Fix loading state trong return submit handler
-+ Fix Odometer validation (không nhỏ hơn lúc nhận xe)
-+ Fix return time validation (không trước pickup time)
-+ Fix inline error khi checklist thiếu hoặc ảnh thiếu
-+ Fix validate feedback content không được rỗng
-+ Thêm status 'Returning' vào TypeScript types (BookingService, TrackingModal, InteractiveMap)
-+ Fix 'Returning' trong tính tỷ lệ occupancy trên dashboard
-+ Fix date validation + HTML5 calendar popup
-+ Fix tăng tolerance date validation lên 30 phút (client + server)
-+ Fix booking link quay về trang chi tiết xe
-+ Fix inventory: quantity read-only trong edit mode
-+ Fix inventory: chặn ký tự không phải số trong input
-+ Fix categories: inline error + duplicate name check (create/edit)
-+ Fix chat: logic bugs (field access, double emit, SSE hook, null handling)
-+ Fix chat: initiation + duplicate scroll/render
-+ Fix chat: real-time sync + undefined participant name
-+ Fix chat: hiển thị tin nhắn với admin + upload ảnh từ máy
-+ Fix esbuild build error AdminBookings
-+ Fix booking test + startup OOM
-+ Fix Leaflet crash on marker dragend
-+ Fix navigation link path cho BikesMap
-+ Fix tile layer → OpenStreetMap (Vietnamese localization)
-+ Fix fallback Da Nang coords cho map
-+ Fix sync sovereignty claims trong ko.ts locale
-+ Fix mobile: babel-preset-expo + Kotlin version cho EAS build
-+ Fix mobile: restore files sau security merge
-+ Fix security: route mismatches become-owner, staff pickup, auth header CSRF
-+ Fix environment override on production (guard dotenv load)
-+ Verify: radius filtering, ekyc verification, phone validation, booking constraints
++ Fix lỗi logic Chat thời gian thực (truy cập field, double emit, SSE hook, null handling)
++ Fix lỗi inventory: Khóa ô nhập số lượng trong edit mode, chỉ cho chỉnh sửa qua nhập/xuất kho
++ Fix lỗi inventory: Chặn ký tự không phải số trong ô nhập tồn kho tối thiểu và đơn giá
++ Fix lỗi booking: Nút trả xe chỉ xuất hiện đối với các đơn có trạng thái "Ongoing"
++ Fix lỗi booking: Fix loading state khi submit trả xe
++ Fix lỗi booking: Validate số km lúc trả xe không được thấp hơn lúc nhận xe
++ Fix lỗi booking: Validate thời gian trả xe không được trước thời gian nhận xe
++ Fix lỗi booking: Thêm hiển thị lỗi trực quan khi chưa chọn checklist hoặc thiếu ảnh bàn giao xe
++ Fix lỗi booking: Validate nội dung feedback đánh giá không được để trống khi gửi
++ Fix lỗi TypeScript: Đồng bộ trạng thái 'Returning' trong code (BookingService, TrackingModal, InteractiveMap)
++ Fix lỗi hiển thị occupancy rate: Đưa thêm trạng thái 'Returning' vào thống kê xe đang hoạt động
++ Fix lỗi admin-bikes: Regex validate định dạng biển số xe Việt Nam và hiển thị thông báo thiếu trường bắt buộc
++ Fix lỗi categories: Cảnh báo trùng tên danh mục ở cả chế độ thêm mới và chỉnh sửa
++ Fix lỗi admin-users: Thêm debounce 400ms khi tìm kiếm user để tối ưu hiệu năng API
++ Fix lỗi bảo mật: Xóa bỏ debug logs và vá cổng sau bypass token
 + TypeScript compilation pass 0 errors trên cả 3 module (client, server, mobile)
