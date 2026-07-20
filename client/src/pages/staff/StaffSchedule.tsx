@@ -68,7 +68,7 @@ export const StaffSchedule: React.FC = () => {
   const handleConfirmPickup = async (bookingId: string) => {
     if (!window.confirm('Xác nhận bàn giao xe và chìa khóa cho khách hàng?')) return;
     try {
-      const response = await fetch(`/api/staff/bookings/${bookingId}/pickup`, {
+      const response = await fetch(`/api/bookings/staff/bookings/${bookingId}/pickup`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });

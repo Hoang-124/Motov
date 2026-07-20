@@ -379,7 +379,7 @@ export const ProfileScreen: React.FC = () => {
           onPress: async () => {
             setUpgrading(true);
             try {
-              const response = await fetch(`${API_BASE_URL}/auth/becomeOwner`, {
+              const response = await fetch(`${API_BASE_URL}/auth/become-owner`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
