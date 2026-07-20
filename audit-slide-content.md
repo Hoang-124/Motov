@@ -8,71 +8,33 @@
 ### 0.1 Thành viên nhóm & Phân chia công việc
 
 #### 👨‍💻 Trần Quang Bửu Hoàng (Trưởng nhóm - Leader)
-*   **Các chức năng đã phát triển (Web/Server/Mobile):**
-    *   Tích hợp thanh toán trực tuyến qua cổng VNPay Sandbox thực tế, tự động hủy đơn khi thanh toán thất bại.
-    *   Tối ưu hóa hệ thống gửi email và tin nhắn SMS song song, thiết lập bộ nhớ cache transporter.
-    *   Đồng bộ hóa toàn bộ tính năng đặt xe, chi tiết hóa đơn và eKYC tự động điền từ Web lên Mobile.
-    *   Giao diện Web Admin: thiết kế Layout Admin dọc, trang cài đặt hệ thống, và thiết kế Footer cao cấp.
-    *   Hỗ trợ đa ngôn ngữ: dịch tĩnh & động toàn hệ thống (Tiếng Hàn, Việt, Anh).
-*   **Hoạt động kiểm thử & Sửa lỗi (QA/Debugging):**
-    *   Kiểm tra đồng bộ hóa luồng thanh toán VNPay trên ứng dụng di động (In-App Integration).
-    *   Sửa lỗi đồng bộ dữ liệu thời gian thực của Chat (real-time sync), hiển thị tên và chặn lặp tin nhắn.
-    *   Sửa lỗi đồng bộ Token đăng nhập của Admin (Admin token sync).
-    *   Tối ưu hóa hiệu năng máy chủ, khắc phục hoàn toàn lỗi tràn bộ nhớ (OOM) khi khởi chạy server.
-*   **Công việc Quản lý & Tài liệu:**
-    *   Đóng vai trò Trưởng nhóm (Leader): Phân công, điều phối công việc và quản lý tiến độ dự án.
-    *   Kiểm duyệt chất lượng mã nguồn, giải quyết xung đột (conflict resolution) và tiến hành merge code trên GitHub.
+*   **Chức năng phát triển:**
+    *   Tích hợp thanh toán VNPay Sandbox thực tế (Web/Mobile), tự động hủy đơn khi thanh toán lỗi.
+    *   Hệ thống gửi Email & SMS nhắc nhở song song, tối ưu hóa cache transporter (Backend).
+    *   Đồng bộ toàn bộ tính năng đặt xe, hóa đơn, và eKYC từ Web sang Mobile App.
+    *   Giao diện Web Admin: Layout dọc, trang cấu hình hệ thống, thiết kế Footer & đa ngôn ngữ (tiếng Hàn).
+*   **Kiểm thử & Sửa lỗi:** Kiểm thử luồng VNPay In-App di động; sửa lỗi real-time chat sync, Admin token sync và triệt tiêu lỗi tràn bộ nhớ (OOM) khi khởi chạy server.
+*   **Quản lý & Tài liệu:** Phân công, điều phối công việc; duyệt mã nguồn và merge code trên GitHub.
 
-#### 👩‍💻 Lê Thị Bảo Uyên
-*   **Các chức năng đã phát triển (Web/Server):**
-    *   Tích hợp bản đồ Leaflet hiển thị Xe máy Lân cận sử dụng truy vấn GeoJSON.
-    *   Xác thực danh tính eKYC & Quy trình đăng ký, duyệt đối tác Chủ xe (eKYC & Owner Approval).
-    *   Quy trình đặt xe và Scheduler nhắc nhở lịch trình tự động qua Email (SMTP) và SMS Twilio.
-    *   Phê duyệt: Xây dựng cổng duyệt thông tin xe, duyệt chủ xe và duyệt đơn hàng của Admin.
-    *   Quản lý kho phụ tùng thiết bị (CRUD Inventory) & Tự động cảnh báo số lượng tồn kho.
-    *   Quản lý chương trình khuyến mãi (Voucher/Promotion CRUD) của Admin.
-    *   Quản lý đánh giá & phản hồi (Feedback) và chức năng xóa/ẩn đánh giá của Admin.
-    *   Tích hợp Chat thời gian thực sử dụng Socket.io giữa Customer và Owner/Admin.
-    *   Quản lý thông tin thành viên (CRUD Users) dành cho Admin.
-*   **Hoạt động kiểm thử & Sửa lỗi (QA/Debugging):**
-    *   Kiểm tra thuật toán lọc xe theo Bán kính trên bản đồ.
-    *   Kiểm tra tính năng kéo thả Marker ghim vị trí tùy chỉnh.
-    *   Kiểm tra các hành động thao tác bản đồ (Zoom In/Out, Refresh thủ công, định vị nhanh).
-    *   Kiểm tra các ràng buộc thời gian (ngày thuê, ngày trả xe).
-    *   Kiểm thử bảo mật eKYC: Xác thực luồng hiển thị trang đặt xe với các tài khoản Chưa xác thực eKYC, Đang chờ duyệt eKYC, và Đã hoàn thành eKYC.
-    *   Kiểm tra định dạng nhập Số điện thoại (sai đầu số quy định, thiếu ký tự, chứa ký tự lạ).
-    *   Kiểm tra vượt hạn mức thuê tối đa và các luồng giao dịch VNPay (thành công NCB, khách hủy, timeout giao dịch).
-    *   Kiểm tra lọc đơn hàng theo trạng thái và khởi chạy luồng bàn giao xe (Pickup).
-    *   Sửa lỗi Admin-users: Thêm debounce 400ms khi tìm kiếm người dùng để tối ưu hiệu năng API.
-    *   Sửa lỗi bảo mật: Xóa bỏ debug logs lộ và vá backdoor bypass OTP qua token.
-    *   Biên dịch & Typecheck: Đảm bảo code pass hoàn toàn không có lỗi TypeScript trên cả 3 module (client, server, mobile).
-*   **Công việc Tài liệu & Thiết kế:**
-    *   Vẽ các loại sơ đồ nghiệp vụ trong tài liệu môn SWD, SDN.
-    *   Viết tài liệu báo cáo file doc cho 2 môn SWD, SDN.
-    *   Viết báo cáo kỹ thuật tổng kết cho dự án bằng LaTeX.
-    *   Thiết kế và hoàn thiện slide thuyết trình chính.
+#### 👨‍💻 Nguyễn Thanh Tùng (Core Developer)
+*   **Chức năng phát triển:**
+    *   **Web:** Quản lý xe máy (CRUD), So sánh xe (Compare), áp dụng Voucher đặt xe, Hệ thống nhắc nhở tự động Email/SMS.
+    *   **Web Security:** Tích hợp Helmet, Rate Limiting, CORS strict, chống NoSQL Injection, xác thực CSRF, hardening JWT và ẩn chi tiết thông báo lỗi.
+    *   **Mobile:** Modal chi tiết xe, so sánh thông số (Compare Modal), bản đồ BikesMap (Đà Nẵng), Staff Dashboard, Staff Schedule (Giao/Nhận xe), quản lý kho (Inventory), Admin Promotions/Categories/Feedbacks, phân luồng Tab Navigation.
+*   **Kiểm thử & Sửa lỗi:** Fix lỗi logic Chat (sse hook, double emit); fix lỗi inventory (khóa nhập ô số lượng, chặn chữ); fix lỗi đặt xe (nút trả xe, validate Odometer & thời gian, checklist bàn giao, nội dung feedback); fix lỗi TypeScript 'Returning' và tỷ lệ hoạt động xe; fix định dạng biển số xe VN.
 
-#### 👨‍💻 Nguyễn Hà Tiến Quang
-*   **Các chức năng đã phát triển (Web/Server):**
-    *   Giao diện và API Xem danh sách đơn đặt xe (Bookings).
-    *   Xác nhận đặt xe và luồng nghiệp vụ Bàn giao xe (Pickup/Return).
-    *   Cập nhật trạng thái kỹ thuật của xe máy (Available/Maintenance).
-    *   Xử lý lưu trữ, đồng bộ và hiển thị danh sách Xe yêu thích (Favorites).
-*   **Hoạt động kiểm thử & Sửa lỗi (QA/Debugging):**
-    *   Kiểm thử tính năng danh mục xe: Nhập trùng tên danh mục, bỏ trống các trường bắt buộc khi thêm mới/chỉnh sửa danh mục.
-    *   Kiểm thử lưu cập nhật xe thành công.
-    *   Kiểm thử quản lý người dùng: Tìm kiếm chính xác theo Username, lọc kết hợp nhiều điều kiện, thêm thành viên trùng lặp Email/SĐT/Username, nhập sai định dạng liên hệ.
-    *   Kiểm thử quản lý tài khoản: Khóa tài khoản thành viên thành công, chặn đăng nhập tài khoản bị khóa.
-    *   Kiểm thử quản lý khuyến mãi: Tìm kiếm khuyến mãi theo mã code, thêm mới trùng mã, bỏ trống trường bắt buộc, ngày kết thúc nhỏ hơn ngày bắt đầu, sửa mã trùng lặp, bật/tắt trạng thái hoạt động trực tiếp.
-    *   Kiểm thử quản lý đánh giá: Tìm kiếm nội dung đánh giá, xem chi tiết đánh giá, nhận diện từ ngữ thô tục/nhạy cảm, ẩn đánh giá vi phạm kèm nhập lý do tùy chỉnh, xóa vĩnh viễn đánh giá.
-*   **Công việc Tài liệu & Thiết kế:**
-    *   Hỗ trợ thiết kế và vẽ các sơ đồ tuần tự (Sequence Diagram).
+#### 👩‍💻 Lê Thị Bảo Uyên (Developer)
+*   **Chức năng phát triển:** Bản đồ xe lân cận Leaflet (GeoJSON), duyệt đối tác Chủ xe (eKYC & Owner Approval), duyệt xe của Admin, CRUD kho, CRUD khuyến mãi, quản lý và xóa/ẩn feedback, CRUD người dùng.
+*   **Kiểm thử & Sửa lỗi:** Kiểm thử lọc bán kính bản đồ, kéo thả Marker, ràng buộc thời gian thuê, eKYC bypass và định dạng SĐT; sửa lỗi debounce search 400ms và sửa lỗi bảo mật.
+*   **Tài liệu & Thiết kế:** Vẽ các loại sơ đồ (SWD, SDN), viết báo cáo file doc môn SWD & SDN, viết báo cáo LaTeX tổng kết dự án và làm slide thuyết trình.
 
-#### 👨‍💻 Đặng Phương Khôi Nguyên
-*   **Các chức năng đã phát triển:**
-    *   Luồng đặt thuê xe máy (phía Khách hàng).
-    *   Kiểm tra tình trạng xe có sẵn trước khi cho thuê.
-    *   Ngăn ngừa xung đột trùng lịch thuê xe trên cùng một đầu xe máy (Hệ thống).
+#### 👨‍💻 Nguyễn Hà Tiến Quang (Developer)
+*   **Chức năng phát triển:** Giao diện & API Xem danh sách đặt xe, xác nhận đặt xe, cập nhật trạng thái xe (Available/Maintenance), thêm/xóa xe yêu thích (Favorites dropdown).
+*   **Kiểm thử & Sửa lỗi:** Kiểm thử danh mục (trùng tên, trường bắt buộc); kiểm thử quản lý người dùng (lọc nhiều điều kiện, trùng Email/SĐT, khóa/mở khóa đăng nhập); kiểm thử khuyến mãi (thêm mới trùng mã, thời gian lỗi); ẩn đánh giá nhạy cảm.
+*   **Tài liệu & Thiết kế:** Hỗ trợ vẽ biểu đồ tuần tự (Sequence Diagram).
+
+#### 👨‍💻 Đặng Phương Khôi Nguyên (Developer)
+*   **Chức năng phát triển:** Đặt thuê xe máy & kiểm tra xe có sẵn, ngăn ngừa đặt trùng lịch thuê xe trên cùng một đầu xe máy (Hệ thống).
     *   Tự động tính phí thuê xe dựa trên thời gian thực tế.
     *   Giao diện Xem danh sách đặt chỗ và chi tiết đặt chỗ (Khách hàng).
     *   Hủy đặt chỗ và theo dõi trạng thái đơn đặt chỗ (Khách hàng).
