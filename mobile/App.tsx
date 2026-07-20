@@ -40,6 +40,8 @@ import { OwnerBookingsScreen } from './src/features/owner/screens/OwnerBookingsS
 import { StaffBookingsScreen } from './src/features/staff/screens/StaffBookingsScreen';
 import { StaffDashboardScreen } from './src/features/staff/screens/StaffDashboardScreen';
 import { StaffBikesScreen } from './src/features/staff/screens/StaffBikesScreen';
+import { StaffScheduleScreen } from './src/features/staff/screens/StaffScheduleScreen';
+import { InventoryScreen } from './src/features/staff/screens/InventoryScreen';
 
 // Import Admin screens
 import { AdminDashboardScreen } from './src/features/admin/screens/AdminDashboardScreen';
@@ -72,6 +74,10 @@ const renderTabIcon = (tabId: string, isActive: boolean) => {
       return <Feather name="trending-up" size={size} color={color} />;
     case 'admin_manage':
       return <Feather name="settings" size={size} color={color} />;
+    case 'staff_schedule':
+      return <Feather name="clock" size={size} color={color} />;
+    case 'staff_inventory':
+      return <Feather name="package" size={size} color={color} />;
     case 'profile':
       return <Feather name="user" size={size} color={color} />;
     default:
@@ -266,8 +272,9 @@ function MainApp() {
       case 'staff':
         return [
           { id: 'staff_dashboard', label: 'Tổng hợp' },
-          { id: 'staff_bikes', label: 'Dòng xe' },
           { id: 'staff_bookings', label: 'Yêu cầu' },
+          { id: 'staff_schedule', label: 'Lịch trình' },
+          { id: 'staff_inventory', label: 'Kho' },
           { id: 'profile', label: 'Cá nhân' }
         ];
       case 'customer':
@@ -333,6 +340,12 @@ function MainApp() {
         )}
         {activeTab === 'staff_bookings' && (
           <StaffBookingsScreen />
+        )}
+        {activeTab === 'staff_schedule' && (
+          <StaffScheduleScreen />
+        )}
+        {activeTab === 'staff_inventory' && (
+          <InventoryScreen />
         )}
 
         {/* --- OWNER VIEWS --- */}
