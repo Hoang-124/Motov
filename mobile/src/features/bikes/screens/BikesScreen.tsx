@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,6 +10,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { Bike } from '../../../types';
 import { BikeCard } from '../components/BikeCard';
+import { BikeDetailModal } from '../components/BikeDetailModal';
 import { COLORS } from '../../../theme/colors';
 import { useAppDispatch, useAppSelector } from '../../../app/store';
 import { setSearchQuery, setSelectedType } from '../bikesSlice';
@@ -23,6 +24,8 @@ export const BikesScreen: React.FC<BikesScreenProps> = ({ handleOpenBooking }) =
   const bikes = useAppSelector(state => state.bikes.bikes);
   const searchQuery = useAppSelector(state => state.bikes.searchQuery);
   const selectedType = useAppSelector(state => state.bikes.selectedType);
+
+  const [detailBike, setDetailBike] = useState<Bike | null>(null);
 
   const filteredBikes = bikes.filter(bike => {
     const matchesSearch = bike.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -69,13 +72,26 @@ export const BikesScreen: React.FC<BikesScreenProps> = ({ handleOpenBooking }) =
         {/* Bikes List */}
         <View style={styles.bikesGrid}>
           {filteredBikes.map(bike => (
-            <BikeCard key={bike.id} bike={bike} handleOpenBooking={handleOpenBooking} />
+            <BikeCard
+              key={bike.id}
+              bike={bike}
+              handleOpenBooking={handleOpenBooking}
+              onPress={(b) => setDetailBike(b)}
+            />
           ))}
           {filteredBikes.length === 0 && (
             <Text style={styles.emptyText}>Không tìm thấy xe phù hợp.</Text>
           )}
         </View>
       </View>
+
+      {/* Bike Detail Modal */}
+      <BikeDetailModal
+        visible={!!detailBike}
+        onClose={() => setDetailBike(null)}
+        bike={detailBike}
+        onBooking={handleOpenBooking}
+      />
     </ScrollView>
   );
 };
