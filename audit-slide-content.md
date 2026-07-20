@@ -5,13 +5,75 @@
 
 ## PHẦN 0 — Thông tin nhóm và quản lý dự án
 
-```markdown
-## Thành viên nhóm
-[USER TỰ ĐIỀN: họ tên, mã sinh viên, vai trò từng thành viên trong nhóm]
+### 0.1 Thành viên nhóm & Phân chia công việc
 
-## Công cụ quản lý dự án
-[USER TỰ ĐIỀN: Trello/Jira/GitHub Projects kèm ảnh chụp bảng Kanban/Sprint board nếu có]
-```
+#### 👩‍💻 Lê Thị Bảo Uyên
+*   **Các chức năng đã phát triển (Web/Server):**
+    *   Tích hợp bản đồ Leaflet hiển thị Xe máy Lân cận sử dụng truy vấn GeoJSON.
+    *   Xác thực danh tính eKYC & Quy trình đăng ký, duyệt đối tác Chủ xe (eKYC & Owner Approval).
+    *   Quy trình đặt xe và Scheduler nhắc nhở lịch trình tự động qua Email (SMTP) và SMS Twilio.
+    *   Phê duyệt: Xây dựng cổng duyệt thông tin xe, duyệt chủ xe và duyệt đơn hàng của Admin.
+    *   Quản lý kho phụ tùng thiết bị (CRUD Inventory) & Tự động cảnh báo số lượng tồn kho.
+    *   Quản lý chương trình khuyến mãi (Voucher/Promotion CRUD) của Admin.
+    *   Quản lý đánh giá & phản hồi (Feedback) và chức năng xóa/ẩn đánh giá của Admin.
+    *   Tích hợp Chat thời gian thực sử dụng Socket.io giữa Customer và Owner/Admin.
+    *   Quản lý thông tin thành viên (CRUD Users) dành cho Admin.
+*   **Hoạt động kiểm thử & Sửa lỗi (QA/Debugging):**
+    *   Kiểm tra thuật toán lọc xe theo Bán kính trên bản đồ.
+    *   Kiểm tra tính năng kéo thả Marker ghim vị trí tùy chỉnh.
+    *   Kiểm tra các hành động thao tác bản đồ (Zoom In/Out, Refresh thủ công, định vị nhanh).
+    *   Kiểm tra các ràng buộc thời gian (ngày thuê, ngày trả xe).
+    *   Kiểm thử bảo mật eKYC: Xác thực luồng hiển thị trang đặt xe với các tài khoản Chưa xác thực eKYC, Đang chờ duyệt eKYC, và Đã hoàn thành eKYC.
+    *   Kiểm tra định dạng nhập Số điện thoại (sai đầu số quy định, thiếu ký tự, chứa ký tự lạ).
+    *   Kiểm tra vượt hạn mức thuê tối đa và các luồng giao dịch VNPay (thành công NCB, khách hủy, timeout giao dịch).
+    *   Kiểm tra lọc đơn hàng theo trạng thái và khởi chạy luồng bàn giao xe (Pickup).
+    *   Sửa lỗi Admin-users: Thêm debounce 400ms khi tìm kiếm người dùng để tối ưu hiệu năng API.
+    *   Sửa lỗi bảo mật: Xóa bỏ debug logs lộ và vá backdoor bypass OTP qua token.
+    *   Biên dịch & Typecheck: Đảm bảo code pass hoàn toàn không có lỗi TypeScript trên cả 3 module (client, server, mobile).
+*   **Công việc Tài liệu & Thiết kế:**
+    *   Vẽ các loại sơ đồ nghiệp vụ trong tài liệu môn SWD, SDN.
+    *   Viết tài liệu báo cáo file doc cho 2 môn SWD, SDN.
+    *   Viết báo cáo kỹ thuật tổng kết cho dự án bằng LaTeX.
+    *   Thiết kế và hoàn thiện slide thuyết trình chính.
+
+#### 👨‍💻 Nguyễn Hà Tiến Quang
+*   **Các chức năng đã phát triển (Web/Server):**
+    *   Giao diện và API Xem danh sách đơn đặt xe (Bookings).
+    *   Xác nhận đặt xe và luồng nghiệp vụ Bàn giao xe (Pickup/Return).
+    *   Cập nhật trạng thái kỹ thuật của xe máy (Available/Maintenance).
+    *   Xử lý lưu trữ, đồng bộ và hiển thị danh sách Xe yêu thích (Favorites).
+*   **Hoạt động kiểm thử & Sửa lỗi (QA/Debugging):**
+    *   Kiểm thử tính năng danh mục xe: Nhập trùng tên danh mục, bỏ trống các trường bắt buộc khi thêm mới/chỉnh sửa danh mục.
+    *   Kiểm thử lưu cập nhật xe thành công.
+    *   Kiểm thử quản lý người dùng: Tìm kiếm chính xác theo Username, lọc kết hợp nhiều điều kiện, thêm thành viên trùng lặp Email/SĐT/Username, nhập sai định dạng liên hệ.
+    *   Kiểm thử quản lý tài khoản: Khóa tài khoản thành viên thành công, chặn đăng nhập tài khoản bị khóa.
+    *   Kiểm thử quản lý khuyến mãi: Tìm kiếm khuyến mãi theo mã code, thêm mới trùng mã, bỏ trống trường bắt buộc, ngày kết thúc nhỏ hơn ngày bắt đầu, sửa mã trùng lặp, bật/tắt trạng thái hoạt động trực tiếp.
+    *   Kiểm thử quản lý đánh giá: Tìm kiếm nội dung đánh giá, xem chi tiết đánh giá, nhận diện từ ngữ thô tục/nhạy cảm, ẩn đánh giá vi phạm kèm nhập lý do tùy chỉnh, xóa vĩnh viễn đánh giá.
+*   **Công việc Tài liệu & Thiết kế:**
+    *   Hỗ trợ thiết kế và vẽ các sơ đồ tuần tự (Sequence Diagram).
+
+#### 👨‍💻 Đặng Phương Khôi Nguyên
+*   **Các chức năng đã phát triển:**
+    *   Luồng đặt thuê xe máy (phía Khách hàng).
+    *   Kiểm tra tình trạng xe có sẵn trước khi cho thuê.
+    *   Ngăn ngừa xung đột trùng lịch thuê xe trên cùng một đầu xe máy (Hệ thống).
+    *   Tự động tính phí thuê xe dựa trên thời gian thực tế.
+    *   Giao diện Xem danh sách đặt chỗ và chi tiết đặt chỗ (Khách hàng).
+    *   Hủy đặt chỗ và theo dõi trạng thái đơn đặt chỗ (Khách hàng).
+    *   Luồng Xác nhận trả xe (phía Nhân viên).
+    *   Tự động tính toán phụ phí quá hạn và các phụ phí phát sinh (Hệ thống).
+*   **Hoạt động kiểm thử & Sửa lỗi (QA/Debugging):**
+    *   Kiểm thử bàn giao xe: Bỏ trống Odometer khi giao, thiếu ảnh hiện trạng xe (bắt buộc 4 góc chụp), không tích chọn đủ checklist thiết bị bàn giao.
+    *   Kiểm thử trạng thái xe: Chuyển trạng thái xe sang Bảo trì, khôi phục trạng thái xe sau bảo trì và reset Odo.
+    *   Kiểm thử quản lý kho linh kiện: Tìm kiếm xe trong đội, thêm mới linh kiện thành công, kiểm tra ràng buộc kiểu số của các trường số lượng/ngưỡng/đơn giá, kiểm thử nhập trùng mã SKU.
+    *   Kiểm thử nhập kho/xuất kho: Nhập kho thành công, nhập số lượng bằng 0 hoặc âm, nhập chữ cái, xuất kho thành công, xuất kho vượt quá tồn thực tế, cập nhật thông tin linh kiện, sửa mã SKU trùng lặp.
+*   **Công việc Tài liệu & Thiết kế:**
+    *   Phân chia công việc và giám sát các mốc công việc trên Jira.
+    *   Vẽ sơ đồ quan hệ thực thể ERD và thiết kế cấu trúc Cơ sở dữ liệu.
+
+### 0.2 Công cụ quản lý dự án
+*   **Công cụ:** Jira Software (Quản lý dự án theo mô hình Agile/Scrum).
+*   **Hình thức:** Phân chia task, theo dõi trạng thái công việc (To Do, In Progress, Done) và giám sát tiến độ Sprint trực quan qua Jira board.
 
 ---
 
