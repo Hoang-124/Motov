@@ -28,7 +28,7 @@
 
 
 
-#### 👨‍💻 Nguyễn Thanh Tùng (Core Developer)
+#### 👨‍💻 Mai Xuân Tùng (Core Developer)
 *   **Chức năng phát triển:**
     *   **Web:** Quản lý xe máy (CRUD), So sánh xe (Compare), áp dụng Voucher đặt xe, Hệ thống nhắc nhở tự động Email/SMS.
     *   **Web Security:** Tích hợp Helmet, Rate Limiting, CORS strict, chống NoSQL Injection, xác thực CSRF, hardening JWT và ẩn chi tiết thông báo lỗi.
@@ -61,9 +61,23 @@
     *   Phân chia công việc và giám sát các mốc công việc trên Jira.
     *   Vẽ sơ đồ quan hệ thực thể ERD và thiết kế cấu trúc Cơ sở dữ liệu.
 
-### 0.2 Công cụ quản lý dự án
-*   **Công cụ:** Jira Software (Quản lý dự án theo mô hình Agile/Scrum).
-*   **Hình thức:** Phân chia task, theo dõi trạng thái công việc (To Do, In Progress, Done) và giám sát tiến độ Sprint trực quan qua Jira board.
+### 0.2 Công cụ quản lý dự án & Dịch vụ tích hợp
+
+*   **Quản lý dự án & Phân công công việc:**
+    *   **Jira Software:** Quản lý dự án theo mô hình Agile/Scrum, theo dõi tiến độ qua bảng Kanban Board và quản lý backlog công việc.
+    *   **Google Sheets:** Lập bảng phân bổ công việc nhanh và checklist kiểm thử chi tiết (QA test plan).
+*   **Quản lý mã nguồn (SCM):**
+    *   **GitHub:** Quản lý mã nguồn phiên bản, phân nhánh (Branching), kiểm duyệt mã nguồn qua Pull Requests và phối hợp nhóm.
+*   **Dịch vụ đám mây & Lưu trữ (Cloud Services):**
+    *   **Cloudinary:** Lưu trữ đám mây tối ưu hóa dung lượng hình ảnh (tải ảnh xe máy, ảnh CCCD/Selfie định danh eKYC).
+    *   **Render:** Nơi triển khai (hosting) máy chủ Backend API Node.js Express.
+    *   **Vercel:** Nơi triển khai (hosting) ứng dụng Web Client React.
+    *   **MongoDB Atlas:** Hệ quản trị cơ sở dữ liệu đám mây MongoDB.
+    *   **Firebase Console:** Cấu hình và giám sát luồng xác thực mã OTP điện thoại (Firebase Phone Auth).
+*   **Thiết kế & Soạn thảo tài liệu:**
+    *   **Overleaf / LaTeX:** Biên soạn tài liệu báo cáo đồ án chuẩn khoa học.
+    *   **Draw.io / Mermaid:** Vẽ các sơ đồ hệ thống (ERD, Sequence Diagram, Context Diagram, Use Case).
+    *   **Figma:** Thiết kế giao diện (UI/UX Mockups) mẫu cho Web và Mobile.
 
 ---
 
