@@ -41,6 +41,15 @@ import { StaffBookingsScreen } from './src/features/staff/screens/StaffBookingsS
 import { StaffDashboardScreen } from './src/features/staff/screens/StaffDashboardScreen';
 import { StaffBikesScreen } from './src/features/staff/screens/StaffBikesScreen';
 
+// Import Admin screens
+import { AdminDashboardScreen } from './src/features/admin/screens/AdminDashboardScreen';
+import { AdminBikesScreen } from './src/features/admin/screens/AdminBikesScreen';
+import { AdminBookingsScreen } from './src/features/admin/screens/AdminBookingsScreen';
+import { AdminUsersScreen } from './src/features/admin/screens/AdminUsersScreen';
+import { AdminPromotionsScreen } from './src/features/admin/screens/AdminPromotionsScreen';
+import { AdminCategoriesScreen } from './src/features/admin/screens/AdminCategoriesScreen';
+import { AdminFeedbacksScreen } from './src/features/admin/screens/AdminFeedbacksScreen';
+
 const renderTabIcon = (tabId: string, isActive: boolean) => {
   const color = isActive ? COLORS.accent : COLORS.textMuted;
   const size = 20;
@@ -50,14 +59,19 @@ const renderTabIcon = (tabId: string, isActive: boolean) => {
     case 'bikes':
     case 'owner_bikes':
     case 'staff_bikes':
+    case 'admin_bikes':
       return <MaterialCommunityIcons name="motorbike" size={24} color={color} style={{ marginTop: -2 }} />;
     case 'bookings':
     case 'owner_bookings':
     case 'staff_bookings':
+    case 'admin_bookings':
       return <Feather name="calendar" size={size} color={color} />;
     case 'owner_dashboard':
     case 'staff_dashboard':
+    case 'admin_dashboard':
       return <Feather name="trending-up" size={size} color={color} />;
+    case 'admin_manage':
+      return <Feather name="settings" size={size} color={color} />;
     case 'profile':
       return <Feather name="user" size={size} color={color} />;
     default:
@@ -65,15 +79,75 @@ const renderTabIcon = (tabId: string, isActive: boolean) => {
   }
 };
 
+// Admin Manage sub-navigation screen
+const ADMIN_SECTIONS = [
+  { id: 'admin_bikes', label: 'Xe', icon: 'truck' as const },
+  { id: 'admin_users', label: 'Users', icon: 'users' as const },
+  { id: 'admin_promotions', label: 'KM', icon: 'tag' as const },
+  { id: 'admin_categories', label: 'Danh mục', icon: 'folder' as const },
+  { id: 'admin_feedbacks', label: 'Đánh giá', icon: 'message-square' as const },
+];
+
+function AdminManageScreen({ activeSubTab, setActiveSubTab }: { activeSubTab: string; setActiveSubTab: (t: string) => void }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      {/* Sub-tab bar */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6, gap: 8 }}
+      >
+        {ADMIN_SECTIONS.map(s => {
+          const active = activeSubTab === s.id;
+          return (
+            <TouchableOpacity
+              key={s.id}
+              onPress={() => setActiveSubTab(s.id)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: active ? 'rgba(204,255,0,0.1)' : COLORS.card,
+                borderWidth: 1,
+                borderColor: active ? COLORS.accent : COLORS.border,
+              }}
+            >
+              <Feather name={s.icon} size={13} color={active ? COLORS.accent : COLORS.textMuted} />
+              <Text style={{ color: active ? COLORS.accent : COLORS.textMuted, fontSize: 12, fontWeight: '600' }}>{s.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Render active sub-screen */}
+      {activeSubTab === 'admin_bikes' && <AdminBikesScreen />}
+      {activeSubTab === 'admin_users' && <AdminUsersScreen />}
+      {activeSubTab === 'admin_promotions' && <AdminPromotionsScreen />}
+      {activeSubTab === 'admin_categories' && <AdminCategoriesScreen />}
+      {activeSubTab === 'admin_feedbacks' && <AdminFeedbacksScreen />}
+    </View>
+  );
+}
+
 function MainApp() {
   const dispatch = useAppDispatch();
   const role = useAppSelector(state => state.user.role);
   const [activeTab, setActiveTab] = useState<string>('home');
 
+  // Admin sub-tab state
+  const [adminSubTab, setAdminSubTab] = useState<string>('admin_bikes');
+
   // Reset tab on role switch
   useEffect(() => {
     if (role === 'owner') {
       setActiveTab('owner_dashboard');
+    } else if (role === 'admin') {
+      setActiveTab('admin_dashboard');
+    } else if (role === 'staff') {
+      setActiveTab('staff_dashboard');
     } else {
       setActiveTab('home');
     }
@@ -183,9 +257,15 @@ function MainApp() {
           { id: 'profile', label: 'Cá nhân' }
         ];
       case 'admin':
+        return [
+          { id: 'admin_dashboard', label: 'Tổng hợp' },
+          { id: 'admin_bookings', label: 'Đơn hàng' },
+          { id: 'admin_manage', label: 'Quản trị' },
+          { id: 'profile', label: 'Cá nhân' }
+        ];
       case 'staff':
         return [
-          { id: 'home', label: 'Trang chủ' },
+          { id: 'staff_dashboard', label: 'Tổng hợp' },
           { id: 'staff_bikes', label: 'Dòng xe' },
           { id: 'staff_bookings', label: 'Yêu cầu' },
           { id: 'profile', label: 'Cá nhân' }
@@ -245,6 +325,9 @@ function MainApp() {
         )}
 
         {/* --- STAFF VIEWS --- */}
+        {activeTab === 'staff_dashboard' && (
+          <StaffDashboardScreen setActiveTab={setActiveTab} />
+        )}
         {activeTab === 'staff_bikes' && (
           <StaffBikesScreen setActiveTab={setActiveTab} />
         )}
@@ -261,6 +344,17 @@ function MainApp() {
         )}
         {activeTab === 'owner_bookings' && (
           <OwnerBookingsScreen setActiveTab={setActiveTab} />
+        )}
+
+        {/* --- ADMIN VIEWS --- */}
+        {activeTab === 'admin_dashboard' && (
+          <AdminDashboardScreen />
+        )}
+        {activeTab === 'admin_bookings' && (
+          <AdminBookingsScreen />
+        )}
+        {activeTab === 'admin_manage' && (
+          <AdminManageScreen activeSubTab={adminSubTab} setActiveSubTab={setAdminSubTab} />
         )}
       </View>
 
