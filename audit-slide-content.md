@@ -9,12 +9,24 @@
 
 #### 👨‍💻 Trần Quang Bửu Hoàng (Trưởng nhóm - Leader)
 *   **Chức năng phát triển:**
-    *   Tích hợp thanh toán VNPay Sandbox thực tế (Web/Mobile), tự động hủy đơn khi thanh toán lỗi.
-    *   Hệ thống gửi Email & SMS nhắc nhở song song, tối ưu hóa cache transporter (Backend).
-    *   Đồng bộ toàn bộ tính năng đặt xe, hóa đơn, và eKYC từ Web sang Mobile App.
-    *   Giao diện Web Admin: Layout dọc, trang cấu hình hệ thống, thiết kế Footer & đa ngôn ngữ (tiếng Hàn).
-*   **Kiểm thử & Sửa lỗi:** Kiểm thử luồng VNPay In-App di động; sửa lỗi real-time chat sync, Admin token sync và triệt tiêu lỗi tràn bộ nhớ (OOM) khi khởi chạy server.
-*   **Quản lý & Tài liệu:** Phân công, điều phối công việc; duyệt mã nguồn và merge code trên GitHub.
+    *   **Thanh toán:** Tích hợp cổng VNPay Sandbox thực tế (Web/Mobile), tự động hủy đơn khi thanh toán lỗi và đồng bộ hóa luồng thanh toán VNPay In-App trên Mobile App.
+    *   **Nhắc nhở tự động:** Hệ thống gửi Email & SMS nhắc nhở lịch trình song song, tối ưu hóa cache transporter (Backend), thiết kế giao diện UI quản lý nhắc nhở của Admin.
+    *   **Đồng bộ ứng dụng di động:** Đồng bộ hóa toàn bộ tính năng đặt xe, chi tiết hóa đơn, hiển thị eKYC từ Web sang Mobile App.
+    *   **Giao diện & UI/UX Web:** Thiết kế Layout Web Admin dọc, trang cấu hình hệ thống, thiết kế Footer cao cấp, dropdowns danh sách Yêu thích (Favorites) trên Header navbar, chỉ báo active menu.
+    *   **Quản lý Đánh giá & Phản hồi:** Phát triển luồng trả hàng sớm (early return), gửi lý do phản hồi trả hàng, cảnh báo thô tục và tự động ẩn đánh giá vi phạm.
+    *   **Quản lý Chat & Chat Real-time:** Gộp các cuộc hội thoại chat theo đối tác, chia mốc thời gian thông minh, tích hợp chat trực tiếp với Admin hoặc Chủ xe.
+    *   **Đa ngôn ngữ & Map styling:** Hỗ trợ đa ngôn ngữ tiếng Hàn, Anh, Việt (tĩnh và động từ DB); áp dụng bộ lọc CSS Cyber Dark cho bản đồ Leaflet để tăng độ tương phản, đổi layer bản đồ sang CartoDB Voyager.
+*   **Kiểm thử & Sửa lỗi (Bugfixes):**
+    *   Sửa lỗi 404 lệch route Đăng ký chủ xe (`becomeOwner` -> `become-owner`) trên Mobile.
+    *   Sửa lỗi 404 lệch route Nhân viên giao xe (`api/staff/bookings/...` -> `api/bookings/staff/bookings/...`) trên Web.
+    *   Sửa lỗi chặn CORS/CSRF đối với method `DELETE` bằng cách cho phép header `Authorization` đi qua middleware.
+    *   Sửa lỗi đồng bộ Chat Socket.io thời gian thực (real-time sync, hiển thị tên, double emit, null handling).
+    *   Sửa lỗi đồng bộ Token đăng nhập của Admin (Admin token sync).
+    *   Khôi phục vị trí GPS thật (`navigator.geolocation`) với Da Nang coordinates fallback.
+    *   Tối ưu hóa hiệu năng máy chủ, khắc phục triệt để lỗi tràn bộ nhớ (OOM) khi khởi chạy server.
+*   **Quản lý & Điều phối:** Phân công, điều phối công việc của dự án trên GitHub; kiểm duyệt chất lượng mã nguồn (Code review), giải quyết xung đột (conflict resolution) và tiến hành merge code chính của toàn bộ nhóm.
+
+
 
 #### 👨‍💻 Nguyễn Thanh Tùng (Core Developer)
 *   **Chức năng phát triển:**
