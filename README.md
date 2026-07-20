@@ -1,10 +1,9 @@
-# Motov - Motorcycle Rental Platform
+# 🛵 Motov - Motorcycle Rental Platform
 
-Motov is a modern motorcycle rental web application built with a React frontend (Vite, TypeScript, Tailwind CSS, Lucide React, Framer Motion) and an Express backend (Node.js, TypeScript, TSX, MongoDB, Mongoose).
+Nền tảng cho thuê xe máy hiện đại sử dụng công nghệ React (Vite, TS) & Node.js Express (MongoDB).
 
-## 🌐 Live Demo & Cloud Links
-- **Frontend Client (Vercel):** [👉 Click here to visit live app](https://motov-client.vercel.app)
-- **Backend Server API (Render):** [👉 Click here to check server status](https://motov.onrender.com)
+*   **Website:** [motov-client.vercel.app](https://motov-client.vercel.app)
+*   **Server API:** [motov.onrender.com](https://motov.onrender.com)
 
 ---
 
