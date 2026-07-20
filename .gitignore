@@ -9,3 +9,8 @@ coverage/
 .mongodb_data/
 firebase-key.json
 *.key.json
+firebase-key*.json*
+audit-*.md
+test-output-raw*.txt
+
+
