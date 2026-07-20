@@ -6,11 +6,14 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Bike } from '../../../types';
 import { BikeCard } from '../components/BikeCard';
 import { BikeDetailModal } from '../components/BikeDetailModal';
+import { CompareBikesModal } from '../components/CompareBikesModal';
+import { BikesMapScreen } from './BikesMapScreen';
 import { COLORS } from '../../../theme/colors';
 import { useAppDispatch, useAppSelector } from '../../../app/store';
 import { setSearchQuery, setSelectedType } from '../bikesSlice';
@@ -26,6 +29,8 @@ export const BikesScreen: React.FC<BikesScreenProps> = ({ handleOpenBooking }) =
   const selectedType = useAppSelector(state => state.bikes.selectedType);
 
   const [detailBike, setDetailBike] = useState<Bike | null>(null);
+  const [compareVisible, setCompareVisible] = useState(false);
+  const [mapVisible, setMapVisible] = useState(false);
 
   const filteredBikes = bikes.filter(bike => {
     const matchesSearch = bike.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -50,6 +55,18 @@ export const BikesScreen: React.FC<BikesScreenProps> = ({ handleOpenBooking }) =
               onChangeText={(val) => dispatch(setSearchQuery(val))}
             />
           </View>
+        </View>
+
+        {/* Action buttons */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => setMapVisible(true)}>
+            <Feather name="map" size={14} color={COLORS.accent} />
+            <Text style={styles.actionBtnText}>Bản đồ</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => setCompareVisible(true)}>
+            <Feather name="columns" size={14} color={COLORS.accent} />
+            <Text style={styles.actionBtnText}>So sánh</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Categories horizontal scroll */}
@@ -92,6 +109,21 @@ export const BikesScreen: React.FC<BikesScreenProps> = ({ handleOpenBooking }) =
         bike={detailBike}
         onBooking={handleOpenBooking}
       />
+
+      {/* Compare Modal */}
+      <CompareBikesModal
+        visible={compareVisible}
+        onClose={() => setCompareVisible(false)}
+        bikes={bikes}
+      />
+
+      {/* Map Modal */}
+      <Modal visible={mapVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setMapVisible(false)}>
+        <BikesMapScreen
+          onClose={() => setMapVisible(false)}
+          handleOpenBooking={handleOpenBooking}
+        />
+      </Modal>
     </ScrollView>
   );
 };
@@ -167,5 +199,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 40,
     fontSize: 14,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  actionBtnText: {
+    color: COLORS.accent,
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
