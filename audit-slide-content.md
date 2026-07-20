@@ -7,6 +7,22 @@
 
 ### 0.1 Thành viên nhóm & Phân chia công việc
 
+#### 👨‍💻 Trần Quang Bửu Hoàng (Trưởng nhóm - Leader)
+*   **Các chức năng đã phát triển (Web/Server/Mobile):**
+    *   Tích hợp thanh toán trực tuyến qua cổng VNPay Sandbox thực tế, tự động hủy đơn khi thanh toán thất bại.
+    *   Tối ưu hóa hệ thống gửi email và tin nhắn SMS song song, thiết lập bộ nhớ cache transporter.
+    *   Đồng bộ hóa toàn bộ tính năng đặt xe, chi tiết hóa đơn và eKYC tự động điền từ Web lên Mobile.
+    *   Giao diện Web Admin: thiết kế Layout Admin dọc, trang cài đặt hệ thống, và thiết kế Footer cao cấp.
+    *   Hỗ trợ đa ngôn ngữ: dịch tĩnh & động toàn hệ thống (Tiếng Hàn, Việt, Anh).
+*   **Hoạt động kiểm thử & Sửa lỗi (QA/Debugging):**
+    *   Kiểm tra đồng bộ hóa luồng thanh toán VNPay trên ứng dụng di động (In-App Integration).
+    *   Sửa lỗi đồng bộ dữ liệu thời gian thực của Chat (real-time sync), hiển thị tên và chặn lặp tin nhắn.
+    *   Sửa lỗi đồng bộ Token đăng nhập của Admin (Admin token sync).
+    *   Tối ưu hóa hiệu năng máy chủ, khắc phục hoàn toàn lỗi tràn bộ nhớ (OOM) khi khởi chạy server.
+*   **Công việc Quản lý & Tài liệu:**
+    *   Đóng vai trò Trưởng nhóm (Leader): Phân công, điều phối công việc và quản lý tiến độ dự án.
+    *   Kiểm duyệt chất lượng mã nguồn, giải quyết xung đột (conflict resolution) và tiến hành merge code trên GitHub.
+
 #### 👩‍💻 Lê Thị Bảo Uyên
 *   **Các chức năng đã phát triển (Web/Server):**
     *   Tích hợp bản đồ Leaflet hiển thị Xe máy Lân cận sử dụng truy vấn GeoJSON.
