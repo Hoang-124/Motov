@@ -1,665 +1,177 @@
-# 🛵 Motov - Motorcycle Rental Platform
+# 🛵 Motov - Nền Tảng Cho Thuê Xe Máy Trực Tuyến
 
-Nền tảng cho thuê xe máy hiện đại sử dụng công nghệ React (Vite, TS) & Node.js Express (MongoDB).
+Motov là một ứng dụng web và di động hiện đại hỗ trợ quy trình cho thuê xe máy toàn diện, giúp kết nối Khách thuê (Customer) và Đối tác chủ xe (Owner) dưới sự quản lý và vận hành của Nhân viên (Staff) và Quản trị viên (Admin).
 
-*   **Website:** [motov-client.vercel.app](https://motov-client.vercel.app)
-*   **Server API:** [motov.onrender.com](https://motov.onrender.com)
-
----
-
-
-## Core Modules
-
-
-### 1. Admin User Management Module
-Administrators can securely manage system users (Admins, Staff, Owners, and Customers) from the Admin panel:
-- **User List**: Search by name/email/username/phone, filter by roles and account statuses.
-- **User Detail**: Comprehensive viewer showing profile values (dates, gender, dob, phone number, etc.).
-- **Create User Form**: Form validation, username and email duplicate checking, and password hashing.
-- **Update User Form**: Allows editing profile details, role reassignment, and optional password changes. Includes safety guards that prevent admins from locking themselves out (cannot demote or disable their own active account).
-- **Ban & Unban Account Function**: Restricts or restores user access (toggle `Suspended`/`Active` status) with validation. Prevents admins from locking or deleting their own active profile.
-
-### **Mobile (App)**
-- **Framework:** React Native (Expo)
-- **State Management:** Redux Toolkit
-- **Platform Support:** iOS, Android, Web
+*   **Website (Vercel):** [motov-client.vercel.app](https://motov-client.vercel.app)
+*   **Server API (Render):** [motov.onrender.com](https://motov.onrender.com)
 
 ---
 
-## 🚀 Cài Đặt Nhanh
+## 🛠️ Stack Công Nghệ
 
-### Prerequisites
-- Node.js 18+ và npm
-- MongoDB running (local or cloud)
-- Git
+*   **Frontend Web:** React.js (Vite, TypeScript, Tailwind CSS, Lucide React, Framer Motion)
+*   **Mobile App:** React Native (Expo, Redux Toolkit, React Navigation)
+*   **Backend Server:** Node.js (Express.js, TypeScript, TSX, Mongoose)
+*   **Cơ sở dữ liệu:** MongoDB (với chỉ mục `2dsphere` truy vấn tọa độ xe gần nhất)
 
-### 1. Clone Repository
+---
+
+## 🚀 Hướng Dẫn Cài Đặt Nhanh (Local Setup)
+
+### Điều kiện tiên quyết
+*   Node.js 18+ và npm
+*   Môi trường cơ sở dữ liệu MongoDB đang chạy cục bộ hoặc trên Cloud
+
+### 1. Tải dự án và cài đặt Dependencies
 ```bash
 git clone <repository-url>
 cd Motov
-```
-
-### 2. Setup 
-```bash
 npm install
 ```
 
-### 3. Environment Configuration
-
-Tạo file `.env` tại **root directory**:
+### 2. Cấu hình biến môi trường
+Tạo file `.env` tại **thư mục gốc (root)** của dự án với nội dung mẫu sau:
 ```env
-# Server
+# Cấu hình Server Backend
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/Motov
-JWT_SECRET=your_secure_secret_key_here
-JWT_EXPIRES_IN=7d
+JWT_SECRET=motov_super_secret_key_998877
+JWT_EXPIRES_IN=2h
+REFRESH_TOKEN_SECRET=motov_refresh_super_secret_9988
 
-# OAuth
-GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+# Cấu hình Firebase Server (cho Phone OTP - tùy chọn ở dev)
+FIREBASE_KEY_PATH=firebase-key.json
+FIREBASE_PROJECT_ID=motov-747f0
 
-# Client
+# Cấu hình VNPay Sandbox
+VNP_TMNCODE=5G8G4T6U
+VNP_HASHSECRET=U3EPGXQEH12AXJ6NBKB7IZLTFWMBOG4T
+VNP_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+VNP_RETURNURL=http://localhost:3000/vnpay-return
+
+# Cấu hình SMTP Email (Gmail)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+
+# Cấu hình Twilio SMS (tùy chọn gửi SMS)
+TWILIO_ACCOUNT_SID=your_twilio_sid
+TWILIO_AUTH_TOKEN=your_twilio_token
+TWILIO_SMS_FROM=your_twilio_number
+
+# Cấu hình Client (Vite React)
 VITE_API_URL=http://localhost:5000/api
+VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 ```
 
-### 4. Run Client and Server
-```bash 
-npm run dev
-```
-Server chạy tại: http://localhost:5000
-Client chạy tại: http://localhost:3000
+### 3. Chạy dự án dưới máy local
 
-### 5. Run Mobile (Expo)
-```bash
-npm run mobile
-```
-Server chạy tại: http://localhost:5000
-Expo Web chạy tại: http://localhost:8081
+*   **Chạy Web & Backend song song (Development):**
+    ```bash
+    npm run dev
+    ```
+    *   Website chạy tại: `http://localhost:3000`
+    *   Server API chạy tại: `http://localhost:5000`
+
+*   **Chạy ứng dụng Mobile (Expo):**
+    ```bash
+    npm run mobile
+    ```
+    *   Expo Web chạy tại: `http://localhost:8081` hoặc mở ứng dụng Expo Go trên điện thoại quét mã QR.
 
 ---
 
-## 📋 Project Structure
+## 🔐 Danh Sách Tài Khoản Kiểm Thử (Seeded Accounts)
 
-```
-Motov/
-├── docs/
-│   ├── BOOKING_API.md          # 📚 Booking API Documentation
-│   ├── CHANGELOG.md
-│   └── ...
-├── server/                      # 🖥️ Backend (Express)
-│   ├── src/
-│   │   ├── controllers/
-│   │   │   ├── authController.ts
-│   │   │   └── bookingController.ts  # ✨ NEW: Booking CRUD
-│   │   ├── routes/
-│   │   │   ├── authRoutes.ts
-│   │   │   └── bookingRoutes.ts      # ✨ NEW: Booking API Routes
-│   │   ├── models/
-│   │   │   ├── User.ts
-│   │   │   ├── Vehicle.ts
-│   │   │   ├── Booking.ts           # ✨ Booking Document Schema
-│   │   │   └── ...
-│   │   ├── middlewares/
-│   │   │   └── authMiddleware.ts
-│   │   ├── validators/
-│   │   │   └── bookingValidation.ts # ✨ NEW: Validation Logic
-│   │   └── index.ts
-│   ├── uploads/                     # Uploaded images
-│   └── package.json
-├── client/                      # 💻 Frontend (React + Vite)
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   └── App.tsx
-│   └── package.json
-├── mobile/                      # 📱 Mobile App (React Native)
-│   ├── src/
-│   │   ├── app/
-│   │   ├── components/
-│   │   └── features/
-│   └── package.json
-└── README.md
-```
+Hệ thống đã tự động cấu hình dữ liệu mẫu kiểm thử trong Database khi chạy lần đầu:
+
+| Vai trò (Role) | Email | Mật khẩu (Password) | Ghi chú |
+| :--- | :--- | :--- | :--- |
+| **Admin** (Quản trị) | `admin@motov.com` | `admin123` | Quản lý người dùng, cài đặt hệ thống, khuyến mãi |
+| **Staff** (Nhân viên) | `nhanvien@motov.com` | `admin123` | Phê duyệt eKYC, xác nhận giao/nhận xe, quản lý kho |
+| **Owner** (Chủ xe) | `owner@motov.com` | `admin123` | Quản lý danh sách xe máy, duyệt đơn đặt xe |
+| **Customer** (Khách thuê) | `khachhang@motov.com` | `admin123` | Tìm xe, eKYC, đặt xe, thanh toán VNPay |
 
 ---
 
-## 🔐 Authentication
+## 🎯 Các Tính Năng Nổi Bật
 
-### Login Flow
+### 1. Định danh khách hàng bằng AI (eKYC & OCR)
+*   Khách hàng tải lên ảnh 2 mặt CCCD và ảnh selfie.
+*   Hệ thống tự động phân tích trích xuất dữ liệu chữ từ ảnh (OCR) và so khớp tỷ lệ giống nhau giữa khuôn mặt chân dung và ảnh trên thẻ căn cước.
 
-```
-1. User nhập email & password
-   ↓
-2. Server hash & validate mật khẩu
-   ↓
-3. Server sinh JWT token (7 days)
-   ↓
-4. Client lưu token vào localStorage
-   ↓
-5. Mỗi request được gửi kèm: Authorization: Bearer {token}
-   ↓
-6. Server verify token qua authMiddleware
-```
+### 2. Tích hợp thanh toán VNPay Sandbox
+*   Sau khi tạo đơn thuê xe thành công, hệ thống sinh đường dẫn thanh toán VNPay Gateway.
+*   Hỗ trợ xử lý trạng thái giao dịch tự động thông qua cơ chế IPN (Instant Payment Notification) từ máy chủ VNPay phản hồi về backend.
 
-### Test Accounts
+### 3. Nhắc nhở SMS Twilio & Lịch Trình Tự Động (Cron Job)
+*   Sử dụng Scheduler chạy ngầm để quét các đơn thuê xe sắp đến thời hạn nhận hoặc trả xe.
+*   Tự động kích hoạt SMS Twilio gửi tin nhắn nhắc nhở trực tiếp đến số điện thoại di động của khách hàng.
 
-| Username | Email | Password | Role |
-|----------|-------|----------|------|
-| admin123 | admin@motov.com | admin123 | Admin |
-| staff123 | nhanvien@motov.com | admin123 | Staff |
-| owner123 | owner@motov.com | admin123 | Owner |
-| customer123 | khachhang@motov.com | admin123 | Customer |
+### 4. Tìm kiếm Xe Theo Vị Trí Bản Đồ (GPS Geolocation)
+*   Định vị tọa độ thực tế của xe trên bản đồ Leaflet.
+*   Khách thuê xe có thể lọc các dòng xe máy gần nhất xung quanh tọa độ hiện tại của mình trong bán kính cấu hình tùy ý.
+
+### 5. Chat và Trao đổi thời gian thực (Real-time Chat)
+*   Hệ thống Chat nội bộ được xây dựng trên công nghệ Socket.io.
+*   Hỗ trợ khách hàng nhắn tin trực tiếp thảo luận với đối tác chủ xe về tình trạng bàn giao hoặc thỏa thuận nhận xe.
 
 ---
 
-## 🎯 Features
+## 🔄 Luồng Nghiệp Vụ Thuê Xe (Booking Workflow)
 
-### ✅ Hiện Có
-
-#### Authentication
-- ✓ Register / Login (Email/Password)
-- ✓ Google OAuth 2.0
-- ✓ JWT Token Management
-- ✓ Profile Management
-
-#### Booking Management **(NEW)**
-- ✓ Create Booking
-- ✓ View Booking Details
-- ✓ List My Bookings
-- ✓ Update Booking Status
-- ✓ Cancel Booking
-- ✓ Admin View All Bookings
-- ✓ Vehicle Availability Check
-- ✓ Booking Code Generation
-
-#### User Management
-- ✓ User Registration
-- ✓ User Profile Update
-- ✓ Avatar Upload
-- ✓ Role-based Access Control
-
-#### File Management
-- ✓ Image Upload (Multer)
-- ✓ Static File Serving
-
-### 🚧 Đang Phát Triển
-
-- 🔄 Vehicle Management (CRUD)
-- 🔄 Payment Processing
-- 🔄 Admin Dashboard
-- 🔄 Staff Tools
-- 🔄 Feedback & Rating System
-- 🔄 Discount & Voucher System
-- 🔄 Battery Monitoring (IoT)
-- 🔄 SMS Notifications
-
----
-
-## 📚 API Documentation
-
-### Booking API
-Xem [BOOKING_API.md](./docs/BOOKING_API.md) để tìm hiểu chi tiết về Booking Management endpoints, validation, và examples.
-
-**Quick Links:**
-- [Create Booking](./docs/BOOKING_API.md#1-✅-create-booking)
-- [Get Booking By ID](./docs/BOOKING_API.md#2-📋-get-booking-by-id)
-- [Get My Bookings](./docs/BOOKING_API.md#3-📚-get-my-bookings)
-- [Update Booking Status](./docs/BOOKING_API.md#5-✏️-update-booking-change-status)
-- [Cancel Booking](./docs/BOOKING_API.md#6-❌-cancel-booking)
-
-### Auth API
-- `POST /api/auth/register` - Đăng ký tài khoản
-- `POST /api/auth/login` - Đăng nhập
-- `POST /api/auth/google` - Google OAuth
-- `GET /api/auth/me` - Lấy thông tin user (cần auth)
-- `PUT /api/auth/profile` - Cập nhật hồ sơ (cần auth)
-- `POST /api/auth/become-owner` - Nâng cấp thành chủ xe (cần auth)
-
----
-
-## 🔄 Booking Workflow
-
-### Quy Trình Cho Thuê Xe Hoàn Chỉnh
-
-```
-┌─────────────────────┐
-│   Khách Hàng (Đặt)  │
-└──────────┬──────────┘
-           │
-      1. Đăng nhập
-           │
-           ▼
-      2. Tạo Booking (Pending)
-           │
-           ▼
-    ┌─────────────────┐
-    │ Chủ Xe (Xác Nhận)│
-    └────────┬────────┘
-             │
-        3. Xác nhận (Confirmed)
-        Vehicle → Rented
-             │
-             ▼
-    ┌──────────────────┐
-    │ Bắt Đầu Cho Thuê │
-    │  (Ongoing)       │
-    └────────┬─────────┘
-             │
-        4. Hoàn Tất
-           Completed
-             │
-             ▼
-    ┌──────────────────┐
-    │  Tính Phí Phụ    │
-    │ & Lưu Feedback   │
-    └──────────────────┘
-```
-
-### Booking Statuses
-- **Pending** (⏳) - Chờ chủ xe xác nhận
-- **Confirmed** (✓) - Chủ xe đã xác nhận
-- **Ongoing** (🚴) - Xe đang được cho thuê
-- **Completed** (✓) - Hoàn tất
-- **Cancelled** (❌) - Đã hủy
-
----
-
-## 🗄️ Database Schema
-
-### User Collection
-```typescript
-{
-  username: string,           // Tên đăng nhập
-  email: string,              // Email (unique)
-  passwordHash: string,       // Mật khẩu hash
-  firstName: string,          // Tên
-  lastName: string,           // Họ
-  phoneNumber: string,        // SĐT
-  roles: string[],            // ['Admin', 'Staff', 'Owner', 'Customer']
-  status: string,             // 'Active', 'Suspended', 'Unverified'
-  avatarUrl: string,          // Ảnh đại diện
-  googleId: string,           // Google OAuth ID
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-### Booking Collection
-```typescript
-{
-  userId: ObjectId,                    // Khách hàng
-  vehicleId: ObjectId,                 // Xe được đặt
-  vehicleSnapshot: {                   // Snapshot giá tại thời điểm booking
-    name: string,
-    image: string,
-    rentalPrice: number
-  },
-  pickupDateTime: Date,                // Ngày giờ lấy xe
-  returnDateTime: Date,                // Ngày giờ trả xe
-  pickupLocation: {                    // Địa điểm lấy xe
-    address: string,
-    coordinates: [longitude, latitude]
-  },
-  returnLocation: {                    // Địa điểm trả xe
-    address: string,
-    coordinates: [longitude, latitude]
-  },
-  totalAmount: number,                 // Tổng tiền (VND)
-  status: string,                      // 'Pending', 'Confirmed', 'Ongoing', 'Completed', 'Cancelled'
-  bookingCode: string,                 // Mã booking unique (BK20240115...)
-  surcharges: [{                       // Phí phụ (trả muộn, hỏng hóc, etc)
-    surchargeType: string,
-    amount: number,
-    description: string,
-    isPaid: boolean,
-    createdAt: Date
-  }],
-  cancelReason: string,                // Lý do hủy (nếu cancelled)
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-### Vehicle Collection
-```typescript
-{
-  ownerId: ObjectId,                   // Chủ sở hữu xe
-  vehicleModel: string,                // Model xe (Honda CB300R, etc)
-  licensePlate: string,                // Biển số xe (unique)
-  seats: number,                       // Số ghế
-  odometer: number,                    // Số km đã đi
-  rentalPrice: number,                 // Giá cho thuê/ngày
-  status: string,                      // 'Available', 'Rented', 'Maintenance', 'PendingApproval'
-  description: string,                 // Mô tả chi tiết
-  category: string,                    // 'Sport', 'Cruiser', 'Scooter', etc
-  transmissionType: string,            // 'Manual', 'Automatic', 'Semi-Automatic'
-  imageUrls: string[],                 // Ảnh xe
-  features: string[],                  // Tính năng (ABS, GPS, etc)
-  regCertificateUrl: string,          // URL giấy đăng ký
-  createdAt: Date,
-  updatedAt: Date
-}
+```mermaid
+sequenceDiagram
+    actor C as Khách hàng
+    actor O as Chủ xe
+    actor S as Nhân viên
+    
+    C->>C: Đăng ký + Hoàn tất eKYC
+    S->>C: Duyệt danh tính eKYC
+    C->>C: Tìm xe gần nhất & Tạo Đơn Thuê
+    C->>C: Thanh toán cọc qua VNPay
+    O->>C: Duyệt Đơn Thuê & Chuẩn bị xe
+    C->>S: Đến điểm nhận xe (Bàn giao)
+    S->>S: Ghi nhận Odometer lúc nhận xe
+    S->>C: Kích hoạt trạng thái "Đang thuê" (Pickup)
+    C->>S: Trả xe sau hành trình
+    S->>S: Ghi nhận Odometer lúc trả xe & Kiểm tra phụ phí
+    S->>C: Đóng đơn hàng "Đã trả" (Completed)
 ```
 
 ---
 
-## 🧪 Testing
+## 🗄️ Cấu Trúc Cơ Sở Dữ Liệu (MongoDB Schema)
 
-### Test Booking Flow với cURL
-
-**1. Lấy JWT Token**
-```bash
-curl -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "khachhang@motov.com",
-    "password": "123456"
-  }'
-```
-
-**2. Tạo Booking**
-```bash
-curl -X POST http://localhost:5000/api/bookings \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "vehicleId": "VEHICLE_ID",
-    "pickupDateTime": "2024-02-01T09:00:00Z",
-    "returnDateTime": "2024-02-02T09:00:00Z",
-    "pickupLocation": {
-      "coordinates": [106.6297, 10.7769]
-    },
-    "returnLocation": {
-      "coordinates": [106.6626, 10.7689]
-    }
-  }'
-```
-
-**3. Lấy Danh Sách Bookings Của User**
-```bash
-curl http://localhost:5000/api/bookings/my-bookings \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
+*   `users`: Lưu trữ thông tin tài khoản, cấu hình vai trò, trạng thái định danh eKYC và các dòng xe yêu thích.
+*   `vehicles`: Quản lý xe máy, biển số xe, định vị vị trí địa lý GeoJSON (`coordinates`), thông tin số km bảo dưỡng.
+*   `bookings`: Tài liệu đơn đặt xe, mã số đơn thuê, thông tin giá thuê, lịch hẹn nhận/trả xe, hóa đơn thanh toán và các khoản phụ phí.
+*   `discounts`: Quản lý voucher khuyến mãi, giá trị giảm giá, thời hạn sử dụng và số lượt giới hạn tối đa.
+*   `feedbacks`: Lưu trữ đánh giá sao và bình luận của khách hàng về chuyến đi.
+*   `conversations` & `messages`: Lưu trữ dữ liệu hộp thoại chat real-time.
+*   `inventories`: Quản lý danh mục linh kiện phụ tùng trong kho của nhân viên.
+*   `bookingreminders`: Nhật ký lưu trữ lịch trình và trạng thái các tin nhắn nhắc nhở SMS tự động.
 
 ---
 
-## 📝 Available Scripts
+## 🧪 Quy Trình Chạy Kiểm Thử (Tests & Build)
 
-### Server
-```bash
-npm run dev        # Start dev server with hot reload
-npm run build      # Build TypeScript
-npm start          # Run production server
-```
-
-### Client
-```bash
-npm run dev        # Start dev server (Vite)
-npm run build      # Build for production
-npm run preview    # Preview production build
-npm run lint       # Run ESLint
-```
-
-### Mobile
-```bash
-npm start          # Start Expo dev server
-npm run android    # Build for Android
-npm run ios        # Build for iOS
-```
+*   **Chạy toàn bộ Test Suite Backend:**
+    ```bash
+    npm run test --prefix server
+    ```
+*   **Kiểm tra cú pháp Type Check (Mobile):**
+    ```bash
+    npx tsc --noEmit --project mobile/tsconfig.json
+    ```
+*   **Kiểm tra biên dịch đóng gói (Web Frontend):**
+    ```bash
+    npm run build --prefix client
+    ```
 
 ---
 
-## 🐛 Troubleshooting
-
-### MongoDB Connection Error
-```
-Error: connect ECONNREFUSED 127.0.0.1:27017
-
-Solution:
-1. Đảm bảo MongoDB service đang chạy
-2. Kiểm tra MONGODB_URI trong .env
-3. Nếu dùng MongoDB Atlas: update connection string
-```
-
-### Token Invalid/Expired
-```
-Error: Token không hợp lệ hoặc đã hết hạn
-
-Solution:
-1. Đăng nhập lại để lấy token mới
-2. Kiểm tra JWT_SECRET khớp với server
-3. Đảm bảo format: Authorization: Bearer {token}
-```
-
-### Port Already in Use
-```bash
-# Kill process on port 5000 (Unix/Linux/Mac)
-lsof -ti:5000 | xargs kill -9
-
-# Kill process on port 5000 (Windows PowerShell)
-Get-Process | Where-Object {$_.Port -eq 5000} | Stop-Process
-```
-
----
-
-## 📊 API Response Format
-
-### Success Response
-```json
-{
-  "success": true,
-  "message": "Operation successful",
-  "data": { ... }
-}
-```
-
-### Error Response
-```json
-{
-  "success": false,
-  "message": "Error description",
-  "error": "Error details (if applicable)"
-}
-```
-
----
-
-## 🔒 Security Best Practices
-
-1. **Never commit `.env`** - Add to `.gitignore`
-2. **Use HTTPS** in production
-3. **Validate input** on both client & server
-4. **Sanitize data** before storing in DB
-5. **Use secure passwords** for test accounts
-6. **Implement rate limiting** for APIs
-7. **Enable CORS** only for trusted origins
-8. **Hash passwords** with bcryptjs (already done)
-9. **Rotate JWT secrets** regularly
-10. **Monitor suspicious activities**
-
----
-
-## 👨‍💻 Development Guidelines
-
-### Code Style
-- Use **TypeScript** for type safety
-- Follow **ESLint** rules
-- Use **Prettier** for formatting
-- Comment complex logic
-- Meaningful variable names
-
-### Commit Messages
-```
-feat(booking): implement create booking API
-fix(auth): resolve token expiration issue
-docs(booking): update API documentation
-refactor(server): improve error handling
-test(booking): add booking validation tests
-```
-
-### Branch Naming
-- `feature/booking-crud` - New feature
-- `fix/token-issue` - Bug fix
-- `docs/api-guide` - Documentation
-- `refactor/auth-logic` - Code improvement
-
----
-
-## 📦 Dependencies
-
-### Server
-- `express` - Web framework
-- `mongoose` - MongoDB ODM
-- `jsonwebtoken` - JWT tokens
-- `bcryptjs` - Password hashing
-- `google-auth-library` - OAuth 2.0
-- `multer` - File uploads
-- `cors` - CORS handling
-- `dotenv` - Environment variables
-- `typescript` - Type safety
-
-### Client
-- `react` - UI framework
-- `vite` - Build tool
-- `react-router-dom` - Routing
-- `tailwindcss` - Styling
-- `framer-motion` - Animations
-- `lucide-react` - Icons
-
-### Mobile
-- `react-native` - Mobile framework
-- `expo` - RN platform
-- `redux-toolkit` - State management
-- `react-redux` - Redux bindings
-- `typescript` - Type safety
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
----
-
-## 👥 Team
-
-| Role | Name | Contact |
-|------|------|---------|
-| **Backend/Booking** | Quang | quang@motov.com |
-| **Frontend** | [Name] | [contact] |
-| **Mobile** | [Name] | [contact] |
-| **DevOps** | [Name] | [contact] |
-
----
-
-## 📧 Support
-
-- 📖 Documentation: [./docs/](./docs/)
-- 🐛 Report Issues: [Create Issue](../../issues)
-- 💬 Questions: [Start Discussion](../../discussions)
-- 📞 Contact: contact@motov.com
-
----
-
-## 🎯 Roadmap
-
-### Q1 2024
-- ✅ Booking Management (CRUD)
-- 🔄 Vehicle Management
-- 🔄 Payment Integration
-
-### Q2 2024
-- 🔄 Admin Dashboard
-- 🔄 Feedback System
-- 🔄 Notification System
-
-### Q3 2024
-- 🔄 Advanced Analytics
-- 🔄 Mobile App Optimization
-- 🔄 AI Recommendations
-
----
-
-**Last Updated:** 2024-01-15  
-**Version:** 1.0.0
-
-For API endpoints, request bodies, and details, see the [User Management API Docs](file:///C:/Users/admin/.gemini/antigravity-ide/brain/15a77dfb-8289-4e71-a10d-9f762392d5d6/user_management_docs.md).
-
----
-
-## Getting Started
-
-### Prerequisites
-- Node.js (v18+ recommended)
-- MongoDB running locally on port `27017` (default database: `mongodb://localhost:27017/Motov`)
-
-### Installation
-Run the following script at the root directory to install all dependencies for the workspace, client, server, and mobile folders:
-```bash
-npm run install:all
-```
-
-### Running the App
-Start both the client (port 3000) and backend server (port 5000) concurrently using:
-```bash
-npm run dev
-```
-*(If port 5000 is occupied, you can run `npm run dev:safe` to kill the process listening on port 5000 first, then start the servers).*
-
-### Default Seed Accounts
-Upon connecting to MongoDB, the backend automatically seeds the database with the following testing accounts:
-- **Admin**: `admin@motov.com` / Password: `admin123`
-- **Staff**: `nhanvien@motov.com` / Password: `admin123`
-- **Owner**: `owner@motov.com` / Password: `admin123`
-- **Customer**: `khachhang@motov.com` / Password: `admin123`
-
----
-
-## ☁️ Hướng Dẫn Triển Khai Lên Cloud (Step-by-Step Cloud Deployment Guide)
-
-Để đưa dự án Motov lên môi trường Cloud, bạn cần triển khai 3 thành phần chính: **Cơ sở dữ liệu (MongoDB Atlas)**, **Backend API (Render hoặc Railway)**, và **Frontend Client (Vercel hoặc Netlify)**. Dưới đây là các bước chi tiết:
-
-### Bước 1: Khởi tạo Cơ sở dữ liệu MongoDB Atlas (Miễn phí)
-1. Đăng ký/Đăng nhập tài khoản tại [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
-2. Tạo một **Cluster** mới (chọn gói **M0 FREE**).
-3. Tại mục **Security > Database Access**, tạo một user truy cập DB (lưu lại username và password).
-4. Tại mục **Security > Network Access**, nhấn **Add IP Address** và chọn **Allow Access From Anywhere (0.0.0.0/0)** để Backend từ cloud có thể kết nối được.
-5. Vào **Database > Cluster > Connect**, chọn **Drivers (Node.js)** và sao chép chuỗi kết nối (Connection String). Dạng của nó sẽ là:
-   `mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/Motov?retryWrites=true&w=majority`
-
-### Bước 2: Triển khai Backend API lên Render.com (Miễn phí & Cực kì dễ)
-1. Đẩy mã nguồn dự án của bạn lên một kho lưu trữ Git cá nhân (GitHub/GitLab).
-2. Đăng nhập vào [Render.com](https://render.com/) bằng tài khoản GitHub.
-3. Chọn **New > Web Service**. Kết nối với repository Git của bạn.
-4. Cấu hình dịch vụ như sau:
-   - **Name:** `motov-backend` (hoặc tên tùy ý)
-   - **Region:** Chọn region gần Việt Nam nhất (như `Singapore`)
-   - **Branch:** `main` (hoặc branch chính của bạn)
-   - **Root Directory:** `server`
-   - **Runtime:** `Node`
-   - **Build Command:** `npm install && npm run build`
-   - **Start Command:** `npm start`
-5. Nhấp vào **Advanced** và thêm các biến môi trường (**Environment Variables**):
-   - `NODE_ENV` = `production`
-   - `PORT` = `10000` (Render tự động cấp phát, hoặc bỏ trống)
-   - `MONGODB_URI` = *(Điền Connection String từ Bước 1 đã thay thế username/password)*
-   - `JWT_SECRET` = *(Một chuỗi ký tự bí mật dài ngẫu nhiên)*
-   - `JWT_EXPIRES_IN` = `7d`
-   - `CLIENT_ORIGIN` = *(Địa chỉ web Frontend của bạn trên Vercel sau khi deploy ở Bước 3, ví dụ: `https://your-frontend.vercel.app`)*
-6. Nhấn **Create Web Service** và đợi Render build và deploy xong. Sao chép link URL của Web Service (ví dụ: `https://motov-backend.onrender.com`).
-
-### Bước 3: Triển khai Frontend Client lên Vercel (Miễn phí & Tối ưu cho React/Vite)
-1. Đăng nhập vào [Vercel](https://vercel.com/) bằng tài khoản GitHub.
-2. Nhấn **Add New > Project**, chọn repository chứa mã nguồn dự án của bạn.
-3. Cấu hình dự án trên Vercel:
-   - **Framework Preset:** `Vite`
-   - **Root Directory:** `client`
-   - **Build Command:** `npm run build`
-   - **Output Directory:** `dist`
-4. Cấu hình biến môi trường (**Environment Variables**):
-   - `VITE_API_URL` = `https://your-backend-api.onrender.com/api` (Địa chỉ URL của Backend ở Bước 2 + `/api`)
-5. Nhấn **Deploy** và đợi quá trình hoàn tất. Vercel sẽ cung cấp cho bạn một tên miền miễn phí dạng `https://your-project.vercel.app`.
-
-### Bước 4: Hoàn tất & Cập nhật README
-1. Sau khi đã có link của Frontend và Backend, hãy mở file `README.md` ra.
-2. Tìm đến phần **Live Demo & Cloud Links** ở đầu trang và thay thế các URL mẫu bằng liên kết thực tế của bạn.
-3. Chia sẻ tài liệu này cho giáo viên/cô giáo của bạn kiểm tra trực tiếp dự án!
+## 📄 Bản Quyền & Giấy Phép
+Dự án được phân phối dưới giấy phép **MIT License**. Mọi quyền được bảo lưu.
