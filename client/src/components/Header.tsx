@@ -574,7 +574,7 @@ export const Header = () => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 z-50 bg-surface/98 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl w-[150px] overflow-hidden py-1"
+                      className="absolute right-0 mt-2 z-50 ui-pro-glass rounded-xl shadow-2xl w-[150px] overflow-hidden py-1"
                     >
                       {languagesList.map((lang) => (
                         <button

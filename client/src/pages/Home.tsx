@@ -50,7 +50,7 @@ const HeroSearch = () => {
   ];
 
   return (
-    <div className="glass-premium p-6 rounded-2xl border border-white/10 w-full max-w-md relative z-20 shadow-2xl">
+    <div className="ui-pro-glass p-6 rounded-2xl border border-neon/20 w-full max-w-md relative z-20 shadow-2xl">
       <h3 className="text-white font-bold mb-5 text-lg flex items-center gap-2 border-b border-white/5 pb-3">
         <SlidersHorizontal size={18} className="text-neon" />
         {language === 'vi' ? 'Tìm Kiếm Xe Máy' : 'Search Motorbikes'}

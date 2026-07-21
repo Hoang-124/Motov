@@ -19,4 +19,7 @@ export const COLORS = {
   warning: '#eab308',
   warningBg: 'rgba(234, 179, 8, 0.1)',
   warningBorder: 'rgba(234, 179, 8, 0.3)',
+  ownerBadge: '#60a5fa',
+  ownerBadgeBg: 'rgba(59, 130, 246, 0.15)',
+  ownerBadgeBorder: 'rgba(59, 130, 246, 0.5)',
 };
