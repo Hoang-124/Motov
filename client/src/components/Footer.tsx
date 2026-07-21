@@ -85,16 +85,19 @@ export const Footer = () => {
             </p>
             <div className="flex gap-3">
               {[
-                { icon: <Facebook size={18} />, link: '#' },
-                { icon: <Twitter size={18} />, link: '#' },
-                { icon: <Instagram size={18} />, link: '#' }
+                { icon: <Facebook size={18} />, link: 'https://facebook.com', label: 'Facebook • Founder & CEO' },
+                { icon: <Twitter size={18} />, link: 'https://twitter.com', label: 'Twitter / X • Motov Official' },
+                { icon: <Instagram size={18} />, link: 'https://instagram.com', label: 'Instagram • Motov Community' }
               ].map((social, index) => (
                 <motion.a
                   key={index}
                   href={social.link}
-                  whileHover={{ scale: 1.1, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="w-10 h-10 rounded-lg bg-dark border border-gray-800/80 flex items-center justify-center text-gray-400 hover:text-neon hover:border-neon/50 transition-all duration-300"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={social.label}
+                  whileHover={{ scale: 1.12, y: -3 }}
+                  whileTap={{ scale: 0.92 }}
+                  className="w-10 h-10 rounded-xl bg-[#121212] border border-white/10 flex items-center justify-center text-gray-300 hover:text-neon hover:border-neon/60 hover:bg-neon/10 transition-all duration-300 shadow-md cursor-pointer"
                 >
                   {social.icon}
                 </motion.a>
