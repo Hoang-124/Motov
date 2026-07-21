@@ -13,11 +13,16 @@ import { COLORS } from '../../../theme/colors';
 interface BikeCardProps {
   bike: Bike;
   handleOpenBooking: (bike: Bike) => void;
+  onPress?: (bike: Bike) => void;
 }
 
-export const BikeCard: React.FC<BikeCardProps> = ({ bike, handleOpenBooking }) => {
+export const BikeCard: React.FC<BikeCardProps> = ({ bike, handleOpenBooking, onPress }) => {
   return (
-    <View style={styles.bikeListCard}>
+    <TouchableOpacity
+      style={styles.bikeListCard}
+      activeOpacity={0.8}
+      onPress={() => onPress?.(bike)}
+    >
       <Image source={{ uri: bike.image }} style={styles.bikeListImage} />
       <View style={styles.bikeListInfo}>
         <View>
@@ -40,12 +45,15 @@ export const BikeCard: React.FC<BikeCardProps> = ({ bike, handleOpenBooking }) =
 
         <TouchableOpacity 
           style={styles.bikeListBookBtn}
-          onPress={() => handleOpenBooking(bike)}
+          onPress={(e) => {
+            e.stopPropagation?.();
+            handleOpenBooking(bike);
+          }}
         >
           <Text style={styles.bikeListBookBtnText}>ĐẶT XE</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

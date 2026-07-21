@@ -17,6 +17,7 @@ import { COLORS } from '../../../theme/colors';
 import { useAppSelector } from '../../../app/store';
 import { PromotionsModal } from '../components/PromotionsModal';
 import { NotificationModal } from '../components/NotificationModal';
+import { BikeDetailModal } from '../../bikes/components/BikeDetailModal';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { API_BASE_URL } from '../../../constants/api';
 
@@ -53,6 +54,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [notiVisible, setNotiVisible] = useState(false);
   const [unreadNotiCount, setUnreadNotiCount] = useState(0);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [detailBike, setDetailBike] = useState<Bike | null>(null);
 
   const featuredBikes = bikes.filter(b => b.featured);
   const otherBikes = bikes.filter(b => !b.featured).slice(0, 3);
@@ -245,6 +247,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.featuredList} contentContainerStyle={styles.featuredListContent}>
           {featuredBikes.map(bike => (
             <View key={bike.id} style={styles.featuredCard}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setDetailBike(bike)}
+              >
               <View style={styles.featuredImageContainer}>
                 <Image source={{ uri: bike.image }} style={styles.featuredImage} />
                 <View style={styles.featuredCardBadge}>
@@ -262,6 +268,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <Text style={styles.featuredBookBtnText}>ĐẶT NGAY</Text>
                 </TouchableOpacity>
               </View>
+              </TouchableOpacity>
             </View>
           ))}
         </ScrollView>
@@ -301,7 +308,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Non-featured Bikes List */}
         <View style={styles.otherBikesContainer}>
           {otherBikes.map(bike => (
-            <View key={bike.id} style={styles.otherBikeCard}>
+            <TouchableOpacity
+              key={bike.id}
+              style={styles.otherBikeCard}
+              activeOpacity={0.85}
+              onPress={() => setDetailBike(bike)}
+            >
               <Image source={{ uri: bike.image }} style={styles.otherBikeImage} />
               <View style={styles.otherBikeInfo}>
                 <Text style={styles.otherBikeName}>{bike.name}</Text>
@@ -316,7 +328,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   </TouchableOpacity>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       </View>
@@ -333,6 +345,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </TouchableOpacity>
       </View>
       </View>
+
+      {/* Bike Detail Modal */}
+      <BikeDetailModal
+        visible={!!detailBike}
+        onClose={() => setDetailBike(null)}
+        bike={detailBike}
+        onBooking={handleOpenBooking}
+      />
     </ScrollView>
   );
 };
