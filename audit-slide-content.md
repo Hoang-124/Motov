@@ -5,13 +5,79 @@
 
 ## PHẦN 0 — Thông tin nhóm và quản lý dự án
 
-```markdown
-## Thành viên nhóm
-[USER TỰ ĐIỀN: họ tên, mã sinh viên, vai trò từng thành viên trong nhóm]
+### 0.1 Thành viên nhóm & Phân chia công việc
 
-## Công cụ quản lý dự án
-[USER TỰ ĐIỀN: Trello/Jira/GitHub Projects kèm ảnh chụp bảng Kanban/Sprint board nếu có]
-```
+#### 👨‍💻 Trần Quang Bửu Hoàng (Trưởng nhóm - Leader)
+*   **Chức năng phát triển:**
+    *   **Thanh toán:** Tích hợp cổng VNPay Sandbox thực tế (Web/Mobile), tự động hủy đơn khi thanh toán lỗi và đồng bộ hóa luồng thanh toán VNPay In-App trên Mobile App.
+    *   **Nhắc nhở tự động:** Hệ thống gửi Email & SMS nhắc nhở lịch trình song song, tối ưu hóa cache transporter (Backend), thiết kế giao diện UI quản lý nhắc nhở của Admin.
+    *   **Đồng bộ ứng dụng di động:** Đồng bộ hóa toàn bộ tính năng đặt xe, chi tiết hóa đơn, hiển thị eKYC từ Web sang Mobile App.
+    *   **Giao diện & UI/UX Web:** Thiết kế Layout Web Admin dọc, trang cấu hình hệ thống, thiết kế Footer cao cấp, dropdowns danh sách Yêu thích (Favorites) trên Header navbar, chỉ báo active menu.
+    *   **Quản lý Đánh giá & Phản hồi:** Phát triển luồng trả hàng sớm (early return), gửi lý do phản hồi trả hàng, cảnh báo thô tục và tự động ẩn đánh giá vi phạm.
+    *   **Quản lý Chat & Chat Real-time:** Gộp các cuộc hội thoại chat theo đối tác, chia mốc thời gian thông minh, tích hợp chat trực tiếp với Admin hoặc Chủ xe.
+    *   **Đa ngôn ngữ & Map styling:** Hỗ trợ đa ngôn ngữ tiếng Hàn, Anh, Việt (tĩnh và động từ DB); áp dụng bộ lọc CSS Cyber Dark cho bản đồ Leaflet để tăng độ tương phản, đổi layer bản đồ sang CartoDB Voyager.
+*   **Kiểm thử & Sửa lỗi (Bugfixes):**
+    *   Sửa lỗi 404 lệch route Đăng ký chủ xe (`becomeOwner` -> `become-owner`) trên Mobile.
+    *   Sửa lỗi 404 lệch route Nhân viên giao xe (`api/staff/bookings/...` -> `api/bookings/staff/bookings/...`) trên Web.
+    *   Sửa lỗi chặn CORS/CSRF đối với method `DELETE` bằng cách cho phép header `Authorization` đi qua middleware.
+    *   Sửa lỗi đồng bộ Chat Socket.io thời gian thực (real-time sync, hiển thị tên, double emit, null handling).
+    *   Sửa lỗi đồng bộ Token đăng nhập của Admin (Admin token sync).
+    *   Khôi phục vị trí GPS thật (`navigator.geolocation`) với Da Nang coordinates fallback.
+    *   Tối ưu hóa hiệu năng máy chủ, khắc phục triệt để lỗi tràn bộ nhớ (OOM) khi khởi chạy server.
+*   **Quản lý & Điều phối:** Phân công, điều phối công việc của dự án trên GitHub; kiểm duyệt chất lượng mã nguồn (Code review), giải quyết xung đột (conflict resolution) và tiến hành merge code chính của toàn bộ nhóm.
+
+
+
+#### 👨‍💻 Mai Xuân Tùng (Core Developer)
+*   **Chức năng phát triển:**
+    *   **Web:** Quản lý xe máy (CRUD), So sánh xe (Compare), áp dụng Voucher đặt xe, Hệ thống nhắc nhở tự động Email/SMS.
+    *   **Web Security:** Tích hợp Helmet, Rate Limiting, CORS strict, chống NoSQL Injection, xác thực CSRF, hardening JWT và ẩn chi tiết thông báo lỗi.
+    *   **Mobile:** Modal chi tiết xe, so sánh thông số (Compare Modal), bản đồ BikesMap (Đà Nẵng), Staff Dashboard, Staff Schedule (Giao/Nhận xe), quản lý kho (Inventory), Admin Promotions/Categories/Feedbacks, phân luồng Tab Navigation.
+*   **Kiểm thử & Sửa lỗi:** Fix lỗi logic Chat (sse hook, double emit); fix lỗi inventory (khóa nhập ô số lượng, chặn chữ); fix lỗi đặt xe (nút trả xe, validate Odometer & thời gian, checklist bàn giao, nội dung feedback); fix lỗi TypeScript 'Returning' và tỷ lệ hoạt động xe; fix định dạng biển số xe VN.
+
+#### 👩‍💻 Lê Thị Bảo Uyên (Developer)
+*   **Chức năng phát triển:** Bản đồ xe lân cận Leaflet (GeoJSON), duyệt đối tác Chủ xe (eKYC & Owner Approval), duyệt xe của Admin, CRUD kho, CRUD khuyến mãi, quản lý và xóa/ẩn feedback, CRUD người dùng.
+*   **Kiểm thử & Sửa lỗi:** Kiểm thử lọc bán kính bản đồ, kéo thả Marker, ràng buộc thời gian thuê, eKYC bypass và định dạng SĐT; sửa lỗi debounce search 400ms và sửa lỗi bảo mật.
+*   **Tài liệu & Thiết kế:** Vẽ các loại sơ đồ (SWD, SDN), viết báo cáo file doc môn SWD & SDN, viết báo cáo LaTeX tổng kết dự án và làm slide thuyết trình.
+
+#### 👨‍💻 Nguyễn Hà Tiến Quang (Developer)
+*   **Chức năng phát triển:** Giao diện & API Xem danh sách đặt xe, xác nhận đặt xe, cập nhật trạng thái xe (Available/Maintenance), thêm/xóa xe yêu thích (Favorites dropdown).
+*   **Kiểm thử & Sửa lỗi:** Kiểm thử danh mục (trùng tên, trường bắt buộc); kiểm thử quản lý người dùng (lọc nhiều điều kiện, trùng Email/SĐT, khóa/mở khóa đăng nhập); kiểm thử khuyến mãi (thêm mới trùng mã, thời gian lỗi); ẩn đánh giá nhạy cảm.
+*   **Tài liệu & Thiết kế:** Hỗ trợ vẽ biểu đồ tuần tự (Sequence Diagram).
+
+#### 👨‍💻 Đặng Phương Khôi Nguyên (Developer)
+*   **Chức năng phát triển:** Đặt thuê xe máy & kiểm tra xe có sẵn, ngăn ngừa đặt trùng lịch thuê xe trên cùng một đầu xe máy (Hệ thống).
+    *   Tự động tính phí thuê xe dựa trên thời gian thực tế.
+    *   Giao diện Xem danh sách đặt chỗ và chi tiết đặt chỗ (Khách hàng).
+    *   Hủy đặt chỗ và theo dõi trạng thái đơn đặt chỗ (Khách hàng).
+    *   Luồng Xác nhận trả xe (phía Nhân viên).
+    *   Tự động tính toán phụ phí quá hạn và các phụ phí phát sinh (Hệ thống).
+*   **Hoạt động kiểm thử & Sửa lỗi (QA/Debugging):**
+    *   Kiểm thử bàn giao xe: Bỏ trống Odometer khi giao, thiếu ảnh hiện trạng xe (bắt buộc 4 góc chụp), không tích chọn đủ checklist thiết bị bàn giao.
+    *   Kiểm thử trạng thái xe: Chuyển trạng thái xe sang Bảo trì, khôi phục trạng thái xe sau bảo trì và reset Odo.
+    *   Kiểm thử quản lý kho linh kiện: Tìm kiếm xe trong đội, thêm mới linh kiện thành công, kiểm tra ràng buộc kiểu số của các trường số lượng/ngưỡng/đơn giá, kiểm thử nhập trùng mã SKU.
+    *   Kiểm thử nhập kho/xuất kho: Nhập kho thành công, nhập số lượng bằng 0 hoặc âm, nhập chữ cái, xuất kho thành công, xuất kho vượt quá tồn thực tế, cập nhật thông tin linh kiện, sửa mã SKU trùng lặp.
+*   **Công việc Tài liệu & Thiết kế:**
+    *   Phân chia công việc và giám sát các mốc công việc trên Jira.
+    *   Vẽ sơ đồ quan hệ thực thể ERD và thiết kế cấu trúc Cơ sở dữ liệu.
+
+### 0.2 Công cụ quản lý dự án & Dịch vụ tích hợp
+
+*   **Quản lý dự án & Phân công công việc:**
+    *   **Jira Software:** Quản lý dự án theo mô hình Agile/Scrum, theo dõi tiến độ qua bảng Kanban Board và quản lý backlog công việc.
+    *   **Google Sheets:** Lập bảng phân bổ công việc nhanh và checklist kiểm thử chi tiết (QA test plan).
+*   **Quản lý mã nguồn (SCM):**
+    *   **GitHub:** Quản lý mã nguồn phiên bản, phân nhánh (Branching), kiểm duyệt mã nguồn qua Pull Requests và phối hợp nhóm.
+*   **Dịch vụ đám mây & Lưu trữ (Cloud Services):**
+    *   **Cloudinary:** Lưu trữ đám mây tối ưu hóa dung lượng hình ảnh (tải ảnh xe máy, ảnh CCCD/Selfie định danh eKYC).
+    *   **Render:** Nơi triển khai (hosting) máy chủ Backend API Node.js Express.
+    *   **Vercel:** Nơi triển khai (hosting) ứng dụng Web Client React.
+    *   **MongoDB Atlas:** Hệ quản trị cơ sở dữ liệu đám mây MongoDB.
+    *   **Firebase Console:** Cấu hình và giám sát luồng xác thực mã OTP điện thoại (Firebase Phone Auth).
+*   **Thiết kế & Soạn thảo tài liệu:**
+    *   **Overleaf / LaTeX:** Biên soạn tài liệu báo cáo đồ án chuẩn khoa học.
+    *   **Draw.io / Mermaid:** Vẽ các sơ đồ hệ thống (ERD, Sequence Diagram, Context Diagram, Use Case).
+    *   **Figma:** Thiết kế giao diện (UI/UX Mockups) mẫu cho Web và Mobile.
 
 ---
 

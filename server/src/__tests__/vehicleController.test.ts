@@ -29,6 +29,7 @@ describe('Vehicle Controller Tests', () => {
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(mongoUrl);
     }
+    await Vehicle.ensureIndexes();
 
     // Create test category
     const testCategory = new Category({
