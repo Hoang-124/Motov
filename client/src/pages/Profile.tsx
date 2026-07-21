@@ -3,8 +3,10 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { User, Mail, Phone, Calendar, Shield, Award, Briefcase, UserCheck, Check, Save, ArrowLeft, Camera, Lock, Key, X, RefreshCw, AlertCircle, FileText, Eye, ShieldCheck, Activity, QrCode } from 'lucide-react';
 import { motion } from 'motion/react';
 import { FavoriteMotorbikes } from '../components/favoriteMotorbikes'; // Đảm bảo đúng đường dẫn tới component bạn vừa tạo
+import { useToast } from '../hooks/useToast';
 
 export const Profile = () => {
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
