@@ -61,7 +61,7 @@ export const ProfileScreen: React.FC = () => {
     setPhoneNumber(user.phoneNumber || '');
     setGender(user.gender || '');
     setAvatarUrl(user.avatarUrl || '');
-    
+
     if (user.dob) {
       const dateObj = new Date(user.dob);
       if (!isNaN(dateObj.getTime())) {
@@ -203,7 +203,7 @@ export const ProfileScreen: React.FC = () => {
           setLivenessLogs(prev => [...prev, 'Đã xác thực thực thể sống thành công!', 'Đang tải ảnh chụp selfie lên...']);
           const mockSelfie = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150';
           setSelfie(mockSelfie);
-          
+
           setTimeout(() => {
             startOcrScan(mockSelfie);
           }, 1000);
@@ -468,7 +468,7 @@ export const ProfileScreen: React.FC = () => {
         <>
           {/* User Information Card */}
           <View style={styles.profileCard}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.avatarContainer}
               onPress={() => setShowPresets(!showPresets)}
             >
@@ -505,7 +505,7 @@ export const ProfileScreen: React.FC = () => {
 
             <Text style={styles.profileName}>{user.name}</Text>
             <Text style={styles.profileEmail}>{user.email}</Text>
-            
+
             <View style={[styles.tagMember, { backgroundColor: badgeStyles.bg, borderColor: badgeStyles.border }]}>
               <Text style={[styles.tagMemberText, { color: badgeStyles.text }]}>
                 {user.memberTag}
@@ -516,23 +516,23 @@ export const ProfileScreen: React.FC = () => {
           {/* eKYC Status Card */}
           <View style={styles.ekycStatusCard}>
             <View style={styles.ekycHeader}>
-              <Feather 
+              <Feather
                 name={
                   user.identityStatus === 'Verified' ? "shield" :
-                  user.identityStatus === 'Pending' ? "clock" :
-                  user.identityStatus === 'Rejected' ? "alert-triangle" : "shield"
-                } 
-                size={16} 
+                    user.identityStatus === 'Pending' ? "clock" :
+                      user.identityStatus === 'Rejected' ? "alert-triangle" : "shield"
+                }
+                size={16}
                 color={
                   user.identityStatus === 'Verified' ? COLORS.approved :
-                  user.identityStatus === 'Pending' ? COLORS.pending :
-                  user.identityStatus === 'Rejected' ? COLORS.danger : COLORS.warning
-                } 
+                    user.identityStatus === 'Pending' ? COLORS.pending :
+                      user.identityStatus === 'Rejected' ? COLORS.danger : COLORS.warning
+                }
               />
               <Text style={[styles.ekycTitle, {
                 color: user.identityStatus === 'Verified' ? COLORS.approved :
-                       user.identityStatus === 'Pending' ? COLORS.pending :
-                       user.identityStatus === 'Rejected' ? COLORS.danger : COLORS.warning
+                  user.identityStatus === 'Pending' ? COLORS.pending :
+                    user.identityStatus === 'Rejected' ? COLORS.danger : COLORS.warning
               }]}>
                 XÁC MINH DANH TÍNH (eKYC)
               </Text>
@@ -543,7 +543,7 @@ export const ProfileScreen: React.FC = () => {
               {user.identityStatus === 'Rejected' && `Rất tiếc! Hồ sơ eKYC bị từ chối. Lý do: "${user.identityRejectReason || 'Ảnh mờ hoặc không hợp lệ'}".`}
               {(!user.identityStatus || user.identityStatus === 'Unverified') && 'Bạn chưa thực hiện xác minh danh tính. Vui lòng xác thực danh tính để kích hoạt tính năng đặt xe máy.'}
             </Text>
-            
+
             {(user.identityStatus === 'Verified' && user.firstName && user.lastName) && (
               <View style={styles.ekycInfoBox}>
                 <Text style={styles.ekycInfoText}>Họ tên: {user.lastName} {user.firstName}</Text>
@@ -552,7 +552,7 @@ export const ProfileScreen: React.FC = () => {
             )}
 
             {(!user.identityStatus || user.identityStatus === 'Unverified' || user.identityStatus === 'Rejected') && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.ekycBtn}
                 onPress={() => {
                   setCardFront('');
@@ -587,7 +587,7 @@ export const ProfileScreen: React.FC = () => {
               <Text style={styles.upgradeDesc}>
                 Chia sẻ xe máy nhàn rỗi của bạn để bắt đầu tạo ra doanh thu thụ động hấp dẫn cùng Motov ngay hôm nay!
               </Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.upgradeBtn, upgrading && styles.disabledBtn]}
                 onPress={handleBecomeOwner}
                 disabled={upgrading}
@@ -622,7 +622,7 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
 
             {/* 3. Booking Guide */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.menuItem}
               onPress={() => Alert.alert('Hướng Dẫn', 'Hướng dẫn đặt xe chi tiết trên hệ thống Motov sẽ được cập nhật trong phiên bản tiếp theo.')}
             >
@@ -634,7 +634,7 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
 
             {/* 4. Insurance Policy */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.menuItem}
               onPress={() => Alert.alert('Bảo Hiểm', 'Chính sách bảo hiểm xe máy Motov giúp bảo vệ chuyến đi của bạn an toàn tối đa.')}
             >
@@ -646,7 +646,7 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
 
             {/* 5. Customer Support */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.menuItem}
               onPress={() => Alert.alert('Hỗ Trợ', 'Hotline hỗ trợ khách hàng: 1900 6868 (Hoạt động 24/7).')}
             >
@@ -668,8 +668,8 @@ export const ProfileScreen: React.FC = () => {
         /* SUB-SCREEN: EDIT PROFILE FORM */
         <View>
           {/* Back button */}
-          <TouchableOpacity 
-            style={styles.backToMenuBtn} 
+          <TouchableOpacity
+            style={styles.backToMenuBtn}
             onPress={() => setActiveSection('menu')}
           >
             <Feather name="arrow-left" size={16} color={COLORS.accent} />
@@ -794,8 +794,8 @@ export const ProfileScreen: React.FC = () => {
         /* SUB-SCREEN: CHANGE PASSWORD FORM */
         <View>
           {/* Back button */}
-          <TouchableOpacity 
-            style={styles.backToMenuBtn} 
+          <TouchableOpacity
+            style={styles.backToMenuBtn}
             onPress={() => setActiveSection('menu')}
           >
             <Feather name="arrow-left" size={16} color={COLORS.accent} />
@@ -906,12 +906,12 @@ export const ProfileScreen: React.FC = () => {
                 const currentIdx = stepsOrder.indexOf(ekycStep);
                 const isActive = item.step === ekycStep;
                 const isCompleted = stepsOrder.indexOf(item.step) < currentIdx;
-                
+
                 return (
                   <React.Fragment key={item.step}>
                     <View style={styles.stepItemWrapper}>
                       <View style={[
-                        styles.stepCircle, 
+                        styles.stepCircle,
                         isActive && styles.stepCircleActive,
                         isCompleted && styles.stepCircleCompleted
                       ]}>
@@ -919,7 +919,7 @@ export const ProfileScreen: React.FC = () => {
                           <Feather name="check" size={10} color={COLORS.accentDark} />
                         ) : (
                           <Text style={[
-                            styles.stepCircleText, 
+                            styles.stepCircleText,
                             isActive && styles.stepCircleTextActive
                           ]}>{idx + 1}</Text>
                         )}
@@ -943,7 +943,7 @@ export const ProfileScreen: React.FC = () => {
 
             {/* Nội dung các bước */}
             <ScrollView contentContainerStyle={styles.ekycModalContent} showsVerticalScrollIndicator={false}>
-              
+
               {/* BƯỚC 1: TẢI ẢNH CCCD */}
               {ekycStep === 'upload' && (
                 <View style={styles.stepContainer}>
@@ -953,8 +953,8 @@ export const ProfileScreen: React.FC = () => {
 
                   <View style={styles.cardUploadGrid}>
                     {/* Mặt trước */}
-                    <TouchableOpacity 
-                      style={[styles.cardUploadBox, cardFront ? styles.cardUploadBoxSelected : null]} 
+                    <TouchableOpacity
+                      style={[styles.cardUploadBox, cardFront ? styles.cardUploadBoxSelected : null]}
                       onPress={() => handleCardSelect('front')}
                       disabled={uploadingCard !== null}
                     >
@@ -977,8 +977,8 @@ export const ProfileScreen: React.FC = () => {
                     </TouchableOpacity>
 
                     {/* Mặt sau */}
-                    <TouchableOpacity 
-                      style={[styles.cardUploadBox, cardBack ? styles.cardUploadBoxSelected : null]} 
+                    <TouchableOpacity
+                      style={[styles.cardUploadBox, cardBack ? styles.cardUploadBoxSelected : null]}
                       onPress={() => handleCardSelect('back')}
                       disabled={uploadingCard !== null}
                     >
@@ -1007,7 +1007,7 @@ export const ProfileScreen: React.FC = () => {
 
                   <TouchableOpacity
                     style={[
-                      styles.actionBtn, 
+                      styles.actionBtn,
                       (!cardFront || !cardBack || uploadingCard !== null) && styles.disabledBtn
                     ]}
                     disabled={!cardFront || !cardBack || uploadingCard !== null}
@@ -1034,17 +1034,17 @@ export const ProfileScreen: React.FC = () => {
                       livenessSubStep === 2 && { borderColor: COLORS.pending },
                       livenessSubStep === 3 && { borderColor: COLORS.approved }
                     ]}>
-                      <Image 
-                        source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300' }} 
-                        style={styles.mockCameraFeed} 
+                      <Image
+                        source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300' }}
+                        style={styles.mockCameraFeed}
                       />
                       {/* Laser scan line */}
                       <View style={styles.laserScanLine} />
-                      
+
                       {/* Pulsing ring */}
                       <View style={styles.pulsingRing} />
                     </View>
-                    
+
                     {/* Hướng dẫn to rõ */}
                     <View style={styles.livenessInstructionBox}>
                       <Text style={styles.livenessInstructionText}>
@@ -1097,7 +1097,7 @@ export const ProfileScreen: React.FC = () => {
                   <View style={styles.successIconWrapper}>
                     <Feather name="check-circle" size={48} color={COLORS.approved} />
                   </View>
-                  
+
                   <Text style={styles.resultSuccessTitle}>Gửi Hồ Sơ Thành Công!</Text>
                   <Text style={styles.resultSuccessDesc}>
                     Thông tin eKYC của bạn đã được trích xuất và lưu trữ trên hệ thống để duyệt tự động.

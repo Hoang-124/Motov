@@ -53,16 +53,22 @@ const validateVehicleInput = (data: any) => {
 
 /**
  * Get all vehicles with optional filtering
- * Query params: category, status, ownerId
+ * Query params: category, status, ownerId, minOdometer, maxOdometer
  */
 export const getAllVehicles = async (req: AuthRequest, res: Response) => {
   try {
-    const { category, status, ownerId, sortBy = '-createdAt' } = req.query;
+    const { category, status, ownerId, sortBy = '-createdAt', minOdometer, maxOdometer } = req.query;
     
     const filter: any = { isDeleted: { $ne: true } };
     if (category) filter.category = category;
     if (status) filter.status = status;
     if (ownerId) filter.ownerId = ownerId;
+
+    if (minOdometer !== undefined || maxOdometer !== undefined) {
+      filter.odometer = {};
+      if (minOdometer !== undefined) filter.odometer.$gte = Number(minOdometer);
+      if (maxOdometer !== undefined) filter.odometer.$lte = Number(maxOdometer);
+    }
 
     const vehicles = await Vehicle.find(filter)
       .populate('ownerId', 'firstName lastName email phoneNumber avatarUrl')
@@ -467,7 +473,23 @@ export const updateVehicleStatus = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    if (vehicle.status === 'Rented' && status === 'Maintenance') {
+      return res.status(400).json({
+        success: false,
+        error: 'Xe đang cho thuê, không thể bảo dưỡng'
+      });
+    }
+
     const oldStatus = vehicle.status;
+    
+    // Check transitions
+    if (status === 'Maintenance') {
+      vehicle.requiresMaintenance = true;
+    } else if (oldStatus === 'Maintenance' && status === 'Available') {
+      vehicle.lastMaintenanceOdometer = vehicle.odometer;
+      vehicle.requiresMaintenance = false;
+    }
+    
     vehicle.status = status;
     await vehicle.save();
     await vehicle.populate('ownerId', 'firstName lastName email phoneNumber');

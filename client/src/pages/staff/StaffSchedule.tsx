@@ -40,7 +40,7 @@ export const StaffSchedule: React.FC = () => {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const resData = await response.json();
-      
+
       if (resData.success) {
         setBookings(resData.data || []);
       }
@@ -55,12 +55,12 @@ export const StaffSchedule: React.FC = () => {
   const todayStr = new Date().toDateString();
 
   // Danh sách khách đến lấy xe hôm nay
-  const pickupsToday = bookings.filter(b => 
+  const pickupsToday = bookings.filter(b =>
     new Date(b.pickupDateTime).toDateString() === todayStr && b.status !== 'Cancelled'
   );
 
   // Danh sách khách đến trả xe hôm nay
-  const returnsToday = bookings.filter(b => 
+  const returnsToday = bookings.filter(b =>
     new Date(b.returnDateTime).toDateString() === todayStr && b.status !== 'Cancelled'
   );
 
@@ -95,8 +95,8 @@ export const StaffSchedule: React.FC = () => {
             <p className="text-sm text-gray-500">Ngày: {new Date().toLocaleDateString('vi-VN')}</p>
           </div>
         </div>
-        <button 
-          onClick={fetchDailyBookings} 
+        <button
+          onClick={fetchDailyBookings}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition font-medium flex items-center gap-1.5 cursor-pointer"
         >
           <RefreshCw size={14} />
@@ -113,7 +113,7 @@ export const StaffSchedule: React.FC = () => {
 
       {/* Thống kê nhanh số lượng (Counters) */}
       <div className="grid grid-cols-2 gap-4 mb-6">
-        <div 
+        <div
           onClick={() => setActiveTab('pickup')}
           className={`p-4 rounded-xl border cursor-pointer transition text-center flex flex-col items-center justify-center ${activeTab === 'pickup' ? 'bg-orange-50 border-orange-500 shadow-md' : 'bg-white hover:bg-gray-50'}`}
         >
@@ -123,7 +123,7 @@ export const StaffSchedule: React.FC = () => {
           </p>
           <p className="text-3xl font-black text-orange-700 mt-1">{pickupsToday.length}</p>
         </div>
-        <div 
+        <div
           onClick={() => setActiveTab('return')}
           className={`p-4 rounded-xl border cursor-pointer transition text-center flex flex-col items-center justify-center ${activeTab === 'return' ? 'bg-green-50 border-green-500 shadow-md' : 'bg-white hover:bg-gray-50'}`}
         >

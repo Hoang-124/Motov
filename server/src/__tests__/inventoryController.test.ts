@@ -225,7 +225,7 @@ describe('Inventory Controller Tests', () => {
 
       expect(res._status).toBe(400);
       expect(res._body.success).toBe(false);
-      expect(res._body.error).toContain('vượt quá tồn kho');
+      expect(res._body.error).toContain('không được vượt quá số lượng tồn kho hiện tại');
     });
   });
 

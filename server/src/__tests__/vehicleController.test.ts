@@ -179,6 +179,53 @@ describe('Vehicle Controller Tests', () => {
         expect(vehicle.category._id.toString()).toBe(testCategoryId);
       });
     });
+
+    it('should filter vehicles by Odometer range (Case 4)', async () => {
+      // Create test vehicles with different odometers
+      const v1 = new Vehicle({
+        ownerId: testUserId,
+        vehicleModel: 'Odo Bike 1',
+        licensePlate: 'ODO001',
+        category: testCategoryId,
+        transmissionType: 'Manual',
+        rentalPrice: 100000,
+        odometer: 5000
+      });
+      const v2 = new Vehicle({
+        ownerId: testUserId,
+        vehicleModel: 'Odo Bike 2',
+        licensePlate: 'ODO002',
+        category: testCategoryId,
+        transmissionType: 'Automatic',
+        rentalPrice: 150000,
+        odometer: 15000
+      });
+      const v3 = new Vehicle({
+        ownerId: testUserId,
+        vehicleModel: 'Odo Bike 3',
+        licensePlate: 'ODO003',
+        category: testCategoryId,
+        transmissionType: 'Automatic',
+        rentalPrice: 120000,
+        odometer: 25000
+      });
+      await v1.save();
+      await v2.save();
+      await v3.save();
+
+      mockRequest.query = { minOdometer: '10000', maxOdometer: '20000' };
+      await getAllVehicles(mockRequest, mockResponse);
+
+      const callArgs = mockResponse.json.mock.calls[0][0];
+      expect(callArgs.success).toBe(true);
+      
+      // Should find Odo Bike 2 (odometer 15000)
+      const foundOdo = callArgs.data.filter((v: any) => v.licensePlate.startsWith('ODO'));
+      expect(foundOdo.length).toBe(1);
+      expect(foundOdo[0].licensePlate).toBe('ODO002');
+      expect(foundOdo[0].odometer).toBeGreaterThanOrEqual(10000);
+      expect(foundOdo[0].odometer).toBeLessThanOrEqual(20000);
+    });
   });
 
   describe('getVehicleById', () => {
