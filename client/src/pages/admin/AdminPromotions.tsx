@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { promotionService, Promotion } from '../../services/promotionService';
 import { Tag, Calendar, Plus, Edit2, Trash2, Search, Filter, X, ToggleLeft, ToggleRight, AlertCircle, Info, CalendarDays, Ticket } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useToast } from '../../hooks/useToast';
 
 export const AdminPromotions = () => {
+  const { showToast } = useToast();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +122,7 @@ export const AdminPromotions = () => {
       // Cập nhật state trực tiếp để UI nhanh nhạy
       setPromotions(promotions.map(p => p._id === promo._id ? { ...p, isActive: !p.isActive } : p));
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Không thể cập nhật trạng thái hoạt động.');
+      showToast(err.response?.data?.message || 'Không thể cập nhật trạng thái hoạt động.', 'error');
     }
   };
 
@@ -136,7 +138,7 @@ export const AdminPromotions = () => {
       await promotionService.deletePromotion(promo._id);
       fetchPromotions();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Không thể xóa khuyến mãi.');
+      showToast(err.response?.data?.message || 'Không thể xóa khuyến mãi.', 'error');
     }
   };
 

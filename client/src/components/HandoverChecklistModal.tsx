@@ -8,6 +8,7 @@ interface HandoverChecklistModalProps {
   onClose: () => void;
   bookingId: string | null;
   vehicleModel: string;
+  initialOdometer?: number;
   onSuccess?: () => void;
 }
 
@@ -16,9 +17,10 @@ export const HandoverChecklistModal: React.FC<HandoverChecklistModalProps> = ({
   onClose,
   bookingId,
   vehicleModel,
+  initialOdometer = 0,
   onSuccess
 }) => {
-  const [startOdometer, setStartOdometer] = useState('');
+  const [startOdometer, setStartOdometer] = useState(initialOdometer ? String(initialOdometer) : '');
   const [checklist, setChecklist] = useState({
     documents: false,
     helmets: false,
@@ -38,7 +40,7 @@ export const HandoverChecklistModal: React.FC<HandoverChecklistModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setStartOdometer('');
+      setStartOdometer(initialOdometer !== undefined && initialOdometer !== null ? String(initialOdometer) : '');
       setChecklist({
         documents: false,
         helmets: false,
@@ -55,7 +57,7 @@ export const HandoverChecklistModal: React.FC<HandoverChecklistModalProps> = ({
       setError(null);
       setSuccessMsg(null);
     }
-  }, [isOpen]);
+  }, [isOpen, initialOdometer]);
 
   const handlePhotoUpload = (direction: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -162,7 +164,14 @@ export const HandoverChecklistModal: React.FC<HandoverChecklistModalProps> = ({
 
               {/* 1. Số Odometer */}
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">1. Thông tin số Odometer hiện tại</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">1. Thông tin số Odometer hiện tại</h4>
+                  {initialOdometer !== undefined && initialOdometer !== null && (
+                    <span className="text-[11px] font-mono text-neon font-bold bg-neon/10 border border-neon/30 px-2.5 py-1 rounded-lg">
+                      Odo hệ thống: {Number(initialOdometer).toLocaleString('vi-VN')} km
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] text-gray-500 font-bold uppercase mb-1">Số Km lúc giao xe *</label>
@@ -170,10 +179,19 @@ export const HandoverChecklistModal: React.FC<HandoverChecklistModalProps> = ({
                       type="number"
                       value={startOdometer}
                       onChange={(e) => setStartOdometer(e.target.value)}
-                      placeholder="Nhập số Odo thực tế trên đồng hồ"
+                      placeholder={initialOdometer ? `Nhập số Odo (Gợi ý: ${initialOdometer} km)` : "Nhập số Odo thực tế trên đồng hồ"}
                       className="w-full bg-black/50 border border-gray-800 text-gray-300 text-sm rounded-xl focus:ring-2 focus:ring-neon focus:border-transparent block p-3 outline-none transition-all font-mono"
                       required
                     />
+                    {initialOdometer !== undefined && initialOdometer !== null && Number(initialOdometer) > 0 && startOdometer !== String(initialOdometer) && (
+                      <button
+                        type="button"
+                        onClick={() => setStartOdometer(String(initialOdometer))}
+                        className="text-[10px] text-neon hover:underline mt-1 cursor-pointer font-medium block"
+                      >
+                        ⚡ Lấy Odo từ dữ liệu ({Number(initialOdometer).toLocaleString('vi-VN')} km)
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -5,6 +5,7 @@ import { Motorbike, addToFavorites, removeFromFavorites, getUserFavorites } from
 import { MapPin, Heart, SlidersHorizontal } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage';
 import { useCompare } from '../contexts/CompareContext';
+import { useToast } from '../hooks/useToast';
 
 interface BikeCardProps {
   bike: Motorbike;
@@ -13,6 +14,7 @@ interface BikeCardProps {
 
 export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
   const { language, t } = useLanguage();
+  const { showToast } = useToast();
   const [isFavorite, setIsFavorite] = useState(false);
   const { addToCompare, removeFromCompare, isInCompare, canAddMore } = useCompare();
   const inCompare = isInCompare(bike._id || '');
@@ -49,7 +51,7 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
 
     const storedUser = localStorage.getItem('user');
     if (!storedUser) {
-      alert(language === 'vi' ? 'Vui lòng đăng nhập để lưu xe yêu thích!' : 'Please log in to save favorite motorbikes!');
+      showToast(language === 'vi' ? 'Vui lòng đăng nhập để lưu xe yêu thích!' : 'Please log in to save favorite motorbikes!', 'warning');
       return;
     }
 
@@ -186,9 +188,9 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
                 removeFromCompare(bike._id || '');
               } else if (canAddMore) {
                 const added = addToCompare(bike);
-                if (!added) alert('Chỉ có thể so sánh tối đa 3 xe!');
+                if (!added) showToast('Chỉ có thể so sánh tối đa 3 xe!', 'info');
               } else {
-                alert('Chỉ có thể so sánh tối đa 3 xe!');
+                showToast('Chỉ có thể so sánh tối đa 3 xe!', 'info');
               }
             }}
             title={inCompare ? 'Bỏ so sánh' : 'Thêm vào so sánh'}

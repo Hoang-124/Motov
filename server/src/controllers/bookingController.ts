@@ -290,7 +290,8 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       isPaid: false,
       discountId,
       discountAmount,
-      promoCodeUsed
+      promoCodeUsed,
+      startOdometer: vehicle.odometer || 0
     });
 
     const savedBooking = await newBooking.save();
@@ -495,7 +496,7 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
     }
 
     const bookings = await Booking.find(query)
-      .populate('vehicleId', 'vehicleModel licensePlate rentalPrice category imageUrls')
+      .populate('vehicleId', 'vehicleModel licensePlate rentalPrice category imageUrls odometer')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);
@@ -571,7 +572,7 @@ export const getAllBookings = async (req: AuthRequest, res: Response) => {
 
     const bookings = await Booking.find(query)
       .populate('userId', 'firstName lastName email phoneNumber')
-      .populate('vehicleId', 'vehicleModel licensePlate rentalPrice')
+      .populate('vehicleId', 'vehicleModel licensePlate rentalPrice odometer')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);
@@ -1400,6 +1401,13 @@ function formatBookingResponse(booking: any) {
   const diffHours = diffTime / (1000 * 60 * 60);
   const rentalDays = diffHours <= 24 ? 1 : Math.ceil(diffHours / 24);
 
+  // Tính số odo ban đầu: Ưu tiên booking.startOdometer nếu > 0, nếu không thì lấy từ vehicle.odometer trong DB
+  const startOdometer = (booking.startOdometer !== undefined && booking.startOdometer !== null && booking.startOdometer > 0)
+    ? booking.startOdometer
+    : (booking.vehicleId && typeof booking.vehicleId === 'object' && booking.vehicleId.odometer !== undefined
+      ? booking.vehicleId.odometer
+      : (booking.startOdometer || 0));
+
   return {
     id: booking._id,
     bookingCode: booking.bookingCode,
@@ -1427,6 +1435,8 @@ function formatBookingResponse(booking: any) {
     paymentMethod: booking.paymentMethod,
     deliveryMethod: booking.deliveryMethod,
     isPaid: booking.isPaid,
+    startOdometer,
+    endOdometer: booking.endOdometer,
     createdAt: booking.createdAt,
     updatedAt: booking.updatedAt
   };

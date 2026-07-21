@@ -805,17 +805,17 @@ BÊN B ĐÃ ĐỌC, HIỂU RÕ VÀ CAM KẾT ĐỒNG Ý KÝ KẾT HỢP ĐỒNG 
 
   const handleConfirmSignContract = async () => {
     if (!bankName.trim() || !bankAccountNumber.trim() || !bankAccountOwner.trim()) {
-      alert("Vui lòng điền đầy đủ thông tin tài khoản ngân hàng!");
+      showToast("Vui lòng điền đầy đủ thông tin tài khoản ngân hàng!", "warning");
       return;
     }
 
     if (!ownerSignature) {
-      alert("Vui lòng vẽ chữ ký điện tử của bạn vào khung ký tên!");
+      showToast("Vui lòng vẽ chữ ký điện tử của bạn vào khung ký tên!", "warning");
       return;
     }
 
     if (!acceptTerms) {
-      alert("Vui lòng đồng ý với các điều khoản hợp tác trước khi ký!");
+      showToast("Vui lòng đồng ý với các điều khoản hợp tác trước khi ký!", "warning");
       return;
     }
 

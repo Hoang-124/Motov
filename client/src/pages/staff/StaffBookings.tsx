@@ -13,13 +13,16 @@ import {
   UserCheck,
   Key,
   AlertCircle,
-  FileText
+  FileText,
+  Gauge,
+  Camera
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { bookingService, Booking } from '../../services/bookingService';
 import axios from 'axios';
 import { ReturnMotorbikeModal } from '../../components/ReturnMotorbikeModal';
 import { HandoverChecklistModal } from '../../components/HandoverChecklistModal';
+import { InspectionPhotosModal } from '../../components/InspectionPhotosModal';
 import { useSearchParams } from 'react-router-dom';
 import { useToast } from '../../hooks/useToast';
 
@@ -58,6 +61,7 @@ export const StaffBookings = () => {
   const [handingBookingId, setHandingBookingId] = useState<string | null>(null);
   const [handingVehicleModel, setHandingVehicleModel] = useState<string>('');
   const [viewingContractRequest, setViewingContractRequest] = useState<OwnerRequest | null>(null);
+  const [viewingInspectionBooking, setViewingInspectionBooking] = useState<Booking | null>(null);
 
   const getAuthHeaders = () => {
     let token = localStorage.getItem('token');
@@ -372,6 +376,7 @@ export const StaffBookings = () => {
                         <div className="flex items-center gap-2"><User size={13} /> Khách: <span className="text-white font-medium">{booking.userName}</span></div>
                         <div className="flex items-center gap-2"><Phone size={13} /> SĐT: <span className="text-white font-mono">{booking.userPhone}</span></div>
                         <div className="flex items-center gap-2"><CreditCard size={13} /> Tổng thu: <span className="text-neon font-semibold">{(booking.totalAmount || 0).toLocaleString('vi-VN')} VNĐ</span></div>
+                        <div className="flex items-center gap-2"><Gauge size={13} className="text-neon" /> Odo xe hệ thống: <span className="text-neon font-mono font-bold">{(booking.startOdometer || (booking as any).vehicleId?.odometer || 0).toLocaleString('vi-VN')} km</span></div>
                       </div>
 
                       {booking.returnReason && (
@@ -479,6 +484,15 @@ export const StaffBookings = () => {
                         <div className="text-center text-xs text-gray-500 font-medium py-2 bg-gray-900/30 border border-gray-800/40 rounded-lg">
                           Thủ tục giao nhận hoàn thành
                         </div>
+                      )}
+
+                      {(booking.status === 'Completed' || booking.status === 'Returning' || booking.status === 'Ongoing') && (
+                        <button
+                          onClick={() => setViewingInspectionBooking(booking)}
+                          className="w-full flex items-center justify-center gap-1.5 bg-black/40 border border-white/10 text-gray-300 hover:border-neon hover:text-white py-2 rounded-lg text-xs transition-all cursor-pointer mt-1"
+                        >
+                          <Camera size={14} className="text-neon" /> Xem ảnh biên bản (4 góc xe)
+                        </button>
                       )}
 
                       {booking.status === 'Cancelled' && (
@@ -726,7 +740,16 @@ export const StaffBookings = () => {
         onClose={() => setHandingBookingId(null)}
         bookingId={handingBookingId}
         vehicleModel={handingVehicleModel}
+        initialOdometer={bookings.find(b => (b.id === handingBookingId || (b as any)._id === handingBookingId))?.startOdometer || 0}
         onSuccess={handleHandoverSuccess}
+      />
+
+      <InspectionPhotosModal
+        isOpen={!!viewingInspectionBooking}
+        onClose={() => setViewingInspectionBooking(null)}
+        bookingId={viewingInspectionBooking?.id || (viewingInspectionBooking as any)?._id || null}
+        bookingCode={viewingInspectionBooking?.bookingCode}
+        vehicleModel={viewingInspectionBooking?.vehicleModel}
       />
     </div>
   );

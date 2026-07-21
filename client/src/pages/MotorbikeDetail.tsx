@@ -6,6 +6,7 @@ import { getMotorbikeById, Motorbike, deleteMotorbike, getAllMotorbikes } from '
 import { feedbackService, FeedbackItem } from '../services/feedbackService';
 import { BikeCard } from '../components/BikeCard';
 import { useLanguage } from '../hooks/useLanguage';
+import { useToast } from '../hooks/useToast';
 
 const translateCategory = (cat: string, t: any) => {
   const c = (cat || '').toLowerCase().trim();
@@ -50,6 +51,7 @@ export const MotorbikeDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { language, t } = useLanguage();
+  const { showToast } = useToast();
   const [motorbike, setMotorbike] = useState<Motorbike | null>(null);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [relatedBikes, setRelatedBikes] = useState<Motorbike[]>([]);
@@ -140,7 +142,7 @@ export const MotorbikeDetail = () => {
       setShowDeleteModal(false);
       navigate('/bikes');
     } catch (err) {
-      alert('Failed to delete motorbike');
+      showToast(language === 'vi' ? 'Không thể xóa thông tin xe máy vào lúc này.' : 'Failed to delete motorbike', 'error');
       console.error(err);
     } finally {
       setDeleting(false);
