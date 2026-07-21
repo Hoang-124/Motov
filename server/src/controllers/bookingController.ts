@@ -1437,6 +1437,7 @@ function formatBookingResponse(booking: any) {
     isPaid: booking.isPaid,
     startOdometer,
     endOdometer: booking.endOdometer,
+    drivenDistance: (booking.endOdometer !== undefined && booking.endOdometer !== null) ? Math.max(0, booking.endOdometer - startOdometer) : null,
     createdAt: booking.createdAt,
     updatedAt: booking.updatedAt
   };
