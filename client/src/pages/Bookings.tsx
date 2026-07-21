@@ -176,19 +176,19 @@ export const Bookings = () => {
     let hours = 0;
     let amount = 0;
     const deposit = booking.depositAmount || Math.round(booking.totalAmount * 0.3);
-    const actualHours = Math.max(0, Math.ceil((now.getTime() - pickupTime.getTime()) / (1000 * 60 * 60)));
+    const actualHours = Math.max(1, Math.ceil((now.getTime() - pickupTime.getTime()) / (1000 * 60 * 60)));
     const actualRentalFee = Math.round(actualHours * hourlyRate);
 
-    if (diffHours >= 2) {
-      // Trả sớm trên 2 tiếng
+    if (diffHours > 0.25) {
+      // Trả sớm trên 15 phút
       type = 'early';
-      hours = Math.floor(diffHours);
-      // Mất cọc, khách hàng phải thanh toán thêm số tiền bằng đúng tiền thuê thực tế
+      hours = Math.max(1, Math.round(diffHours));
+      // Mất cọc, khách hàng phải thanh toán thêm số tiền bằng đúng tiền thuê thực tế theo số giờ đã sử dụng
       amount = actualRentalFee;
     } else if (diffHours < -0.25) {
       // Trả muộn trên 15 phút (0.25 giờ)
       type = 'late';
-      hours = Math.ceil(Math.abs(diffHours));
+      hours = Math.max(1, Math.ceil(Math.abs(diffHours)));
       amount = Math.round(hours * hourlyRate); // Phí trễ đơn giản
     }
 
