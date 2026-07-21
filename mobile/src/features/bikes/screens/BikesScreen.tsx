@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,10 +6,14 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Bike } from '../../../types';
 import { BikeCard } from '../components/BikeCard';
+import { BikeDetailModal } from '../components/BikeDetailModal';
+import { CompareBikesModal } from '../components/CompareBikesModal';
+import { BikesMapScreen } from './BikesMapScreen';
 import { COLORS } from '../../../theme/colors';
 import { useAppDispatch, useAppSelector } from '../../../app/store';
 import { setSearchQuery, setSelectedType } from '../bikesSlice';
@@ -23,6 +27,10 @@ export const BikesScreen: React.FC<BikesScreenProps> = ({ handleOpenBooking }) =
   const bikes = useAppSelector(state => state.bikes.bikes);
   const searchQuery = useAppSelector(state => state.bikes.searchQuery);
   const selectedType = useAppSelector(state => state.bikes.selectedType);
+
+  const [detailBike, setDetailBike] = useState<Bike | null>(null);
+  const [compareVisible, setCompareVisible] = useState(false);
+  const [mapVisible, setMapVisible] = useState(false);
 
   const filteredBikes = bikes.filter(bike => {
     const matchesSearch = bike.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -49,6 +57,18 @@ export const BikesScreen: React.FC<BikesScreenProps> = ({ handleOpenBooking }) =
           </View>
         </View>
 
+        {/* Action buttons */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => setMapVisible(true)}>
+            <Feather name="map" size={14} color={COLORS.accent} />
+            <Text style={styles.actionBtnText}>Bản đồ</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => setCompareVisible(true)}>
+            <Feather name="columns" size={14} color={COLORS.accent} />
+            <Text style={styles.actionBtnText}>So sánh</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Categories horizontal scroll */}
         <View style={styles.categoryContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -69,13 +89,41 @@ export const BikesScreen: React.FC<BikesScreenProps> = ({ handleOpenBooking }) =
         {/* Bikes List */}
         <View style={styles.bikesGrid}>
           {filteredBikes.map(bike => (
-            <BikeCard key={bike.id} bike={bike} handleOpenBooking={handleOpenBooking} />
+            <BikeCard
+              key={bike.id}
+              bike={bike}
+              handleOpenBooking={handleOpenBooking}
+              onPress={(b) => setDetailBike(b)}
+            />
           ))}
           {filteredBikes.length === 0 && (
             <Text style={styles.emptyText}>Không tìm thấy xe phù hợp.</Text>
           )}
         </View>
       </View>
+
+      {/* Bike Detail Modal */}
+      <BikeDetailModal
+        visible={!!detailBike}
+        onClose={() => setDetailBike(null)}
+        bike={detailBike}
+        onBooking={handleOpenBooking}
+      />
+
+      {/* Compare Modal */}
+      <CompareBikesModal
+        visible={compareVisible}
+        onClose={() => setCompareVisible(false)}
+        bikes={bikes}
+      />
+
+      {/* Map Modal */}
+      <Modal visible={mapVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setMapVisible(false)}>
+        <BikesMapScreen
+          onClose={() => setMapVisible(false)}
+          handleOpenBooking={handleOpenBooking}
+        />
+      </Modal>
     </ScrollView>
   );
 };
@@ -151,5 +199,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 40,
     fontSize: 14,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  actionBtnText: {
+    color: COLORS.accent,
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
