@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ClipboardList, CalendarDays, MapPin, User, Phone, CreditCard, AlertCircle, Check, X, CheckSquare, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
 import { bookingService } from '../../services/bookingService.js';
+import { useToast } from '../../hooks/useToast';
 
 interface Booking {
   id: string;
@@ -25,6 +26,7 @@ interface Booking {
 }
 
 export const OwnerBookings = () => {
+  const { showToast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,7 @@ export const OwnerBookings = () => {
       const promptReason = window.prompt('Vui lòng nhập lý do từ chối đơn đặt xe:');
       if (promptReason === null) return; // Nhấn hủy prompt
       if (!promptReason.trim()) {
-        window.alert('Bạn phải nhập lý do từ chối!');
+        showToast('Bạn phải nhập lý do từ chối!', 'warning');
         return;
       }
       reason = promptReason;
@@ -62,10 +64,10 @@ export const OwnerBookings = () => {
     try {
       setLoading(true);
       await bookingService.updateStatus(id, newStatus, reason);
-      window.alert('Cập nhật trạng thái đơn thành công!');
+      showToast('Cập nhật trạng thái đơn thành công!', 'success');
       await loadOwnerBookings();
     } catch (err: any) {
-      window.alert(err.response?.data?.message || 'Không thể cập nhật trạng thái đơn!');
+      showToast(err.response?.data?.message || 'Không thể cập nhật trạng thái đơn!', 'error');
       setLoading(false);
     }
   };

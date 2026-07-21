@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, ShieldAlert, Wrench, RefreshCw, Layers, Check, X, Search, User, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getAllMotorbikes, updateMotorbikeStatus, deleteMotorbike, resetMaintenance, Motorbike } from '../../services/vehicleService.js';
+import { useToast } from '../../hooks/useToast';
 
 export const StaffBikes = () => {
+  const { showToast } = useToast();
   const [bikes, setBikes] = useState<Motorbike[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -47,17 +49,17 @@ export const StaffBikes = () => {
   const handleUpdateStatus = async (id: string, newStatus: 'Available' | 'Maintenance') => {
     const token = getAuthToken();
     if (!token) {
-      window.alert('Yêu cầu đăng nhập!');
+      showToast('Yêu cầu đăng nhập!', 'warning');
       return;
     }
 
     try {
       setLoading(true);
       await updateMotorbikeStatus(id, newStatus, token);
-      window.alert('Cập nhật trạng thái xe thành công!');
+      showToast('Cập nhật trạng thái xe thành công!', 'success');
       await loadMotorbikes();
     } catch (err: any) {
-      window.alert(err.message || 'Lỗi khi cập nhật trạng thái xe!');
+      showToast(err.message || 'Lỗi khi cập nhật trạng thái xe!', 'error');
       setLoading(false);
     }
   };
@@ -72,10 +74,10 @@ export const StaffBikes = () => {
     try {
       setLoading(true);
       await updateMotorbikeStatus(id, 'Available', token);
-      window.alert('Đã phê duyệt xe hoạt động thành công!');
+      showToast('Đã phê duyệt xe hoạt động thành công!', 'success');
       await loadMotorbikes();
     } catch (err: any) {
-      window.alert(err.message || 'Lỗi khi phê duyệt xe!');
+      showToast(err.message || 'Lỗi khi phê duyệt xe!', 'error');
       setLoading(false);
     }
   };
@@ -90,10 +92,10 @@ export const StaffBikes = () => {
     try {
       setLoading(true);
       await deleteMotorbike(id, token);
-      window.alert('Đã từ chối duyệt và xóa xe thành công.');
+      showToast('Đã từ chối duyệt và xóa xe thành công.', 'info');
       await loadMotorbikes();
     } catch (err: any) {
-      window.alert(err.message || 'Lỗi khi từ chối xe!');
+      showToast(err.message || 'Lỗi khi từ chối xe!', 'error');
       setLoading(false);
     }
   };
@@ -108,10 +110,10 @@ export const StaffBikes = () => {
     try {
       setLoading(true);
       await resetMaintenance(id, token);
-      window.alert('Đã xác nhận bảo dưỡng xe thành công!');
+      showToast('Đã xác nhận bảo dưỡng xe thành công!', 'success');
       await loadMotorbikes();
     } catch (err: any) {
-      window.alert(err.message || 'Lỗi khi xác nhận bảo dưỡng xe!');
+      showToast(err.message || 'Lỗi khi xác nhận bảo dưỡng xe!', 'error');
       setLoading(false);
     }
   };

@@ -21,6 +21,7 @@ import axios from 'axios';
 import { ReturnMotorbikeModal } from '../../components/ReturnMotorbikeModal';
 import { HandoverChecklistModal } from '../../components/HandoverChecklistModal';
 import { useSearchParams } from 'react-router-dom';
+import { useToast } from '../../hooks/useToast';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
 
@@ -43,6 +44,7 @@ interface OwnerRequest {
 }
 
 export const StaffBookings = () => {
+  const { showToast } = useToast();
   const [searchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') as 'bookings' | 'ownerRequests') || 'bookings';
   const [activeTab, setActiveTab] = useState<'bookings' | 'ownerRequests'>(initialTab);
@@ -124,7 +126,7 @@ export const StaffBookings = () => {
       const promptReason = window.prompt('Vui lòng nhập lý do hủy/từ chối đơn đặt xe:');
       if (promptReason === null) return;
       if (!promptReason.trim()) {
-        window.alert('Bạn phải nhập lý do!');
+        showToast('Bạn phải nhập lý do!', 'warning');
         return;
       }
       reason = promptReason;
@@ -133,13 +135,13 @@ export const StaffBookings = () => {
     try {
       setLoading(true);
       await bookingService.updateStatus(id, newStatus, reason);
-      window.alert('Cập nhật trạng thái đơn thành công!');
+      showToast('Cập nhật trạng thái đơn thành công!', 'success');
 
       setBookings(prev =>
         prev.map(b => (b.id === id || (b as any)._id === id) ? { ...b, status: newStatus } : b)
       );
     } catch (err: any) {
-      window.alert(err.response?.data?.message || 'Không thể cập nhật trạng thái đơn!');
+      showToast(err.response?.data?.message || 'Không thể cập nhật trạng thái đơn!', 'error');
     } finally {
       setLoading(false);
     }
@@ -166,11 +168,11 @@ export const StaffBookings = () => {
       const headers = getAuthHeaders();
       const res = await axios.put(`${API_BASE_URL}/auth/owner-requests/${id}/approve`, {}, headers);
       if (res.data.success) {
-        window.alert(res.data.message || 'Phê duyệt chủ xe thành công!');
+        showToast(res.data.message || 'Phê duyệt chủ xe thành công!', 'success');
         await loadOwnerRequests();
       }
     } catch (err: any) {
-      window.alert(err.response?.data?.message || 'Lỗi khi phê duyệt chủ xe!');
+      showToast(err.response?.data?.message || 'Lỗi khi phê duyệt chủ xe!', 'error');
     } finally {
       setLoading(false);
       setConfirmApproveRequest(null);
@@ -180,7 +182,7 @@ export const StaffBookings = () => {
   const submitRejectOwner = async () => {
     if (!confirmRejectRequest) return;
     if (!rejectReason.trim()) {
-      window.alert('Vui lòng nhập lý do từ chối cụ thể.');
+      showToast('Vui lòng nhập lý do từ chối cụ thể.', 'warning');
       return;
     }
     const id = confirmRejectRequest.id || (confirmRejectRequest as any)._id;
@@ -189,11 +191,11 @@ export const StaffBookings = () => {
       const headers = getAuthHeaders();
       const res = await axios.put(`${API_BASE_URL}/auth/owner-requests/${id}/reject`, { rejectReason }, headers);
       if (res.data.success) {
-        window.alert(res.data.message || 'Đã từ chối yêu cầu thành công.');
+        showToast(res.data.message || 'Đã từ chối yêu cầu thành công.', 'info');
         await loadOwnerRequests();
       }
     } catch (err: any) {
-      window.alert(err.response?.data?.message || 'Lỗi khi từ chối yêu cầu!');
+      showToast(err.response?.data?.message || 'Lỗi khi từ chối yêu cầu!', 'error');
     } finally {
       setLoading(false);
       setConfirmRejectRequest(null);
