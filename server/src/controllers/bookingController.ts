@@ -257,7 +257,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     }
 
     const totalAmount = initialTotalAmount - discountAmount;
-    const depositAmount = Math.round(totalAmount * 0.3);
+    const depositAmount = pMethod === 'Cash' ? 0 : Math.round(totalAmount * 0.3);
     const remainingAmount = totalAmount - depositAmount;
 
     // Create vehicle snapshot
