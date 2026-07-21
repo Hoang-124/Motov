@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardList, CalendarDays, MapPin, User, Phone, CreditCard, AlertCircle, Check, X, CheckSquare, RefreshCw } from 'lucide-react';
+import { ClipboardList, CalendarDays, MapPin, User, Phone, CreditCard, Check, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { bookingService } from '../../services/bookingService.js';
 import { useToast } from '../../hooks/useToast';
