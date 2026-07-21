@@ -7,7 +7,10 @@ import {
   TouchableOpacity,
   Alert,
   TextInput,
+  Image,
+  Modal,
 } from 'react-native';
+import { apiFetch } from '../../../utils/api';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
 import { useAppSelector, useAppDispatch } from '../../../app/store';
@@ -26,9 +29,34 @@ export const AdminBookingsScreen: React.FC = () => {
   const bookingsState = useAppSelector(state => state.bookings.bookings);
   const ownerRequests = useAppSelector(state => state.bookings.ownerRequests);
   
-  const [activeTab, setActiveTab] = useState<'bookings' | 'ownerRequests'>('bookings');
+  const [activeTab, setActiveTab] = useState<'bookings' | 'pendingVehicles' | 'ownerRequests'>('bookings');
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const [pendingVehicles, setPendingVehicles] = useState<any[]>([]);
+  const [inspectingVehicle, setInspectingVehicle] = useState<any | null>(null);
+  const [inspectModalVisible, setInspectModalVisible] = useState<boolean>(false);
+
+  const openInspectModal = (v: any) => {
+    setInspectingVehicle(v);
+    setInspectModalVisible(true);
+  };
+
+  const fetchPendingVehicles = async () => {
+    try {
+      const res = await apiFetch('/vehicles?status=PendingApproval');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setPendingVehicles(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch pending vehicles', err);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchPendingVehicles();
+  }, []);
 
   // Return Motorbike Modal States
   const [returnModalVisible, setReturnModalVisible] = useState(false);
@@ -79,6 +107,58 @@ export const AdminBookingsScreen: React.FC = () => {
     ]);
   };
 
+  const handleApproveVehicle = (id: string, model: string, plate: string) => {
+    Alert.alert('Duyệt Xe Mới', `Xác nhận phê duyệt xe ${model} (${plate}) vào hệ thống?`, [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Phê Duyệt',
+        onPress: async () => {
+          try {
+            const res = await apiFetch(`/vehicles/${id}/status`, {
+              method: 'PATCH',
+              body: JSON.stringify({ status: 'Available' }),
+            });
+            const data = await res.json();
+            if (data.success) {
+              Alert.alert('Thành Công', `Đã phê duyệt xe ${model}!`);
+              fetchPendingVehicles();
+            } else {
+              Alert.alert('Lỗi', data.error || 'Không thể duyệt xe.');
+            }
+          } catch {
+            Alert.alert('Lỗi', 'Lỗi kết nối máy chủ.');
+          }
+        }
+      }
+    ]);
+  };
+
+  const handleRejectVehicle = (id: string, model: string) => {
+    Alert.alert('Từ Chối Xe', `Xác nhận từ chối đăng ký xe ${model}?`, [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Từ chối',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const res = await apiFetch(`/vehicles/${id}`, {
+              method: 'DELETE',
+            });
+            const data = await res.json();
+            if (data.success) {
+              Alert.alert('Thành Công', `Đã từ chối xe ${model}.`);
+              fetchPendingVehicles();
+            } else {
+              Alert.alert('Lỗi', data.error || 'Không thể từ chối xe.');
+            }
+          } catch {
+            Alert.alert('Lỗi', 'Lỗi kết nối máy chủ.');
+          }
+        }
+      }
+    ]);
+  };
+
   const filteredBookings = bookingsState.filter(b => {
     const matchesSearch = b.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           b.phone.includes(searchQuery) ||
@@ -114,6 +194,19 @@ export const AdminBookingsScreen: React.FC = () => {
         >
           <Text style={[styles.tabBtnText, activeTab === 'bookings' && styles.tabBtnTextActive]}>
             Đơn đặt xe ({bookingsState.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'pendingVehicles' && styles.tabBtnActive]}
+          onPress={() => {
+            setActiveTab('pendingVehicles');
+            setSearchQuery('');
+            fetchPendingVehicles();
+          }}
+        >
+          <Text style={[styles.tabBtnText, activeTab === 'pendingVehicles' && styles.tabBtnTextActive]}>
+            Duyệt xe mới ({pendingVehicles.length})
           </Text>
         </TouchableOpacity>
 
@@ -243,7 +336,88 @@ export const AdminBookingsScreen: React.FC = () => {
           </View>
         )}
 
-        {/* --- TAB 2: OWNER REQUESTS --- */}
+        {/* --- TAB 2: PENDING VEHICLES --- */}
+        {activeTab === 'pendingVehicles' && (
+          <View style={styles.contentSection}>
+            <View style={styles.listContainer}>
+              {pendingVehicles.length > 0 ? (
+                pendingVehicles.map(v => (
+                  <View key={v._id || v.id} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                        {v.imageUrls && v.imageUrls[0] ? (
+                          <Image source={{ uri: v.imageUrls[0] }} style={{ width: 48, height: 36, borderRadius: 6, backgroundColor: COLORS.card }} />
+                        ) : null}
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.bikeName}>{v.vehicleModel}</Text>
+                          <Text style={{ color: COLORS.accent, fontSize: 12, fontWeight: 'bold' }}>{v.licensePlate}</Text>
+                        </View>
+                      </View>
+                      <View style={[styles.statusBadge, styles.badgePending]}>
+                        <Text style={[styles.statusBadgeText, { color: COLORS.warning }]}>
+                          Chờ duyệt
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardBody}>
+                      <Text style={styles.infoText}>Giá thuê: <Text style={styles.whiteText}>{Number(v.rentalPrice).toLocaleString('vi-VN')} VNĐ/ngày</Text></Text>
+                      <Text style={styles.infoText}>Chủ xe: <Text style={styles.whiteText}>{v.ownerId?.firstName ? `${v.ownerId.firstName} ${v.ownerId.lastName}` : (v.ownerId?.email || 'Chủ xe')}</Text></Text>
+                      <Text style={styles.infoText}>Địa chỉ: <Text style={styles.whiteText}>{v.address || v.location?.address || 'Chưa cập nhật'}</Text></Text>
+                    </View>
+
+                    <View style={styles.cardActions}>
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: COLORS.card,
+                          borderWidth: 1,
+                          borderColor: COLORS.accent,
+                          paddingVertical: 8,
+                          paddingHorizontal: 12,
+                          borderRadius: 8,
+                          alignItems: 'center',
+                          flexDirection: 'row',
+                          justifyContent: 'center',
+                          gap: 6,
+                          width: '100%',
+                          marginBottom: 8,
+                        }}
+                        onPress={() => openInspectModal(v)}
+                      >
+                        <Feather name="eye" size={14} color={COLORS.accent} />
+                        <Text style={{ color: COLORS.accent, fontWeight: 'bold', fontSize: 12 }}>
+                          Xem Chi Tiết & Đối Chiếu Giấy Tờ
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.cardActions}>
+                      <TouchableOpacity
+                        style={styles.btnReject}
+                        onPress={() => handleRejectVehicle(v._id || v.id, v.vehicleModel)}
+                      >
+                        <Text style={styles.btnRejectText}>Từ chối</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.btnApprove}
+                        onPress={() => handleApproveVehicle(v._id || v.id, v.vehicleModel, v.licensePlate)}
+                      >
+                        <Text style={styles.btnApproveText}>Duyệt xe mới</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyCard}>
+                  <Feather name="check-circle" size={32} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
+                  <Text style={styles.emptyText}>Tuyệt vời! Không có xe mới nào đang chờ duyệt.</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* --- TAB 3: OWNER REQUESTS --- */}
         {activeTab === 'ownerRequests' && (
           <View style={styles.contentSection}>
             <View style={styles.listContainer}>
@@ -305,6 +479,86 @@ export const AdminBookingsScreen: React.FC = () => {
           setSelectedReturnBooking(null);
         }}
       />
+
+      {/* Inspection / Document Comparison Modal */}
+      <Modal visible={inspectModalVisible} animationType="slide" transparent>
+        <View style={styles.inspectModalContainer}>
+          <View style={styles.inspectModalContent}>
+            <View style={styles.inspectModalHeader}>
+              <Text style={styles.inspectModalTitle}>Đối Chiếu Thông Tin Đăng Ký Xe</Text>
+              <TouchableOpacity onPress={() => setInspectModalVisible(false)}>
+                <Feather name="x" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            {inspectingVehicle && (
+              <ScrollView contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
+                {/* 1. Actual Vehicle Photo */}
+                <Text style={styles.inspectSectionLabel}>1. ẢNH CHỤP THỰC TẾ CỦA XE</Text>
+                {inspectingVehicle.imageUrls && inspectingVehicle.imageUrls[0] ? (
+                  <Image source={{ uri: inspectingVehicle.imageUrls[0] }} style={styles.inspectImage} />
+                ) : (
+                  <View style={styles.noImagePlaceholder}>
+                    <Text style={{ color: COLORS.textMuted }}>⚠️ Chưa có ảnh thực tế xe</Text>
+                  </View>
+                )}
+
+                {/* 2. Registration Certificate Photo */}
+                <Text style={styles.inspectSectionLabel}>2. ẢNH CÀ VẸT / ĐĂNG KÝ XE</Text>
+                {inspectingVehicle.regCertificateUrl ? (
+                  <Image source={{ uri: inspectingVehicle.regCertificateUrl }} style={styles.inspectImage} />
+                ) : (
+                  <View style={styles.noImagePlaceholder}>
+                    <Text style={{ color: COLORS.textMuted }}>⚠️ Chủ xe chưa cung cấp ảnh cà vẹt xe</Text>
+                  </View>
+                )}
+
+                {/* 3. Vehicle Specifications */}
+                <Text style={styles.inspectSectionLabel}>3. THÔNG TIN KỸ THUẬT XE</Text>
+                <View style={styles.inspectDetailBox}>
+                  <Text style={styles.infoText}>Mẫu xe: <Text style={styles.whiteText}>{inspectingVehicle.vehicleModel}</Text></Text>
+                  <Text style={styles.infoText}>Biển số: <Text style={{ color: COLORS.accent, fontWeight: 'bold' }}>{inspectingVehicle.licensePlate}</Text></Text>
+                  <Text style={styles.infoText}>Giá thuê: <Text style={styles.whiteText}>{Number(inspectingVehicle.rentalPrice).toLocaleString('vi-VN')} VNĐ/ngày</Text></Text>
+                  <Text style={styles.infoText}>Hộp số: <Text style={styles.whiteText}>{inspectingVehicle.transmissionType === 'Manual' ? 'Xe số' : inspectingVehicle.transmissionType === 'Automatic' ? 'Xe ga' : 'Xe côn'}</Text></Text>
+                  <Text style={styles.infoText}>Danh mục: <Text style={styles.whiteText}>{inspectingVehicle.category?.name || 'Chưa rõ'}</Text></Text>
+                  <Text style={styles.infoText}>Địa chỉ để xe: <Text style={styles.whiteText}>{inspectingVehicle.address || inspectingVehicle.location?.address || 'Chưa cung cấp'}</Text></Text>
+                  <Text style={styles.infoText}>Mô tả: <Text style={styles.whiteText}>{inspectingVehicle.description || 'Không có mô tả'}</Text></Text>
+                </View>
+
+                {/* 4. Owner Info */}
+                <Text style={styles.inspectSectionLabel}>4. THÔNG TIN CHỦ XE (ĐỐI TÁC)</Text>
+                <View style={styles.inspectDetailBox}>
+                  <Text style={styles.infoText}>Họ tên: <Text style={styles.whiteText}>{inspectingVehicle.ownerId?.firstName ? `${inspectingVehicle.ownerId.firstName} ${inspectingVehicle.ownerId.lastName}` : 'Chủ xe'}</Text></Text>
+                  <Text style={styles.infoText}>Email: <Text style={styles.whiteText}>{inspectingVehicle.ownerId?.email || 'N/A'}</Text></Text>
+                  <Text style={styles.infoText}>SĐT: <Text style={styles.whiteText}>{inspectingVehicle.ownerId?.phoneNumber || 'N/A'}</Text></Text>
+                </View>
+
+                {/* Action buttons inside Modal */}
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 25 }}>
+                  <TouchableOpacity
+                    style={[styles.btnReject, { flex: 1, paddingVertical: 14 }]}
+                    onPress={() => {
+                      setInspectModalVisible(false);
+                      handleRejectVehicle(inspectingVehicle._id || inspectingVehicle.id, inspectingVehicle.vehicleModel);
+                    }}
+                  >
+                    <Text style={[styles.btnRejectText, { fontSize: 13, textAlign: 'center' }]}>TỪ CHỐI ĐĂNG KÝ</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.btnApprove, { flex: 1, paddingVertical: 14 }]}
+                    onPress={() => {
+                      setInspectModalVisible(false);
+                      handleApproveVehicle(inspectingVehicle._id || inspectingVehicle.id, inspectingVehicle.vehicleModel, inspectingVehicle.licensePlate);
+                    }}
+                  >
+                    <Text style={[styles.btnApproveText, { fontSize: 13, textAlign: 'center' }]}>PHÊ DUYỆT XE MỚI</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -571,5 +825,61 @@ const styles = StyleSheet.create({
   emptyText: {
     color: COLORS.textMuted,
     fontSize: 12,
+  },
+  inspectModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'flex-end',
+  },
+  inspectModalContent: {
+    backgroundColor: COLORS.bg,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '90%',
+    padding: 20,
+  },
+  inspectModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  inspectModalTitle: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  inspectSectionLabel: {
+    color: COLORS.accent,
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+    marginTop: 15,
+    marginBottom: 8,
+  },
+  inspectImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 10,
+    backgroundColor: COLORS.card,
+  },
+  noImagePlaceholder: {
+    width: '100%',
+    height: 100,
+    backgroundColor: COLORS.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inspectDetailBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 12,
+    gap: 6,
   },
 });

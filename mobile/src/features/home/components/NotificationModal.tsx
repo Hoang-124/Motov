@@ -12,6 +12,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
 import { API_BASE_URL } from '../../../constants/api';
+import { apiFetch } from '../../../utils/api';
 
 interface NotificationItem {
   _id: string;
@@ -39,15 +40,9 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   const [loading, setLoading] = useState(false);
 
   const fetchNotifications = async () => {
-    if (!token) return;
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/notifications`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiFetch('/notifications');
       const data = await response.json();
       if (data.success) {
         setNotifications(data.data);
@@ -67,14 +62,9 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   }, [visible, token]);
 
   const handleMarkAsRead = async (id: string) => {
-    if (!token) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+      const response = await apiFetch(`/notifications/${id}/read`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
       });
       const data = await response.json();
       if (data.success) {
@@ -89,14 +79,9 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   };
 
   const handleMarkAllAsRead = async () => {
-    if (!token) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/notifications/read-all`, {
+      const response = await apiFetch('/notifications/read-all', {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
       });
       const data = await response.json();
       if (data.success) {
@@ -110,14 +95,9 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   };
 
   const handleDelete = async (id: string) => {
-    if (!token) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/notifications/${id}`, {
+      const response = await apiFetch(`/notifications/${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
       });
       const data = await response.json();
       if (data.success) {
@@ -139,14 +119,9 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
           text: 'Xóa sạch',
           style: 'destructive',
           onPress: async () => {
-            if (!token) return;
             try {
-              const response = await fetch(`${API_BASE_URL}/notifications`, {
+              const response = await apiFetch('/notifications', {
                 method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
               });
               const data = await response.json();
               if (data.success) {

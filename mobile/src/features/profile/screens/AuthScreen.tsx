@@ -18,6 +18,7 @@ import { COLORS } from '../../../theme/colors';
 import { useAppDispatch } from '../../../app/store';
 import { updateUser } from '../userSlice';
 import { API_BASE_URL } from '../../../constants/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const AuthScreen: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -494,23 +495,27 @@ export const AuthScreen: React.FC = () => {
         }
 
         const u = data.user;
-        dispatch(
-          updateUser({
-            token: data.token,
-            id: u.id,
-            username: u.username,
-            name: u.name,
-            email: u.email,
-            role: u.role,
-            phoneNumber: u.phoneNumber || '',
-            avatarUrl: u.avatarUrl || '',
-            firstName: u.firstName || '',
-            lastName: u.lastName || '',
-            gender: u.gender || '',
-            dob: u.dob || '',
-            identityStatus: u.identityStatus || null,
-          })
-        );
+        const userSession = {
+          token: data.token,
+          refreshToken: data.refreshToken || null,
+          id: u.id,
+          username: u.username,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          phoneNumber: u.phoneNumber || '',
+          avatarUrl: u.avatarUrl || '',
+          firstName: u.firstName || '',
+          lastName: u.lastName || '',
+          gender: u.gender || '',
+          dob: u.dob || '',
+          identityStatus: u.identityStatus || null,
+        };
+
+        // Persist to AsyncStorage
+        await AsyncStorage.setItem('user_session', JSON.stringify(userSession));
+
+        dispatch(updateUser(userSession));
 
         Alert.alert('Thành Công', `Chào mừng ${u.name} đã quay trở lại!`);
       } else {
@@ -548,22 +553,27 @@ export const AuthScreen: React.FC = () => {
         }
 
         const u = data.user;
-        dispatch(
-          updateUser({
-            token: data.token,
-            id: u.id,
-            username: u.username,
-            name: u.name,
-            email: u.email,
-            role: u.role,
-            phoneNumber: u.phoneNumber || '',
-            avatarUrl: u.avatarUrl || '',
-            firstName: u.firstName || '',
-            lastName: u.lastName || '',
-            gender: u.gender || '',
-            dob: u.dob || '',
-          })
-        );
+        const userSession = {
+          token: data.token,
+          refreshToken: data.refreshToken || null,
+          id: u.id,
+          username: u.username,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          phoneNumber: u.phoneNumber || '',
+          avatarUrl: u.avatarUrl || '',
+          firstName: u.firstName || '',
+          lastName: u.lastName || '',
+          gender: u.gender || '',
+          dob: u.dob || '',
+          identityStatus: u.identityStatus || null,
+        };
+
+        // Persist to AsyncStorage
+        await AsyncStorage.setItem('user_session', JSON.stringify(userSession));
+
+        dispatch(updateUser(userSession));
 
         Alert.alert('Thành Công', 'Đăng ký tài khoản thành công!');
       }
@@ -612,22 +622,24 @@ export const AuthScreen: React.FC = () => {
               }
 
               const u = data.user;
-              dispatch(
-                updateUser({
-                  token: data.token,
-                  id: u.id,
-                  username: u.username,
-                  name: u.name,
-                  email: u.email,
-                  role: u.role,
-                  phoneNumber: u.phoneNumber || '',
-                  avatarUrl: u.avatarUrl || '',
-                  firstName: u.firstName || '',
-                  lastName: u.lastName || '',
-                  gender: u.gender || '',
-                  dob: u.dob || '',
-                })
-              );
+              const userSession = {
+                token: data.token,
+                refreshToken: data.refreshToken || null,
+                id: u.id,
+                username: u.username,
+                name: u.name,
+                email: u.email,
+                role: u.role,
+                phoneNumber: u.phoneNumber || '',
+                avatarUrl: u.avatarUrl || '',
+                firstName: u.firstName || '',
+                lastName: u.lastName || '',
+                gender: u.gender || '',
+                dob: u.dob || '',
+              };
+              
+              await AsyncStorage.setItem('user_session', JSON.stringify(userSession));
+              dispatch(updateUser(userSession));
 
               Alert.alert('Thành Công', `Đăng nhập Google thành công! Chào mừng ${u.name}`);
             } catch (err: any) {
@@ -647,10 +659,11 @@ export const AuthScreen: React.FC = () => {
       // Fallback for native devices
       setLoading(true);
       setError(null);
-      setTimeout(() => {
+      setTimeout(async () => {
         setLoading(false);
         const mockGoogleUser = {
           token: 'google_mock_token_jwt_123456',
+          refreshToken: 'google_mock_refresh_token_jwt_123456',
           id: 'usr-google-101',
           username: 'gg_user',
           name: 'Google User',
@@ -663,6 +676,7 @@ export const AuthScreen: React.FC = () => {
           gender: 'Other',
           dob: '2000-01-01',
         };
+        await AsyncStorage.setItem('user_session', JSON.stringify(mockGoogleUser));
         dispatch(updateUser(mockGoogleUser));
         Alert.alert('Thành Công', 'Đăng nhập bằng Google (Giả lập trên thiết bị di động) thành công!');
       }, 1200);

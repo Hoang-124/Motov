@@ -104,19 +104,19 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ setActiveTab }) 
     }
 
     Alert.alert(
-      'Trả Xe',
-      `Bạn có chắc chắn muốn trả xe máy và hoàn tất đơn thuê xe này không?${policyText}`,
+      'YÊU CẦU TRẢ XE',
+      `Bạn có chắc chắn muốn gửi Yêu Cầu Trả Xe máy này cho chủ xe không?${policyText}`,
       [
         { text: 'Hủy', style: 'cancel' },
         { 
-          text: 'Xác nhận trả xe', 
+          text: 'GỬI YÊU CẦU TRẢ XE', 
           onPress: async () => {
             const result = await dispatch(returnBookingApi(id));
             if (returnBookingApi.fulfilled.match(result)) {
-              Alert.alert('Thành Công 🎉', 'Đã trả xe thành công. Đơn hàng của bạn đã hoàn thành!');
+              Alert.alert('Đã Gửi Yêu Cầu 🎉', 'Gửi yêu cầu trả xe thành công! Vui lòng chờ chủ xe / nhân viên kiểm tra xe và xác nhận hoàn tất.');
               dispatch(fetchBookings());
             } else {
-              const errMsg = (result.payload as string) || 'Không thể thực hiện trả xe lúc này.';
+              const errMsg = (result.payload as string) || 'Không thể gửi yêu cầu trả xe lúc này.';
               Alert.alert('Lỗi', errMsg);
             }
           } 
@@ -135,8 +135,15 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ setActiveTab }) 
     setFeedbackVisible(true);
   };
 
-  const handleFeedbackSubmit = (id: string, rating: number, content: string) => {
-    dispatch(submitFeedback({ id, rating, content }));
+  const handleFeedbackSubmit = async (id: string, rating: number, content: string) => {
+    const result = await dispatch(submitFeedback({ id, rating, content }));
+    if (submitFeedback.fulfilled.match(result)) {
+      Alert.alert('Cảm Ơn Bạn 🎉', 'Đánh giá của bạn đã được ghi nhận thành công!');
+      dispatch(fetchBookings());
+    } else {
+      const errMsg = (result.payload as string) || 'Không thể gửi đánh giá lúc này.';
+      Alert.alert('Thông báo', errMsg);
+    }
   };
 
   return (

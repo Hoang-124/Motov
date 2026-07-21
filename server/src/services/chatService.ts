@@ -80,7 +80,7 @@ export const createOrGetConversation = async (participantIds: string[], type: 'c
 
     // Populate before emitting so clients receive full conversation data
     await conversation.populate([
-      { path: 'participants', select: 'firstName lastName email username' },
+      { path: 'participants', select: 'firstName lastName email username avatarUrl phoneNumber roles' },
       { path: 'relatedBooking', select: 'bookingCode status pickupDateTime returnDateTime vehicleSnapshot' },
       { path: 'relatedVehicle', select: 'vehicleModel imageUrls licensePlate' },
       { path: 'lastMessage' }

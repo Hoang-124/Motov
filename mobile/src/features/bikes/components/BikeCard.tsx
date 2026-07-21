@@ -9,6 +9,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { Bike } from '../../../types';
 import { COLORS } from '../../../theme/colors';
+import { resolveImageUrl, DEFAULT_BIKE_IMAGE } from '../../../utils/image';
 
 interface BikeCardProps {
   bike: Bike;
@@ -17,13 +18,23 @@ interface BikeCardProps {
 }
 
 export const BikeCard: React.FC<BikeCardProps> = ({ bike, handleOpenBooking, onPress }) => {
+  const [imgSrc, setImgSrc] = React.useState<string>(() => resolveImageUrl(bike.image));
+
+  React.useEffect(() => {
+    setImgSrc(resolveImageUrl(bike.image));
+  }, [bike.image]);
+
   return (
     <TouchableOpacity
       style={styles.bikeListCard}
       activeOpacity={0.8}
       onPress={() => onPress?.(bike)}
     >
-      <Image source={{ uri: bike.image }} style={styles.bikeListImage} />
+      <Image
+        source={{ uri: imgSrc }}
+        style={styles.bikeListImage}
+        onError={() => setImgSrc(DEFAULT_BIKE_IMAGE)}
+      />
       <View style={styles.bikeListInfo}>
         <View>
           <Text style={styles.bikeListName}>{bike.name}</Text>

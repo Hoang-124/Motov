@@ -22,6 +22,10 @@ import { ReturnMotorbikeModal } from '../../../components/ReturnMotorbikeModal';
 import { useLanguage } from '../../../hooks/useLanguage';
 
 import { BookingCard } from '../../bookings/components/BookingCard';
+import { apiFetch } from '../../../utils/api';
+import { Image } from 'react-native';
+import { IdentityRequestsScreen } from './IdentityRequestsScreen';
+import { OwnerRequestsScreen } from './OwnerRequestsScreen';
 
 export const StaffBookingsScreen: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -29,7 +33,7 @@ export const StaffBookingsScreen: React.FC = () => {
   const bookingsState = useAppSelector(state => state.bookings.bookings);
   const ownerRequests = useAppSelector(state => state.bookings.ownerRequests);
 
-  const [activeTab, setActiveTab] = useState<'bookings' | 'ownerRequests'>('bookings');
+  const [activeTab, setActiveTab] = useState<'bookings' | 'ekyc' | 'ownerRequests'>('bookings');
 
   useEffect(() => {
     dispatch(fetchBookings());
@@ -118,7 +122,16 @@ export const StaffBookingsScreen: React.FC = () => {
           onPress={() => setActiveTab('bookings')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'bookings' && styles.tabBtnTextActive]}>
-            Đơn đặt xe ({bookingsState.length})
+            Đơn xe
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'ekyc' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('ekyc')}
+        >
+          <Text style={[styles.tabBtnText, activeTab === 'ekyc' && styles.tabBtnTextActive]}>
+            Duyệt eKYC
           </Text>
         </TouchableOpacity>
 
@@ -127,7 +140,7 @@ export const StaffBookingsScreen: React.FC = () => {
           onPress={() => setActiveTab('ownerRequests')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'ownerRequests' && styles.tabBtnTextActive]}>
-            Duyệt chủ xe ({ownerRequests.length})
+            Duyệt chủ xe
           </Text>
         </TouchableOpacity>
       </View>
@@ -204,53 +217,14 @@ export const StaffBookingsScreen: React.FC = () => {
           </View>
         )}
 
-        {/* --- TAB 2: OWNER REQUESTS --- */}
+        {/* --- TAB 2: EKYC --- */}
+        {activeTab === 'ekyc' && (
+          <IdentityRequestsScreen />
+        )}
+
+        {/* --- TAB 3: OWNER REQUESTS --- */}
         {activeTab === 'ownerRequests' && (
-          <View style={styles.contentSection}>
-            <Text style={styles.sectionTitle}>Đăng ký chờ duyệt ({ownerRequests.length})</Text>
-            <View style={styles.listContainer}>
-              {ownerRequests.length > 0 ? (
-                ownerRequests.map(r => (
-                  <View key={r.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                      <Text style={styles.bikeName}>{r.name}</Text>
-                      <View style={[styles.statusBadge, styles.badgePending]}>
-                        <Text style={[styles.statusBadgeText, { color: COLORS.warning }]}>
-                          Đang Chờ
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.cardBody}>
-                      <Text style={styles.infoText}>Tài khoản: <Text style={styles.whiteText}>{r.username}</Text></Text>
-                      <Text style={styles.infoText}>Email: <Text style={styles.whiteText}>{r.email}</Text></Text>
-                      <Text style={styles.infoText}>SĐT liên hệ: <Text style={styles.whiteText}>{r.phoneNumber || 'Chưa cung cấp'}</Text></Text>
-                    </View>
-
-                    <View style={styles.cardActions}>
-                      <TouchableOpacity
-                        style={styles.btnReject}
-                        onPress={() => handleRejectOwner(r.id, r.name)}
-                      >
-                        <Text style={styles.btnRejectText}>Từ chối</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.btnApprove}
-                        onPress={() => handleApproveOwner(r.id, r.name)}
-                      >
-                        <Text style={styles.btnApproveText}>Duyệt đối tác</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))
-              ) : (
-                <View style={styles.emptyCard}>
-                  <Feather name="user-check" size={32} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
-                  <Text style={styles.emptyText}>Tuyệt vời! Không có đối tác chủ xe nào đang chờ duyệt.</Text>
-                </View>
-              )}
-            </View>
-          </View>
+          <OwnerRequestsScreen />
         )}
       </ScrollView>
 

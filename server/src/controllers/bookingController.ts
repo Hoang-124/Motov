@@ -1160,14 +1160,14 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: `Số Odometer khi trả (${endOdoVal} km) không thể nhỏ hơn số Odometer lúc nhận xe (${startOdoVal} km).` });
     }
 
-    const returnedTime = actualReturnTime ? new Date(actualReturnTime) : new Date();
+    let returnedTime = actualReturnTime ? new Date(actualReturnTime) : new Date();
     
     if (isNaN(returnedTime.getTime())) {
       return res.status(400).json({ success: false, message: 'Định dạng thời gian trả xe (actualReturnTime) không hợp lệ.' });
     }
 
     if (returnedTime < new Date(booking.pickupDateTime)) {
-      return res.status(400).json({ success: false, message: 'Thời gian trả xe không thể trước thời gian lấy xe.' });
+      returnedTime = new Date(booking.pickupDateTime);
     }
 
     const scheduledReturnTime = new Date(booking.returnDateTime);
@@ -1297,6 +1297,80 @@ export const returnMotorbike = async (req: AuthRequest, res: Response) => {
 
   } catch (error: any) {
     console.error('Lỗi khi trả xe:', error);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+  }
+};
+
+// ============================================
+// 10B. REQUEST RETURN MOTORBIKE (CUSTOMER)
+// ============================================
+/**
+ * Customer submits return request for bike
+ * @route POST /api/bookings/:id/request-return
+ */
+export const requestReturnMotorbike = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { returnReason } = req.body;
+    const userId = req.user?.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'ID booking không hợp lệ' });
+    }
+
+    const booking = await Booking.findById(id).populate('vehicleId');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy booking' });
+    }
+
+    // Verify ownership or staff
+    const isBookingOwner = booking.userId.toString() === userId;
+    const isAdminOrStaff = req.user?.roles?.includes('Admin') || req.user?.roles?.includes('Staff');
+
+    if (!isBookingOwner && !isAdminOrStaff) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền gửi yêu cầu trả xe cho đơn này' });
+    }
+
+    if (booking.status !== 'Ongoing' && booking.status !== 'Confirmed' && (booking as any).status !== 'Rented') {
+      return res.status(400).json({ success: false, message: `Không thể gửi yêu cầu trả xe cho đơn đang ở trạng thái ${booking.status}` });
+    }
+
+    booking.status = 'Returning';
+    if (returnReason) {
+      booking.returnReason = returnReason;
+    }
+    await booking.save();
+
+    // Gửi thông báo cho Admin, Staff & Owner
+    try {
+      const vehicle = booking.vehicleId as any;
+      const staffList = await User.find({
+        roles: { $in: ['Admin', 'Staff', 'Owner'] },
+        status: 'Active'
+      }, '_id');
+
+      const notiPromises = staffList.map(st => {
+        return Notification.create({
+          userId: st._id,
+          title: `Yêu cầu trả xe mới (${booking.bookingCode}) 🛵`,
+          message: `Khách hàng đã gửi yêu cầu trả xe ${vehicle?.vehicleModel || vehicle?.name || 'xe máy'} (${booking.bookingCode}). Vui lòng kiểm tra xe và xác nhận thu hồi.`,
+          type: 'System',
+          relatedId: booking._id,
+          createdAt: new Date()
+        });
+      });
+      await Promise.all(notiPromises);
+    } catch (notiError) {
+      console.error('Lỗi khi gửi thông báo yêu cầu trả xe:', notiError);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Gửi yêu cầu trả xe thành công. Vui lòng chờ nhân viên / chủ xe kiểm tra và xác nhận thu hồi xe.',
+      booking: formatBookingResponse(booking)
+    });
+  } catch (error: any) {
+    console.error('Lỗi khi gửi yêu cầu trả xe:', error);
     res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
   }
 };
@@ -1477,40 +1551,52 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
     return res.status(403).json({ success: false, message: 'Không có quyền thực hiện hành động này' });
   }
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  let session: any = null;
+  try {
+    session = await mongoose.startSession();
+    session.startTransaction();
+  } catch (err) {
+    session = null;
+  }
+
+  const abortSession = async () => {
+    if (session) {
+      try {
+        await session.abortTransaction();
+        session.endSession();
+      } catch (e) {}
+    }
+  };
 
   try {
     const { id } = req.params;
-    const { notes, pickupOdometer, handoverImages, equipment } = req.body; // Ghi chú tình trạng xe lúc bàn giao nếu có
+    const { notes, pickupOdometer, handoverImages, equipment } = req.body;
 
-    // 1. Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      await session.abortTransaction();
-      session.endSession();
+      await abortSession();
       return res.status(400).json({ success: false, message: 'ID booking không hợp lệ' });
     }
 
-    // 2. Tìm đơn hàng
-    const booking = await Booking.findById(id).session(session);
+    const bookingQuery = Booking.findById(id);
+    if (session) bookingQuery.session(session);
+    const booking = await bookingQuery;
+
     if (!booking) {
-      await session.abortTransaction();
-      session.endSession();
+      await abortSession();
       return res.status(404).json({ success: false, message: 'Đơn hàng không tồn tại' });
     }
 
-    // Tìm xe tương ứng để lấy Odometer hiện tại
-    const vehicle = await Vehicle.findById(booking.vehicleId).session(session);
+    const vehicleQuery = Vehicle.findById(booking.vehicleId);
+    if (session) vehicleQuery.session(session);
+    const vehicle = await vehicleQuery;
+
     if (!vehicle) {
-      await session.abortTransaction();
-      session.endSession();
+      await abortSession();
       return res.status(404).json({ success: false, message: 'Xe liên quan đến đơn hàng không tồn tại' });
     }
 
-    // 3. Kiểm tra điều kiện: Đơn hàng phải ở trạng thái 'Confirmed' thì mới được pickup
     if (booking.status !== 'Confirmed') {
-      await session.abortTransaction();
-      session.endSession();
+      await abortSession();
       return res.status(400).json({
         success: false,
         message: `Không thể xác nhận nhận xe. Đơn hàng phải ở trạng thái "Đã xác nhận" (Trạng thái hiện tại: ${booking.status})`
@@ -1518,31 +1604,26 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
     }
 
     if (pickupOdometer === undefined || pickupOdometer === null || pickupOdometer === '') {
-      await session.abortTransaction();
-      session.endSession();
+      await abortSession();
       return res.status(400).json({ success: false, message: 'Vui lòng nhập số Odometer' });
     }
     
     if (pickupOdometer < vehicle.odometer) {
-      await session.abortTransaction();
-      session.endSession();
+      await abortSession();
       return res.status(400).json({ success: false, message: 'Odometer không hợp lệ' });
     }
 
     if (!handoverImages || !Array.isArray(handoverImages) || handoverImages.length !== 4) {
-      await session.abortTransaction();
-      session.endSession();
+      await abortSession();
       return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đủ 4 ảnh bàn giao' });
     }
     
     const requiredEquipments = ['Mũ bảo hiểm 1', 'Mũ bảo hiểm 2', 'Áo mưa', 'Giấy tờ xe', 'Chìa khóa', 'Bảo hiểm'];
     if (!equipment || !Array.isArray(equipment) || equipment.length !== 6 || !requiredEquipments.every(item => equipment.includes(item))) {
-      await session.abortTransaction();
-      session.endSession();
+      await abortSession();
       return res.status(400).json({ success: false, message: 'Vui lòng xác nhận đủ 6 phụ kiện' });
     }
 
-    // 4. Cập nhật trạng thái Đơn hàng sang 'Ongoing' (Đang đi)
     booking.status = 'Ongoing'; 
     booking.startOdometer = pickupOdometer; 
     vehicle.odometer = pickupOdometer;
@@ -1557,27 +1638,38 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
         createdAt: new Date()
       });
     }
-    const updatedBooking = await booking.save({ session });
+    const updatedBooking = session ? await booking.save({ session }) : await booking.save();
 
-    // 5. Cập nhật trạng thái Xe sang 'Rented' (Đang cho thuê) để đồng bộ hệ thống
     vehicle.status = 'Rented';
-    await vehicle.save({ session });
+    if (session) {
+      await vehicle.save({ session });
+    } else {
+      await vehicle.save();
+    }
 
-    // 6. Tạo thông báo in-app cho Khách hàng biết xe đã được bàn giao
     try {
-      await Notification.create([{
+      const notiData = {
         userId: booking.userId,
         title: 'Chuyến đi của bạn đã bắt đầu',
         message: `Nhân viên đã xác nhận bàn giao xe cho đơn hàng ${booking.bookingCode}. Chúc bạn có một chuyến đi an toàn!`,
         type: 'BookingConfirmed',
         relatedId: booking._id
-      }], { session });
+      };
+      if (session) {
+        await Notification.create([notiData], { session });
+      } else {
+        await Notification.create(notiData);
+      }
     } catch (notiError) {
       console.error('Lỗi tạo thông báo khi staff xác nhận pickup:', notiError);
     }
 
-    await session.commitTransaction();
-    session.endSession();
+    if (session) {
+      try {
+        await session.commitTransaction();
+        session.endSession();
+      } catch (e) {}
+    }
 
     res.status(200).json({
       success: true,
@@ -1586,8 +1678,7 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
     });
 
   } catch (error: any) {
-    await session.abortTransaction();
-    session.endSession();
+    await abortSession();
     console.error('Lỗi khi staff xác nhận pickup:', error);
     res.status(500).json({
       success: false,

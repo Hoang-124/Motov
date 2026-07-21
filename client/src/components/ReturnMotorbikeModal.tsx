@@ -47,9 +47,13 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
   // Reset states when opened
   useEffect(() => {
     if (isOpen) {
-      // Set default to current time in local format for datetime-local input
+      // Set default to current time or pickupDateTime if current time is before pickup
       const now = new Date();
-      const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      let defaultDate = now;
+      if (pickupDateTime && now < new Date(pickupDateTime)) {
+        defaultDate = new Date(pickupDateTime);
+      }
+      const localDateTime = new Date(defaultDate.getTime() - defaultDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
       setActualReturnTime(localDateTime);
       setReturnReason('');
       setEndOdometer(startOdometer ? startOdometer.toString() : '');
@@ -71,7 +75,7 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
       setError(null);
       setSuccess(null);
     }
-  }, [isOpen, setError, setSuccess, startOdometer]);
+  }, [isOpen, setError, setSuccess, startOdometer, pickupDateTime]);
 
   const handlePhotoUpload = (direction: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -91,12 +95,10 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
     e.preventDefault();
     if (!bookingId) return;
 
-    // Lỗi 76: Validate thời gian trả xe không được trước thời gian nhận xe
+    let finalReturnTime = actualReturnTime;
     if (pickupDateTime && new Date(actualReturnTime) < new Date(pickupDateTime)) {
-      const msg = 'Thời gian trả xe không thể trước thời gian nhận xe.';
-      setReturnTimeError(msg);
-      setError(msg);
-      return;
+      const pDate = new Date(pickupDateTime);
+      finalReturnTime = new Date(pDate.getTime() - pDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     }
     setReturnTimeError(null);
 
@@ -154,7 +156,7 @@ export const ReturnMotorbikeModal: React.FC<ReturnMotorbikeModalProps> = ({
       };
       localStorage.setItem(`return_${bookingId}`, JSON.stringify(returnData));
 
-      await executeReturn(bookingId, new Date(actualReturnTime).toISOString(), endOdoVal, returnReason.trim());
+      await executeReturn(bookingId, new Date(finalReturnTime).toISOString(), endOdoVal, returnReason.trim());
       if (onSuccess) {
         onSuccess();
       }

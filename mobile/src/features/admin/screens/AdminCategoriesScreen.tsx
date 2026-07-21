@@ -14,6 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
 import { useAppSelector } from '../../../app/store';
 import { API_BASE_URL } from '../../../constants/api';
+import { apiFetch } from '../../../utils/api';
 
 interface Category {
   _id: string;
@@ -34,15 +35,10 @@ export const AdminCategoriesScreen: React.FC = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/categories`);
+      const res = await apiFetch('/categories');
       const data = await res.json();
       setCategories(data.data || []);
     } catch {
@@ -75,11 +71,10 @@ export const AdminCategoriesScreen: React.FC = () => {
     }
     setFormLoading(true);
     try {
-      const url = editing ? `${API_BASE_URL}/categories/${editing._id}` : `${API_BASE_URL}/categories`;
+      const endpoint = editing ? `/categories/${editing._id}` : '/categories';
       const method = editing ? 'PUT' : 'POST';
-      const res = await fetch(url, {
+      const res = await apiFetch(endpoint, {
         method,
-        headers,
         body: JSON.stringify({ name: name.trim(), description: description.trim() }),
       });
       if (!res.ok) {
@@ -103,7 +98,7 @@ export const AdminCategoriesScreen: React.FC = () => {
         text: 'Xóa', style: 'destructive',
         onPress: async () => {
           try {
-            const res = await fetch(`${API_BASE_URL}/categories/${id}`, { method: 'DELETE', headers });
+            const res = await apiFetch(`/categories/${id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error();
             Alert.alert('Thành Công', 'Đã xóa danh mục!');
             fetchCategories();

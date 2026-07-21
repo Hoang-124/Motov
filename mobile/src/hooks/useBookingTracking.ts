@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAppSelector } from '../app/store';
 import { API_BASE_URL } from '../constants/api';
+import { apiFetch } from '../utils/api';
 
 export interface TrackingEvent {
   status: string;
@@ -17,16 +18,12 @@ export const useBookingTracking = (bookingId: string | null) => {
   const token = useAppSelector((state) => state.user.token);
 
   const fetchTracking = useCallback(async () => {
-    if (!bookingId || !token) return;
+    if (!bookingId) return;
     
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/tracking`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch(`/bookings/${bookingId}/tracking`);
       
       const data = await response.json();
       

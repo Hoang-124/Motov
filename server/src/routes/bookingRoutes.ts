@@ -12,6 +12,7 @@ import {
   confirmBikePickupByStaff,
   getBookingTracking,
   returnMotorbike,
+  requestReturnMotorbike,
   createVNPayUrl,
   processVNPayIPN,
   replyToReturnReason
@@ -28,6 +29,16 @@ router.post('/vnpay-ipn', processVNPayIPN as any);
 
 // All other routes require authentication
 router.use(authMiddleware as any);
+
+// Customer Return Request
+router.post('/:id/request-return', requestReturnMotorbike as any);
+router.put('/:id/request-return', requestReturnMotorbike as any);
+
+/**
+ * PUT /api/bookings/:id/return
+ * Staff/Admin/Owner confirm return & calculate fees
+ */
+router.put('/:id/return', restrictTo('Admin', 'Staff', 'Owner', 'Customer') as any, returnMotorbike as any);
 
 // ============================================
 // Customer Routes

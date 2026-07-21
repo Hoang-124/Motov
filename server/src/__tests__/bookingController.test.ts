@@ -370,7 +370,7 @@ describe('returnMotorbike()', () => {
     expect(res._body.message).toContain('không hợp lệ');
   });
 
-  it('should return 400 if actualReturnTime is before pickup time', async () => {
+  it('should auto-adjust return time to pickup time if returned early', async () => {
     const pickupDate = new Date(Date.now() - 86400000); // Yesterday
     const booking = await Booking.create({
       bookingCode: 'BK-TEST2',
@@ -393,8 +393,8 @@ describe('returnMotorbike()', () => {
     const res = createMockRes();
     await returnMotorbike(req, res);
     
-    expect(res._status).toBe(400);
-    expect(res._body.message).toContain('trước thời gian lấy xe');
+    expect(res._status).toBe(200);
+    expect(res._body.success).toBe(true);
   });
 
   it('should process return successfully without late fee if returned on time', async () => {

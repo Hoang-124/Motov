@@ -21,6 +21,7 @@ import { useAppDispatch, useAppSelector } from '../../../app/store';
 import { createBookingApi } from '../bookingsSlice';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { API_BASE_URL } from '../../../constants/api';
+import { apiFetch } from '../../../utils/api';
 import { WebView } from 'react-native-webview';
 
 interface BookingModalProps {
@@ -109,9 +110,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       const fetchProfile = async () => {
         if (!token) return;
         try {
-          const res = await fetch(`${API_BASE_URL}/auth/me`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const res = await apiFetch('/auth/me');
           const data = await res.json();
           if (data.success && data.user) {
             const u = data.user;
@@ -171,12 +170,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     setValidatingPromo(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/promotions/validate`, {
+      const response = await apiFetch('/promotions/validate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           promoCode: promoCode.trim(),
           totalAmount: totalAmountBeforeDiscount
@@ -278,12 +273,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       if (paymentMethod === 'Banking') {
         const createdBooking = result.payload as any;
         try {
-          const resUrl = await fetch(`${API_BASE_URL}/bookings/${createdBooking.id}/vnpay-url?origin=mobile`, {
+          const resUrl = await apiFetch(`/bookings/${createdBooking.id}/vnpay-url?origin=mobile`, {
             method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
           });
           const urlData = await resUrl.json();
           if (urlData.success && urlData.paymentUrl) {

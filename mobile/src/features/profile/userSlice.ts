@@ -4,6 +4,7 @@ export type UserRole = 'guest' | 'customer' | 'owner' | 'staff' | 'admin';
 
 export interface UserState {
   token: string | null;
+  refreshToken: string | null;
   id: string | null;
   username: string | null;
   name: string;
@@ -32,6 +33,7 @@ export const getMemberTag = (role: UserRole): string => {
 
 const initialState: UserState = {
   token: null,
+  refreshToken: null,
   id: null,
   username: null,
   name: 'Khách vãng lai',

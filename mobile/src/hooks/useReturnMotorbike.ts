@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useAppSelector, useAppDispatch } from '../app/store';
 import { API_BASE_URL } from '../constants/api';
 import { returnBookingWithFees } from '../features/bookings/bookingsSlice';
+import { apiFetch } from '../utils/api';
 
 export const useReturnMotorbike = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,23 +19,14 @@ export const useReturnMotorbike = () => {
   };
 
   const executeReturn = useCallback(async (bookingId: string, actualReturnTime: string) => {
-    if (!token) {
-      setError('User not authenticated');
-      return { success: false };
-    }
-
     setIsSubmitting(true);
     setError(null);
 
     const sanitizedTime = sanitizeInput(actualReturnTime);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/return`, {
+      const response = await apiFetch(`/bookings/${bookingId}/return`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ actualReturnTime: sanitizedTime }),
       });
       

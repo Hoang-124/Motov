@@ -14,6 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
 import { useAppSelector } from '../../../app/store';
 import { API_BASE_URL } from '../../../constants/api';
+import { apiFetch } from '../../../utils/api';
 
 interface InventoryItem {
   _id?: string;
@@ -52,18 +53,13 @@ export const InventoryScreen: React.FC = () => {
   const [stockAction, setStockAction] = useState<'in' | 'out'>('in');
   const [stockDelta, setStockDelta] = useState('1');
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
   const fetchItems = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (lowStockOnly) params.set('lowStock', 'true');
-      const res = await fetch(`${API_BASE_URL}/inventory?${params}`, { headers });
+      const res = await apiFetch(`/inventory?${params}`);
       const data = await res.json();
       setItems(data.data || []);
     } catch {
@@ -97,9 +93,9 @@ export const InventoryScreen: React.FC = () => {
     setFormLoading(true);
     try {
       const body = { name: name.trim(), sku: sku.trim().toUpperCase(), quantity: Number(quantity) || 0, minQuantity: Number(minQuantity) || 5, price: Number(price) || 0, location: location.trim(), description: description.trim() };
-      const url = editing?._id ? `${API_BASE_URL}/inventory/${editing._id}` : `${API_BASE_URL}/inventory`;
+      const endpoint = editing?._id ? `/inventory/${editing._id}` : '/inventory';
       const method = editing?._id ? 'PUT' : 'POST';
-      const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
+      const res = await apiFetch(endpoint, { method, body: JSON.stringify(body) });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Lỗi'); }
       Alert.alert('Thành Công', editing ? 'Đã cập nhật!' : 'Đã thêm mới!');
       setFormVisible(false);
@@ -113,7 +109,7 @@ export const InventoryScreen: React.FC = () => {
       { text: 'Hủy', style: 'cancel' },
       { text: 'Xóa', style: 'destructive', onPress: async () => {
         try {
-          await fetch(`${API_BASE_URL}/inventory/${item._id}`, { method: 'DELETE', headers });
+          await apiFetch(`/inventory/${item._id}`, { method: 'DELETE' });
           Alert.alert('Thành Công', 'Đã xóa!');
           fetchItems();
         } catch { Alert.alert('Lỗi', 'Không thể xóa.'); }
@@ -131,8 +127,8 @@ export const InventoryScreen: React.FC = () => {
     const delta = stockAction === 'in' ? Number(stockDelta) : -Number(stockDelta);
     if (isNaN(delta) || Number(stockDelta) <= 0) { Alert.alert('Lỗi', 'Số lượng phải > 0.'); return; }
     try {
-      const res = await fetch(`${API_BASE_URL}/inventory/${stockItem._id}/stock`, {
-        method: 'PATCH', headers, body: JSON.stringify({ delta }),
+      const res = await apiFetch(`/inventory/${stockItem._id}/stock`, {
+        method: 'PATCH', body: JSON.stringify({ delta }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Lỗi'); }
       Alert.alert('Thành Công', `${stockAction === 'in' ? 'Nhập' : 'Xuất'} kho thành công!`);

@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { Booking, OwnerRequest } from '../../types';
 import { API_BASE_URL } from '../../constants/api';
+import { apiFetch } from '../../utils/api';
 
 interface BookingsState {
   bookings: Booking[];
@@ -21,53 +22,57 @@ const getStatusLabel = (status: string) => {
   switch (status) {
     case 'Pending': return 'Chờ duyệt';
     case 'Confirmed': return 'Đã duyệt';
-    case 'Rented': return 'Đang thuê';
+    case 'Rented': case 'Ongoing': return 'Đang thuê';
+    case 'Returning': return 'Chờ duyệt trả xe';
     case 'Completed': return 'Hoàn thành';
     case 'Cancelled': return 'Đã hủy';
     default: return status;
   }
 };
 
-const normaliseBooking = (b: any): Booking => ({
-  id: b._id || b.id,
-  bookingCode: b.bookingCode || '',
-  bikeId: b.vehicleId || '',
-  bikeName: b.vehicleSnapshot?.name || b.vehicleModel || '',
-  image: b.vehicleSnapshot?.image || '',
-  price: String(b.vehicleSnapshot?.rentalPrice || b.totalAmount || ''),
-  date: b.pickupDateTime ? new Date(b.pickupDateTime).toLocaleDateString('vi-VN') : '',
-  location: b.pickupLocation?.address || '',
-  fullName: b.fullName || '',
-  phone: b.phone || '',
-  status: b.status || 'Pending',
-  statusLabel: getStatusLabel(b.status || 'Pending'),
-  createdAt: b.createdAt ? new Date(b.createdAt).toLocaleDateString('vi-VN') : '',
-  pickupDateTime: b.pickupDateTime,
-  returnDateTime: b.returnDateTime,
-  totalAmount: b.totalAmount,
-  rentalDays: b.rentalDays,
-  depositAmount: b.depositAmount,
-  remainingAmount: b.remainingAmount,
-  paymentMethod: b.paymentMethod,
-  deliveryMethod: b.deliveryMethod,
-  isPaid: b.isPaid,
-  surcharges: b.surcharges || [],
-});
+import { resolveImageUrl } from '../../utils/image';
+
+const normaliseBooking = (b: any): Booking => {
+  const bikeName = b.vehicleSnapshot?.name || b.vehicleModel || b.vehicleId?.vehicleModel || '';
+  const rawImage = b.vehicleSnapshot?.image || b.vehicleId?.imageUrls?.[0] || b.vehicleId?.image || b.image;
+
+  return {
+    id: b._id || b.id,
+    bookingCode: b.bookingCode || '',
+    bikeId: b.vehicleId || '',
+    bikeName: bikeName,
+    image: resolveImageUrl(rawImage, bikeName),
+    price: String(b.vehicleSnapshot?.rentalPrice || b.totalAmount || ''),
+    date: b.pickupDateTime ? new Date(b.pickupDateTime).toLocaleDateString('vi-VN') : '',
+    location: b.pickupLocation?.address || '',
+    fullName: b.fullName || '',
+    phone: b.phone || '',
+    status: b.status || 'Pending',
+    statusLabel: getStatusLabel(b.status || 'Pending'),
+    createdAt: b.createdAt ? new Date(b.createdAt).toLocaleDateString('vi-VN') : '',
+    pickupDateTime: b.pickupDateTime,
+    returnDateTime: b.returnDateTime,
+    totalAmount: b.totalAmount,
+    rentalDays: b.rentalDays,
+    depositAmount: b.depositAmount,
+    remainingAmount: b.remainingAmount,
+    paymentMethod: b.paymentMethod,
+    deliveryMethod: b.deliveryMethod,
+    isPaid: b.isPaid,
+    surcharges: b.surcharges || [],
+  };
+};
 
 export const fetchBookings = createAsyncThunk('bookings/fetchBookings', async (_, { getState, rejectWithValue }) => {
   try {
     const state: any = getState();
-    const token = state.user?.token;
     const role = state.user?.role;
-    if (!token) return rejectWithValue('No token found');
 
     const endpoint = (role === 'staff' || role === 'admin') 
-      ? `${API_BASE_URL}/bookings` 
-      : `${API_BASE_URL}/bookings/my-bookings`;
+      ? '/bookings' 
+      : '/bookings/my-bookings';
 
-    const res = await fetch(endpoint, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await apiFetch(endpoint);
     const data = await res.json();
     if (!data.success) return rejectWithValue(data.message);
     return (data.bookings as any[]).map(normaliseBooking);
@@ -76,15 +81,9 @@ export const fetchBookings = createAsyncThunk('bookings/fetchBookings', async (_
   }
 });
 
-export const fetchOwnerRequests = createAsyncThunk('bookings/fetchOwnerRequests', async (_, { getState, rejectWithValue }) => {
+export const fetchOwnerRequests = createAsyncThunk('bookings/fetchOwnerRequests', async (_, { rejectWithValue }) => {
   try {
-    const state: any = getState();
-    const token = state.user?.token;
-    if (!token) return rejectWithValue('No token found');
-
-    const res = await fetch(`${API_BASE_URL}/auth/owner-requests`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await apiFetch('/auth/owner-requests');
     const data = await res.json();
     if (!data.success) return rejectWithValue(data.message);
     return data.requests as OwnerRequest[];
@@ -93,13 +92,10 @@ export const fetchOwnerRequests = createAsyncThunk('bookings/fetchOwnerRequests'
   }
 });
 
-export const approveOwnerRequest = createAsyncThunk('bookings/approveOwnerRequest', async (id: string, { getState, rejectWithValue }) => {
+export const approveOwnerRequest = createAsyncThunk('bookings/approveOwnerRequest', async (id: string, { rejectWithValue }) => {
   try {
-    const state: any = getState();
-    const token = state.user?.token;
-    const res = await fetch(`${API_BASE_URL}/auth/owner-requests/${id}/approve`, {
+    const res = await apiFetch(`/auth/owner-requests/${id}/approve`, {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
     if (!data.success) return rejectWithValue(data.message);
@@ -109,13 +105,10 @@ export const approveOwnerRequest = createAsyncThunk('bookings/approveOwnerReques
   }
 });
 
-export const rejectOwnerRequest = createAsyncThunk('bookings/rejectOwnerRequest', async (id: string, { getState, rejectWithValue }) => {
+export const rejectOwnerRequest = createAsyncThunk('bookings/rejectOwnerRequest', async (id: string, { rejectWithValue }) => {
   try {
-    const state: any = getState();
-    const token = state.user?.token;
-    const res = await fetch(`${API_BASE_URL}/auth/owner-requests/${id}/reject`, {
+    const res = await apiFetch(`/auth/owner-requests/${id}/reject`, {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
     if (!data.success) return rejectWithValue(data.message);
@@ -125,16 +118,10 @@ export const rejectOwnerRequest = createAsyncThunk('bookings/rejectOwnerRequest'
   }
 });
 
-export const updateBookingStatus = createAsyncThunk('bookings/updateBookingStatus', async ({ id, status, notes }: { id: string; status: string; notes?: string; statusLabel?: string }, { getState, rejectWithValue }) => {
+export const updateBookingStatus = createAsyncThunk('bookings/updateBookingStatus', async ({ id, status, notes }: { id: string; status: string; notes?: string; statusLabel?: string }, { rejectWithValue }) => {
   try {
-    const state: any = getState();
-    const token = state.user?.token;
-    const res = await fetch(`${API_BASE_URL}/bookings/${id}`, {
+    const res = await apiFetch(`/bookings/${id}`, {
       method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}` 
-      },
       body: JSON.stringify({ status, notes })
     });
     const data = await res.json();
@@ -158,19 +145,11 @@ export const createBookingApi = createAsyncThunk(
       paymentMethod?: 'Cash' | 'Banking';
       deliveryMethod?: 'StorePickup' | 'HomeDelivery';
     },
-    { getState, rejectWithValue }
+    { rejectWithValue }
   ) => {
     try {
-      const state: any = getState();
-      const token = state.user?.token;
-      if (!token) return rejectWithValue('Chưa đăng nhập');
-
-      const res = await fetch(`${API_BASE_URL}/bookings`, {
+      const res = await apiFetch('/bookings', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
@@ -182,17 +161,10 @@ export const createBookingApi = createAsyncThunk(
   }
 );
 
-export const cancelBooking = createAsyncThunk('bookings/cancelBooking', async (id: string, { getState, rejectWithValue }) => {
+export const cancelBooking = createAsyncThunk('bookings/cancelBooking', async (id: string, { rejectWithValue }) => {
   try {
-    const state: any = getState();
-    const token = state.user?.token;
-    // Tạm thời gọi POST /cancel nếu backend hỗ trợ, nếu không thì dùng update status.
-    const res = await fetch(`${API_BASE_URL}/bookings/${id}/cancel`, {
+    const res = await apiFetch(`/bookings/${id}/cancel`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}` 
-      },
       body: JSON.stringify({ cancelReason: 'Người dùng yêu cầu hủy' })
     });
     const data = await res.json();
@@ -203,19 +175,11 @@ export const cancelBooking = createAsyncThunk('bookings/cancelBooking', async (i
   }
 });
 
-export const returnBookingApi = createAsyncThunk('bookings/returnBooking', async (id: string, { getState, rejectWithValue }) => {
+export const returnBookingApi = createAsyncThunk('bookings/returnBooking', async (id: string, { rejectWithValue }) => {
   try {
-    const state: any = getState();
-    const token = state.user?.token;
-    if (!token) return rejectWithValue('Chưa đăng nhập');
-
-    const res = await fetch(`${API_BASE_URL}/bookings/${id}/return`, {
-      method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}` 
-      },
-      body: JSON.stringify({ returnedAt: new Date().toISOString() })
+    const res = await apiFetch(`/bookings/${id}/request-return`, {
+      method: 'POST',
+      body: JSON.stringify({ returnReason: 'Khách hàng gửi yêu cầu trả xe' })
     });
     const data = await res.json();
     if (!data.success) return rejectWithValue(data.message);
@@ -225,6 +189,27 @@ export const returnBookingApi = createAsyncThunk('bookings/returnBooking', async
   }
 });
 
+export const submitFeedback = createAsyncThunk(
+  'bookings/submitFeedback',
+  async ({ id, rating, content }: { id: string; rating: number; content: string }, { rejectWithValue }) => {
+    try {
+      const res = await apiFetch('/feedbacks', {
+        method: 'POST',
+        body: JSON.stringify({
+          bookingId: id,
+          rating,
+          content: content.trim() || 'Chuyến đi tuyệt vời! Xe rất tốt.'
+        })
+      });
+      const data = await res.json();
+      if (!data.success) return rejectWithValue(data.message);
+      return { id, rating, content };
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const bookingsSlice = createSlice({
   name: 'bookings',
   initialState,
@@ -233,14 +218,6 @@ const bookingsSlice = createSlice({
       state.bookings = [action.payload, ...state.bookings];
     },
 
-    submitFeedback(state, action: PayloadAction<{ id: string; rating: number; content: string }>) {
-      const { id, rating, content } = action.payload;
-      state.bookings = state.bookings.map(b => 
-        b.id === id 
-          ? { ...b, status: 'Đã đánh giá', statusLabel: 'Đã đánh giá', feedback: { rating, content } } 
-          : b
-      );
-    },
     returnBookingWithFees(state, action: PayloadAction<{ id: string; lateFee: number; returnTime: string }>) {
       const { id, lateFee } = action.payload;
       state.bookings = state.bookings.map(b => {
@@ -277,6 +254,14 @@ const bookingsSlice = createSlice({
       .addCase(fetchBookings.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      .addCase(submitFeedback.fulfilled, (state, action) => {
+        const { id, rating, content } = action.payload;
+        state.bookings = state.bookings.map(b => 
+          b.id === id 
+            ? { ...b, status: 'Đã đánh giá', statusLabel: 'Đã đánh giá', feedback: { rating, content } } 
+            : b
+        );
       })
       .addCase(fetchOwnerRequests.pending, (state) => {
         state.loading = true;
@@ -346,7 +331,6 @@ const bookingsSlice = createSlice({
 
 export const { 
   addBooking, 
-  submitFeedback, 
   returnBookingWithFees
 } = bookingsSlice.actions;
 

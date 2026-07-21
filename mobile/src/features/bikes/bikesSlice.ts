@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { Bike } from '../../types';
 import { API_BASE_URL } from '../../constants/api';
+import { apiFetch } from '../../utils/api';
 
 // Maps a raw vehicle document from /api/vehicles (MongoDB) to the Bike interface.
 // Critically, _id (ObjectId string) is mapped to Bike.id so booking API receives a valid ObjectId.
@@ -41,7 +42,7 @@ export const fetchBikes = createAsyncThunk('bikes/fetchBikes', async (_, { rejec
   try {
     // Use /api/vehicles which returns real MongoDB documents with ObjectId _id fields.
     // The legacy /api/bikes endpoint returns hardcoded slugs which break the booking API.
-    const response = await fetch(`${API_BASE_URL}/vehicles`);
+    const response = await apiFetch('/vehicles');
     const data = await response.json();
     if (data && data.success === true && Array.isArray(data.data)) {
       return data.data.map(mapVehicleToBike);

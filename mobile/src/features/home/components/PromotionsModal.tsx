@@ -14,6 +14,7 @@ import {
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
 import { API_BASE_URL } from '../../../constants/api';
+import { apiFetch } from '../../../utils/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -49,7 +50,7 @@ export const PromotionsModal: React.FC<PromotionsModalProps> = ({ visible, onClo
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${API_BASE_URL}/promotions`);
+      const res = await apiFetch('/promotions');
       const data = await res.json();
       if (res.ok && data.success) {
         setPromotions(data.promotions || []);

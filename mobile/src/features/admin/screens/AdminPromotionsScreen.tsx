@@ -15,6 +15,7 @@ import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
 import { useAppSelector } from '../../../app/store';
 import { API_BASE_URL } from '../../../constants/api';
+import { apiFetch } from '../../../utils/api';
 
 interface Promotion {
   _id: string;
@@ -57,15 +58,10 @@ export const AdminPromotionsScreen: React.FC = () => {
   const [maxDiscountAmount, setMaxDiscountAmount] = useState('');
   const [usageLimit, setUsageLimit] = useState('');
 
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
   const fetchPromotions = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/promotions/admin`, { headers });
+      const res = await apiFetch('/promotions/admin');
       const data = await res.json();
       setPromotions(data.promotions || []);
       setError(null);
@@ -131,12 +127,15 @@ export const AdminPromotionsScreen: React.FC = () => {
       if (maxDiscountAmount) body.maxDiscountAmount = Number(maxDiscountAmount);
       if (usageLimit) body.usageLimit = Number(usageLimit);
 
-      const url = editingPromo
-        ? `${API_BASE_URL}/promotions/${editingPromo._id}`
-        : `${API_BASE_URL}/promotions`;
+      const endpoint = editingPromo
+        ? `/promotions/${editingPromo._id}`
+        : '/promotions';
       const method = editingPromo ? 'PUT' : 'POST';
 
-      const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
+      const res = await apiFetch(endpoint, {
+        method,
+        body: JSON.stringify(body)
+      });
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || 'Lỗi khi lưu');
@@ -159,7 +158,7 @@ export const AdminPromotionsScreen: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await fetch(`${API_BASE_URL}/promotions/${id}`, { method: 'DELETE', headers });
+            await apiFetch(`/promotions/${id}`, { method: 'DELETE' });
             Alert.alert('Thành Công', 'Đã xóa khuyến mãi!');
             fetchPromotions();
           } catch {
@@ -172,9 +171,8 @@ export const AdminPromotionsScreen: React.FC = () => {
 
   const handleToggle = async (p: Promotion) => {
     try {
-      await fetch(`${API_BASE_URL}/promotions/${p._id}`, {
+      await apiFetch(`/promotions/${p._id}`, {
         method: 'PUT',
-        headers,
         body: JSON.stringify({ isActive: !p.isActive }),
       });
       setPromotions(prev => prev.map(x => x._id === p._id ? { ...x, isActive: !x.isActive } : x));

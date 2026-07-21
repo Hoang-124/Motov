@@ -12,6 +12,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
 import { useAppSelector } from '../../../app/store';
 import { API_BASE_URL } from '../../../constants/api';
+import { apiFetch } from '../../../utils/api';
 
 interface ScheduleBooking {
   _id: string;
@@ -30,15 +31,10 @@ export const StaffScheduleScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'pickup' | 'return'>('pickup');
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/bookings`, { headers });
+      const res = await apiFetch('/bookings');
       const data = await res.json();
       if (data.success) setBookings(data.data || []);
     } catch {
@@ -65,7 +61,7 @@ export const StaffScheduleScreen: React.FC = () => {
         text: 'Xác nhận',
         onPress: async () => {
           try {
-            const res = await fetch(`${API_BASE_URL}/bookings/staff/bookings/${id}/pickup`, { method: 'PUT', headers });
+            const res = await apiFetch(`/bookings/staff/bookings/${id}/pickup`, { method: 'PUT' });
             const data = await res.json();
             if (data.success) {
               Alert.alert('Thành Công', 'Đã gán trạng thái xe thành Đang thuê!');

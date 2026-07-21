@@ -9,6 +9,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { Booking } from '../../../types';
 import { COLORS } from '../../../theme/colors';
+import { resolveImageUrl, DEFAULT_BIKE_IMAGE } from '../../../utils/image';
 
 interface BookingCardProps {
   booking: Booking;
@@ -20,7 +21,7 @@ interface BookingCardProps {
   handleReturnBooking?: (id: string) => void;
 }
 
-export const BookingCard: React.FC<BookingCardProps> = ({
+export const BookingCard: React.FC<BookingCardProps> = React.memo(({
   booking,
   handleCancelBooking,
   onOpenTracking,
@@ -32,6 +33,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   const isPending = booking.status === 'Pending';
   const isConfirmed = booking.status === 'Confirmed';
   const isRented = booking.status === 'Rented' || booking.status === 'Ongoing';
+  const isReturning = booking.status === 'Returning';
   const isOngoing = isConfirmed || isRented;
   const isCompleted = booking.status === 'Completed';
   const isReviewed = booking.status === 'Đã đánh giá';
@@ -41,9 +43,19 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   const rentalDays = booking.rentalDays || 2;
   const calculatedTotal = booking.totalAmount || (basePriceNum * rentalDays);
 
+  const [imgSrc, setImgSrc] = React.useState<string>(() => resolveImageUrl(booking.image, booking.bikeName));
+
+  React.useEffect(() => {
+    setImgSrc(resolveImageUrl(booking.image, booking.bikeName));
+  }, [booking.image, booking.bikeName]);
+
   return (
     <View style={styles.bookingCard}>
-      <Image source={{ uri: booking.image }} style={styles.bookingImage} />
+      <Image 
+        source={{ uri: imgSrc }} 
+        style={styles.bookingImage} 
+        onError={() => setImgSrc(DEFAULT_BIKE_IMAGE)}
+      />
       <View style={styles.bookingDetails}>
         <View style={styles.bookingHeader}>
           <Text style={styles.bookingCode}>Mã: #{booking.bookingCode || booking.id}</Text>
@@ -207,9 +219,14 @@ export const BookingCard: React.FC<BookingCardProps> = ({
                 style={[styles.feedbackBtn, { flex: 1.2, backgroundColor: COLORS.approved }]}
                 onPress={() => handleReturnBooking?.(booking.id)}
               >
-                <Feather name="key" size={12} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={[styles.feedbackBtnText, { color: '#fff' }]}>Trả xe</Text>
+                <Feather name="send" size={12} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={[styles.feedbackBtnText, { color: '#fff' }]}>Yêu cầu trả xe</Text>
               </TouchableOpacity>
+            ) : isReturning ? (
+              <View style={[styles.lockedLabel, { borderColor: COLORS.warning, backgroundColor: 'rgba(245,158,11,0.15)' }]}>
+                <Feather name="clock" size={12} color={COLORS.warning} style={{ marginRight: 4 }} />
+                <Text style={[styles.lockedLabelText, { color: COLORS.warning }]}>Chờ duyệt trả xe</Text>
+              </View>
             ) : isCompleted ? (
               <TouchableOpacity 
                 style={styles.feedbackBtn}
@@ -235,7 +252,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
       </View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   bookingCard: {

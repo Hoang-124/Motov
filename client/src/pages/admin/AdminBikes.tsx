@@ -9,7 +9,7 @@ import {
   Motorbike
 } from '../../services/vehicleService';
 import { getAllCategories, Category } from '../../services/categoryService';
-import { Plus, Edit2, Trash2, X, AlertCircle, Sparkles, User, Check, RefreshCw, Loader } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, AlertCircle, Sparkles, User, Check, RefreshCw, Loader, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800';
@@ -20,6 +20,7 @@ export const AdminBikes = () => {
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentBike, setCurrentBike] = useState<Partial<Motorbike> | null>(null);
+  const [inspectingBike, setInspectingBike] = useState<Motorbike | null>(null);
 
   // Form fields
   const [vehicleModel, setVehicleModel] = useState('');
@@ -160,6 +161,24 @@ export const AdminBikes = () => {
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setErrorMessage(err.message || 'Lỗi khi phê duyệt xe. Vui lòng thử lại.');
+      setTimeout(() => setErrorMessage(null), 3000);
+    }
+  };
+
+  const handleRejectBike = async (id: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn từ chối đăng ký xe này?')) return;
+    try {
+      const token = localStorage.getItem('token') || '';
+      if (!token) {
+        setErrorMessage('Bạn cần đăng nhập để thực hiện.');
+        return;
+      }
+      await deleteMotorbike(id, token);
+      setSuccessMessage('Đã từ chối và xóa đăng ký xe thành công!');
+      await loadBikes();
+      setTimeout(() => setSuccessMessage(null), 3500);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Lỗi khi từ chối đăng ký xe');
       setTimeout(() => setErrorMessage(null), 3000);
     }
   };
@@ -464,11 +483,11 @@ export const AdminBikes = () => {
                         <div className="flex justify-end gap-2">
                           {bike.status === 'PendingApproval' && (
                             <button
-                              onClick={() => handleApproveBike(bike._id!)}
-                              className="p-2 rounded bg-black hover:bg-green-950/40 text-green-500 border border-gray-800 hover:border-green-500/30 transition-all cursor-pointer"
-                              title="Phê duyệt xe hoạt động"
+                              onClick={() => setInspectingBike(bike)}
+                              className="px-3 py-1.5 rounded-lg bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 hover:bg-yellow-500/20 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                              title="Đối chiếu thông tin & Phê duyệt"
                             >
-                              <Check size={14} />
+                              <Eye size={14} /> Đối chiếu & Phê duyệt
                             </button>
                           )}
                           {bike.requiresMaintenance && (
@@ -792,6 +811,122 @@ export const AdminBikes = () => {
                   >
                     Xóa
                   </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Inspection & Document Comparison Modal */}
+        <AnimatePresence>
+          {inspectingBike && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-surface border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6"
+              >
+                <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-800">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Eye className="text-neon" size={20} /> Đối Chiếu Thông Tin Đăng Ký Xe
+                  </h3>
+                  <button
+                    onClick={() => setInspectingBike(null)}
+                    className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 cursor-pointer"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* 1. Actual Bike Image */}
+                  <div>
+                    <h4 className="text-xs font-bold text-neon uppercase tracking-wider mb-2">1. Ảnh chụp thực tế của xe</h4>
+                    <div className="rounded-xl overflow-hidden border border-gray-800 h-48 bg-black">
+                      <img
+                        src={inspectingBike.imageUrls?.[0] || (inspectingBike as any).image || DEFAULT_IMAGE}
+                        alt={inspectingBike.vehicleModel}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 2. Registration Certificate Image */}
+                  <div>
+                    <h4 className="text-xs font-bold text-neon uppercase tracking-wider mb-2">2. Ảnh cà vẹt / Giấy đăng ký xe</h4>
+                    {inspectingBike.regCertificateUrl ? (
+                      <div className="rounded-xl overflow-hidden border border-gray-800 h-48 bg-black">
+                        <img
+                          src={inspectingBike.regCertificateUrl}
+                          alt="Cà vẹt xe"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-xl border border-dashed border-gray-800 bg-black/50 text-center text-xs text-gray-500">
+                        ⚠️ Chủ xe chưa tải lên hình ảnh cà vẹt / đăng ký xe.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3. Specs Details */}
+                  <div>
+                    <h4 className="text-xs font-bold text-neon uppercase tracking-wider mb-2">3. Thông tin kỹ thuật xe</h4>
+                    <div className="bg-black/40 border border-gray-800 rounded-xl p-4 space-y-2 text-xs">
+                      <div className="flex justify-between"><span className="text-gray-400">Mẫu xe:</span> <span className="text-white font-bold">{inspectingBike.vehicleModel}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-400">Biển số:</span> <span className="text-neon font-bold">{inspectingBike.licensePlate}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-400">Giá thuê:</span> <span className="text-white font-bold">{inspectingBike.rentalPrice.toLocaleString('vi-VN')} VNĐ/ngày</span></div>
+                      <div className="flex justify-between"><span className="text-gray-400">Hộp số:</span> <span className="text-white">{inspectingBike.transmissionType === 'Manual' ? 'Xe số' : inspectingBike.transmissionType === 'Automatic' ? 'Xe ga' : 'Xe côn'}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-400">Địa chỉ:</span> <span className="text-white">{(inspectingBike as any).address || (inspectingBike.location as any)?.address || 'Chưa cập nhật'}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-400">Mô tả:</span> <span className="text-white">{inspectingBike.description || 'Không có mô tả'}</span></div>
+                    </div>
+                  </div>
+
+                  {/* 4. Owner Info */}
+                  <div>
+                    <h4 className="text-xs font-bold text-neon uppercase tracking-wider mb-2">4. Thông tin chủ xe (Đối tác)</h4>
+                    <div className="bg-black/40 border border-gray-800 rounded-xl p-4 space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Chủ sở hữu:</span>
+                        <span className="text-white font-bold">
+                          {typeof inspectingBike.ownerId === 'object' && inspectingBike.ownerId
+                            ? `${inspectingBike.ownerId.firstName || ''} ${inspectingBike.ownerId.lastName || ''}`.trim() || inspectingBike.ownerId.email
+                            : 'Chủ xe'}
+                        </span>
+                      </div>
+                      {typeof inspectingBike.ownerId === 'object' && inspectingBike.ownerId && (
+                        <>
+                          <div className="flex justify-between"><span className="text-gray-400">Email:</span> <span className="text-white">{inspectingBike.ownerId.email}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-400">SĐT:</span> <span className="text-white">{inspectingBike.ownerId.phoneNumber || 'N/A'}</span></div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex gap-3 pt-4 border-t border-gray-800">
+                    <button
+                      onClick={() => {
+                        const id = inspectingBike._id!;
+                        setInspectingBike(null);
+                        handleRejectBike(id);
+                      }}
+                      className="flex-1 py-3 rounded-xl border border-red-500/30 text-red-500 font-bold text-xs hover:bg-red-500/10 transition-all cursor-pointer"
+                    >
+                      TỪ CHỐI ĐĂNG KÝ
+                    </button>
+                    <button
+                      onClick={() => {
+                        const id = inspectingBike._id!;
+                        setInspectingBike(null);
+                        handleApproveBike(id);
+                      }}
+                      className="flex-1 py-3 rounded-xl bg-neon text-dark font-bold text-xs hover:opacity-90 transition-all cursor-pointer shadow-lg shadow-neon/20"
+                    >
+                      PHÊ DUYỆT XE MỚI
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             </div>

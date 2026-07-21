@@ -13,6 +13,7 @@ import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../../theme/colors';
 import { useAppSelector } from '../../../app/store';
 import { API_BASE_URL } from '../../../constants/api';
+import { apiFetch } from '../../../utils/api';
 
 interface FeedbackItem {
   _id: string;
@@ -34,16 +35,11 @@ export const AdminFeedbacksScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'blocked' | 'suspected'>('all');
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
   const fetchFeedbacks = async () => {
     try {
       setLoading(true);
       const params = filterStatus !== 'all' ? `?status=${filterStatus}` : '';
-      const res = await fetch(`${API_BASE_URL}/feedbacks/admin${params}`, { headers });
+      const res = await apiFetch(`/feedbacks/admin${params}`);
       const data = await res.json();
       setFeedbacks(data.data || []);
     } catch {
@@ -63,8 +59,9 @@ export const AdminFeedbacksScreen: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await fetch(`${API_BASE_URL}/feedbacks/${id}/block`, {
-              method: 'PUT', headers, body: JSON.stringify({ blockReason: 'Vi phạm quy tắc cộng đồng' }),
+            await apiFetch(`/feedbacks/${id}/block`, {
+              method: 'PUT',
+              body: JSON.stringify({ blockReason: 'Vi phạm quy tắc cộng đồng' }),
             });
             Alert.alert('Thành Công', 'Đã chặn đánh giá!');
             fetchFeedbacks();
@@ -76,7 +73,7 @@ export const AdminFeedbacksScreen: React.FC = () => {
 
   const handleUnblock = async (id: string) => {
     try {
-      await fetch(`${API_BASE_URL}/feedbacks/${id}/unblock`, { method: 'PUT', headers });
+      await apiFetch(`/feedbacks/${id}/unblock`, { method: 'PUT' });
       Alert.alert('Thành Công', 'Đã bỏ chặn đánh giá!');
       fetchFeedbacks();
     } catch { Alert.alert('Lỗi', 'Không thể bỏ chặn.'); }
@@ -86,10 +83,11 @@ export const AdminFeedbacksScreen: React.FC = () => {
     Alert.alert('Xóa Đánh Giá', 'Xóa vĩnh viễn đánh giá này?', [
       { text: 'Hủy', style: 'cancel' },
       {
-        text: 'Xóa', style: 'destructive',
+        text: 'Xóa',
+        style: 'destructive',
         onPress: async () => {
           try {
-            await fetch(`${API_BASE_URL}/feedbacks/${id}`, { method: 'DELETE', headers });
+            await apiFetch(`/feedbacks/${id}`, { method: 'DELETE' });
             Alert.alert('Thành Công', 'Đã xóa đánh giá!');
             fetchFeedbacks();
           } catch { Alert.alert('Lỗi', 'Không thể xóa.'); }

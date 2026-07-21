@@ -19,6 +19,7 @@ import { useAppSelector, useAppDispatch } from '../../../app/store';
 import { updateUser, logout, UserRole, getMemberTag } from '../userSlice';
 import { AuthScreen } from './AuthScreen';
 import { API_BASE_URL } from '../../../constants/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Preset avatar options for interactive demo
 const PRESET_AVATARS = [
@@ -245,6 +246,7 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const submitEkycData = async (selfieUrl: string) => {
+    setEkycError(null);
     try {
       const response = await fetch(`${API_BASE_URL}/auth/verify-identity`, {
         method: 'POST',
@@ -270,7 +272,9 @@ export const ProfileScreen: React.FC = () => {
         throw new Error(data.message || 'Xác thực eKYC thất bại.');
       }
     } catch (err: any) {
-      setScanLogs(prev => [...prev, `Lỗi: ${err.message || 'Lỗi kết nối máy chủ'}`]);
+      const errMsg = err.message || 'Lỗi kết nối máy chủ';
+      setEkycError(errMsg);
+      setScanLogs(prev => [...prev, `Lỗi: ${errMsg}`]);
     }
   };
 
@@ -421,7 +425,8 @@ export const ProfileScreen: React.FC = () => {
         {
           text: 'Đăng xuất',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            await AsyncStorage.removeItem('user_session');
             dispatch(logout());
             setActiveSection('menu'); // reset section on logout
             Alert.alert('Đã Đăng Xuất', 'Hẹn gặp lại bạn lần sau!');
@@ -1068,26 +1073,65 @@ export const ProfileScreen: React.FC = () => {
               {/* BƯỚC 3: PHÂN TÍCH OCR & ĐỐI KHỚP */}
               {ekycStep === 'scanning' && (
                 <View style={styles.stepContainer}>
-                  <ActivityIndicator size="large" color={COLORS.accent} style={{ marginBottom: 20 }} />
+                  {!ekycError ? (
+                    <ActivityIndicator size="large" color={COLORS.accent} style={{ marginBottom: 20 }} />
+                  ) : (
+                    <Feather name="alert-circle" size={40} color={COLORS.danger} style={{ marginBottom: 16 }} />
+                  )}
+                  
                   <Text style={styles.stepInstruction}>
-                    Đang xử lý thông tin giấy tờ và chạy thuật toán so sánh khuôn mặt...
+                    {ekycError ? `⚠️ ${ekycError}` : 'Đang xử lý thông tin giấy tờ và chạy thuật toán so sánh khuôn mặt...'}
                   </Text>
 
                   {/* Progress bar */}
                   <View style={styles.progressContainer}>
                     <View style={styles.progressBarBg}>
-                      <View style={[styles.progressBarFill, { width: `${scanProgress}%` }]} />
+                      <View style={[
+                        styles.progressBarFill,
+                        { width: `${scanProgress}%` },
+                        ekycError ? { backgroundColor: COLORS.danger } : null
+                      ]} />
                     </View>
-                    <Text style={styles.progressText}>{Math.round(scanProgress)}%</Text>
+                    <Text style={[styles.progressText, ekycError ? { color: COLORS.danger } : null]}>
+                      {Math.round(scanProgress)}%
+                    </Text>
                   </View>
 
                   {/* Logs quét */}
                   <View style={styles.logsCard}>
                     <Text style={styles.logsHeader}>LOGS HỆ THỐNG AI OCR:</Text>
-                    {scanLogs.map((log, index) => (
-                      <Text key={index} style={styles.logLineText}>⚙ {log}</Text>
-                    ))}
+                    {scanLogs.map((log, index) => {
+                      const isErr = log.startsWith('Lỗi:');
+                      return (
+                        <Text key={index} style={[styles.logLineText, isErr && { color: COLORS.danger, fontWeight: 'bold' }]}>
+                          {isErr ? '🛑 ' : '⚙ '}{log}
+                        </Text>
+                      );
+                    })}
                   </View>
+
+                  {ekycError && (
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 20, width: '100%' }}>
+                      <TouchableOpacity
+                        style={{ flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center' }}
+                        onPress={() => {
+                          setEkycError(null);
+                          setEkycStep('upload');
+                        }}
+                      >
+                        <Text style={{ color: COLORS.textMuted, fontWeight: 'bold', fontSize: 13 }}>ĐỔI ẢNH THỬ LẠI</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: COLORS.accent, alignItems: 'center' }}
+                        onPress={() => {
+                          setEkycError(null);
+                          startOcrScan(selfie || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300');
+                        }}
+                      >
+                        <Text style={{ color: COLORS.accentDark, fontWeight: '900', fontSize: 13 }}>THỬ GỬI LẠI</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               )}
 

@@ -14,6 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import { Bike } from '../../../types';
 import { COLORS } from '../../../theme/colors';
 import { API_BASE_URL } from '../../../constants/api';
+import { apiFetch } from '../../../utils/api';
 
 const { width } = Dimensions.get('window');
 
@@ -95,9 +96,8 @@ export const CompareBikesModal: React.FC<CompareBikesModalProps> = ({ visible, o
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/vehicles/compare`, {
+      const res = await apiFetch('/vehicles/compare', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vehicleIds: selectedIds }),
       });
       const data = await res.json();

@@ -31,13 +31,9 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
 
   const handleRatingSubmit = () => {
     if (!bookingId) return;
-    if (!content.trim()) {
-      Alert.alert(t('common.error'), t('feedback.commentPlaceholder'));
-      return;
-    }
+    const finalContent = content.trim() || 'Chuyến đi tuyệt vời! Xe rất tốt.';
 
-    onSubmit(bookingId, rating, content);
-    Alert.alert(t('common.success'), t('feedback.feedbackSuccess'));
+    onSubmit(bookingId, rating, finalContent);
     setContent('');
     setRating(5);
     onClose();

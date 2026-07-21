@@ -9,10 +9,13 @@ import {
   Text,
   Alert,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Provider } from 'react-redux';
 import { CustomAlert, CustomAlertProvider } from './src/components/CustomAlert';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { updateUser } from './src/features/profile/userSlice';
 
 // Overwrite Alert.alert globally with our custom beautiful modal alert
 const nativeAlert = Alert.alert;
@@ -51,8 +54,14 @@ import { AdminUsersScreen } from './src/features/admin/screens/AdminUsersScreen'
 import { AdminPromotionsScreen } from './src/features/admin/screens/AdminPromotionsScreen';
 import { AdminCategoriesScreen } from './src/features/admin/screens/AdminCategoriesScreen';
 import { AdminFeedbacksScreen } from './src/features/admin/screens/AdminFeedbacksScreen';
+import { AdminSettingsScreen } from './src/features/admin/screens/AdminSettingsScreen';
 
-const renderTabIcon = (tabId: string, isActive: boolean) => {
+// Import Chat screens & Context
+import { ChatProvider, useChat } from './src/contexts/ChatContext';
+import { ConversationListScreen } from './src/features/chat/screens/ConversationListScreen';
+import { ChatDetailScreen } from './src/features/chat/screens/ChatDetailScreen';
+
+const renderTabIcon = (tabId: string, isActive: boolean, unreadCount: number = 0) => {
   const color = isActive ? COLORS.accent : COLORS.textMuted;
   const size = 20;
   switch (tabId) {
@@ -68,6 +77,27 @@ const renderTabIcon = (tabId: string, isActive: boolean) => {
     case 'staff_bookings':
     case 'admin_bookings':
       return <Feather name="calendar" size={size} color={color} />;
+    case 'chat':
+      return (
+        <View style={{ position: 'relative' }}>
+          <Feather name="message-square" size={size} color={color} />
+          {unreadCount > 0 && (
+            <View style={{
+              position: 'absolute',
+              top: -5,
+              right: -8,
+              backgroundColor: '#ef4444',
+              borderRadius: 8,
+              paddingHorizontal: 4,
+              paddingVertical: 1,
+              minWidth: 14,
+              alignItems: 'center',
+            }}>
+              <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '900' }}>{unreadCount}</Text>
+            </View>
+          )}
+        </View>
+      );
     case 'owner_dashboard':
     case 'staff_dashboard':
     case 'admin_dashboard':
@@ -92,6 +122,7 @@ const ADMIN_SECTIONS = [
   { id: 'admin_promotions', label: 'KM', icon: 'tag' as const },
   { id: 'admin_categories', label: 'Danh mục', icon: 'folder' as const },
   { id: 'admin_feedbacks', label: 'Đánh giá', icon: 'message-square' as const },
+  { id: 'admin_settings', label: 'Cài đặt', icon: 'settings' as const },
 ];
 
 function AdminManageScreen({ activeSubTab, setActiveSubTab }: { activeSubTab: string; setActiveSubTab: (t: string) => void }) {
@@ -134,6 +165,7 @@ function AdminManageScreen({ activeSubTab, setActiveSubTab }: { activeSubTab: st
       {activeSubTab === 'admin_promotions' && <AdminPromotionsScreen />}
       {activeSubTab === 'admin_categories' && <AdminCategoriesScreen />}
       {activeSubTab === 'admin_feedbacks' && <AdminFeedbacksScreen />}
+      {activeSubTab === 'admin_settings' && <AdminSettingsScreen />}
     </View>
   );
 }
@@ -141,7 +173,27 @@ function AdminManageScreen({ activeSubTab, setActiveSubTab }: { activeSubTab: st
 function MainApp() {
   const dispatch = useAppDispatch();
   const role = useAppSelector(state => state.user.role);
+  const { unreadCount, activeConversation, selectConversation } = useChat();
   const [activeTab, setActiveTab] = useState<string>('home');
+  const [isHydrating, setIsHydrating] = useState(true);
+
+  // Load persisted session on startup
+  useEffect(() => {
+    const hydrateSession = async () => {
+      try {
+        const sessionStr = await AsyncStorage.getItem('user_session');
+        if (sessionStr) {
+          const session = JSON.parse(sessionStr);
+          dispatch(updateUser(session));
+        }
+      } catch (e) {
+        console.error('Failed to hydrate session:', e);
+      } finally {
+        setIsHydrating(false);
+      }
+    };
+    hydrateSession();
+  }, [dispatch]);
 
   // Admin sub-tab state
   const [adminSubTab, setAdminSubTab] = useState<string>('admin_bikes');
@@ -259,6 +311,7 @@ function MainApp() {
           { id: 'home', label: 'Trang chủ' },
           { id: 'bikes', label: 'Dòng xe' },
           { id: 'bookings', label: 'Đơn thuê' },
+          { id: 'chat', label: 'Chat' },
           { id: 'owner_dashboard', label: 'Chủ xe' },
           { id: 'profile', label: 'Cá nhân' }
         ];
@@ -266,6 +319,7 @@ function MainApp() {
         return [
           { id: 'admin_dashboard', label: 'Tổng hợp' },
           { id: 'admin_bookings', label: 'Đơn hàng' },
+          { id: 'chat', label: 'Chat' },
           { id: 'admin_manage', label: 'Quản trị' },
           { id: 'profile', label: 'Cá nhân' }
         ];
@@ -273,6 +327,7 @@ function MainApp() {
         return [
           { id: 'staff_dashboard', label: 'Tổng hợp' },
           { id: 'staff_bookings', label: 'Yêu cầu' },
+          { id: 'chat', label: 'Chat' },
           { id: 'staff_schedule', label: 'Lịch trình' },
           { id: 'staff_inventory', label: 'Kho' },
           { id: 'profile', label: 'Cá nhân' }
@@ -282,6 +337,7 @@ function MainApp() {
           { id: 'home', label: 'Trang chủ' },
           { id: 'bikes', label: 'Dòng xe' },
           { id: 'bookings', label: 'Đơn thuê' },
+          { id: 'chat', label: 'Chat' },
           { id: 'profile', label: 'Cá nhân' }
         ];
       default: // guest
@@ -294,6 +350,15 @@ function MainApp() {
   };
 
   const tabs = getTabs();
+
+  if (isHydrating) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={COLORS.accent} />
+        <Text style={{ color: COLORS.text, marginTop: 16, fontWeight: 'bold', fontSize: 14, letterSpacing: 1.5 }}>ĐANG TẢI MOTOV...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -369,6 +434,14 @@ function MainApp() {
         {activeTab === 'admin_manage' && (
           <AdminManageScreen activeSubTab={adminSubTab} setActiveSubTab={setAdminSubTab} />
         )}
+        {/* --- CHAT VIEW --- */}
+        {activeTab === 'chat' && (
+          activeConversation ? (
+            <ChatDetailScreen onBack={() => selectConversation(null)} />
+          ) : (
+            <ConversationListScreen onSelectConversation={(conv) => selectConversation(conv)} />
+          )
+        )}
       </View>
 
       {/* --- BOTTOM TAB NAVIGATION BAR --- */}
@@ -382,7 +455,7 @@ function MainApp() {
               onPress={() => setActiveTab(tab.id)}
             >
               <View style={[styles.tabItemContainer, isActive && styles.tabItemContainerActive]}>
-                {renderTabIcon(tab.id, isActive)}
+                {renderTabIcon(tab.id, isActive, unreadCount)}
                 <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
                   {tab.label}
                 </Text>
@@ -408,8 +481,10 @@ function MainApp() {
 export default function App() {
   return (
     <Provider store={store}>
-      <MainApp />
-      <CustomAlertProvider />
+      <ChatProvider>
+        <MainApp />
+        <CustomAlertProvider />
+      </ChatProvider>
     </Provider>
   );
 }

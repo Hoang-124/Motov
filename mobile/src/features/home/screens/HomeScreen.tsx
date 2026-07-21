@@ -20,6 +20,7 @@ import { NotificationModal } from '../components/NotificationModal';
 import { BikeDetailModal } from '../../bikes/components/BikeDetailModal';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { API_BASE_URL } from '../../../constants/api';
+import { apiFetch } from '../../../utils/api';
 
 const { width } = Dimensions.get('window');
 
@@ -66,9 +67,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     let isMounted = true;
     const fetchUnreadCount = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/notifications`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await apiFetch('/notifications');
         const data = await response.json();
         if (isMounted && data.success) {
           setUnreadNotiCount(data.unreadCount);

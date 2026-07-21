@@ -185,7 +185,6 @@ export const StaffBikes = () => {
         <div className="flex gap-2 overflow-x-auto pb-4 mb-6 border-b border-gray-900/60">
           {[
             { key: 'All', label: 'Tất cả xe' },
-            { key: 'PendingApproval', label: 'Chờ phê duyệt' },
             { key: 'Available', label: 'Sẵn sàng' },
             { key: 'Rented', label: 'Đang cho thuê' },
             { key: 'Maintenance', label: 'Đang bảo trì' }

@@ -120,7 +120,7 @@ app.use('/api', csrfProtection as any);
 // SEC-FIX: Rate limiting for auth endpoints (brute force protection)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // max 20 requests per windowMs
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // Increased for dev/testing
   message: { success: false, message: 'Quá nhiều yêu cầu, vui lòng thử lại sau 15 phút' },
   standardHeaders: true,
   legacyHeaders: false
@@ -180,9 +180,10 @@ const upload = multer({
   fileFilter: (req: any, file: any, cb: any) => {
     const filetypes = /jpeg|jpg|png|webp/;
     const mimetype = filetypes.test(file.mimetype);
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const ext = path.extname(file.originalname).toLowerCase();
+    const extname = ext ? filetypes.test(ext) : true;
 
-    if (mimetype && extname) {
+    if (mimetype || extname) {
       return cb(null, true);
     }
     cb(new Error('Chỉ cho phép tải lên file ảnh (.jpg, .jpeg, .png, .webp)'));
