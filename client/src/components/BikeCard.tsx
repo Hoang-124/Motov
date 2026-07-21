@@ -148,7 +148,7 @@ export const BikeCard = ({ bike, large = false }: BikeCardProps) => {
     <motion.div 
       whileHover={{ y: -8 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className={`glass-premium border border-white/5 rounded-2xl p-5 flex flex-col h-full group ${large ? 'lg:col-span-2' : ''} hover:border-neon/50 hover:shadow-[0_0_30px_rgba(204,255,0,0.15)] transition-all duration-300`}
+      className={`glass-2026 rounded-2xl p-5 flex flex-col h-full group ${large ? 'lg:col-span-2' : ''} transition-all duration-300`}
     >
       <div className={`relative mb-6 rounded-xl overflow-hidden bg-black ${large ? 'aspect-video lg:aspect-[21/9]' : 'aspect-video'}`}>
         <Link to={`/motorbike/${bike._id}`} className="block w-full h-full">

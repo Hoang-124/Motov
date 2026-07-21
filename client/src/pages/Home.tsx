@@ -258,7 +258,7 @@ const StatsSection = () => {
 const HeroSection = () => {
   const { t, language } = useLanguage();
   return (
-    <section className="relative pt-20 pb-12 lg:pt-28 lg:pb-20 min-h-[75vh] flex items-center overflow-hidden">
+    <section className="relative pt-20 pb-12 lg:pt-28 lg:pb-20 min-h-[75vh] flex items-center overflow-hidden ambient-mesh-bg">
       {/* Background Image & Overlay */}
       <div className="absolute inset-0 z-0">
         <img

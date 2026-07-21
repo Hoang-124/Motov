@@ -61,27 +61,27 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
-/* UI/UX Pro Max Modern Utility System */
+/* UI/UX Pro Max Modern Utility System - Pure Pitch Black Theme */
 .ui-pro-glass {
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(12, 12, 12, 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(204, 255, 0, 0.18);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(204, 255, 0, 0.22);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.95);
 }
 
 .ui-pro-btn-primary {
   background: #ccff00;
-  color: #0f172a;
+  color: #000000;
   font-weight: 900;
   border-radius: 12px;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 20px rgba(204, 255, 0, 0.3);
+  box-shadow: 0 4px 20px rgba(204, 255, 0, 0.35);
 }
 
 .ui-pro-btn-primary:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 25px rgba(204, 255, 0, 0.5);
+  box-shadow: 0 8px 25px rgba(204, 255, 0, 0.55);
 }
 
 .ui-pro-btn-primary:active {
@@ -127,4 +127,28 @@
 
 .neon-badge-pulse {
   animation: neon-pulse 3s infinite ease-in-out;
+}
+
+/* 2026 Modern Design Trends Utilities - Pure Black Aesthetic */
+.glass-2026 {
+  background: rgba(14, 14, 14, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.95);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-2026:hover {
+  border-color: rgba(204, 255, 0, 0.35);
+  box-shadow: 0 30px 60px -12px rgba(204, 255, 0, 0.2);
+  transform: translateY(-4px);
+}
+
+.ambient-mesh-bg {
+  background-color: #050505;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(204, 255, 0, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(255, 255, 255, 0.03) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(204, 255, 0, 0.04) 0px, transparent 50%);
 }

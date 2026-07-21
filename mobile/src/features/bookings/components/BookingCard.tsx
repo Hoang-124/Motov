@@ -63,6 +63,7 @@ export const BookingCard: React.FC<BookingCardProps> = React.memo(({
             styles.statusBadge,
             isPending && styles.statusBadgePending,
             isOngoing && styles.statusBadgeOngoing,
+            isReturning && styles.statusBadgeReturning,
             isCompleted && styles.statusBadgeCompleted,
             isReviewed && styles.statusBadgeReviewed,
             isCancelled && styles.statusBadgeCancelled,
@@ -71,10 +72,11 @@ export const BookingCard: React.FC<BookingCardProps> = React.memo(({
               styles.statusText,
               isPending && { color: COLORS.warning },
               isOngoing && { color: COLORS.approved },
+              isReturning && { color: COLORS.pending },
               isCompleted && { color: '#3b82f6' },
               isReviewed && { color: COLORS.accent },
               isCancelled && { color: COLORS.danger },
-            ]}>{booking.statusLabel || booking.status}</Text>
+            ]}>{booking.statusLabel || (isReturning ? 'Chờ duyệt trả xe' : booking.status)}</Text>
           </View>
         </View>
 
@@ -291,6 +293,10 @@ const styles = StyleSheet.create({
   statusBadgePending: {
     backgroundColor: COLORS.warningBg,
     borderColor: COLORS.warningBorder,
+  },
+  statusBadgeReturning: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: 'rgba(245, 158, 11, 0.5)',
   },
   statusBadgeOngoing: {
     backgroundColor: COLORS.approvedBg,
