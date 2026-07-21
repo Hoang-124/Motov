@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CalendarDays, MapPin, ClipboardList, Trash2, RefreshCw, Star, X, AlertCircle, Clock, ShieldAlert, CheckCircle, HelpCircle, Info } from 'lucide-react';
+import { CalendarDays, MapPin, ClipboardList, Trash2, RefreshCw, Star, X, AlertCircle, Clock, ShieldAlert, CheckCircle, HelpCircle, Info, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { bookingService, Booking } from '../services/bookingService'; // Import Service
 import { useLanguage } from '../hooks/useLanguage';
@@ -37,6 +37,47 @@ export const Bookings = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [activeCancelBookingId, setActiveCancelBookingId] = useState<string | null>(null);
   const [cancelReasonInput, setCancelReasonInput] = useState('');
+
+  // State cho Modal xem ảnh biên bản bàn giao / thu hồi
+  const [inspectionPhotosModal, setInspectionPhotosModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    data: any | null;
+  } | null>(null);
+
+  const openInspectionModal = (bookingId: string) => {
+    const returnDataRaw = localStorage.getItem(`return_${bookingId}`);
+    const handoverDataRaw = localStorage.getItem(`handover_${bookingId}`);
+
+    if (returnDataRaw) {
+      try {
+        const parsed = JSON.parse(returnDataRaw);
+        setInspectionPhotosModal({
+          isOpen: true,
+          title: language === 'vi' ? 'Biên bản & Ảnh thu hồi xe' : 'Return Inspection & Photos',
+          data: parsed
+        });
+        return;
+      } catch (e) {}
+    }
+
+    if (handoverDataRaw) {
+      try {
+        const parsed = JSON.parse(handoverDataRaw);
+        setInspectionPhotosModal({
+          isOpen: true,
+          title: language === 'vi' ? 'Biên bản & Ảnh bàn giao xe' : 'Handover Inspection & Photos',
+          data: parsed
+        });
+        return;
+      } catch (e) {}
+    }
+
+    showToast(
+      language === 'vi' ? 'Chưa có ảnh biên bản được lưu cho đơn hàng này.' : 'No inspection photos saved for this booking.',
+      'info'
+    );
+  };
   const [searchParams] = useSearchParams();
   const initialStatus = searchParams.get('status') || 'All';
   const [filterStatus, setFilterStatus] = useState<string>(initialStatus);
@@ -390,8 +431,19 @@ export const Bookings = () => {
                     </div>
                   </div>
 
-                  {/* Nút hủy đơn / trả xe / đánh giá liên kết API */}
-                  <div className="w-full md:w-auto flex justify-end md:self-center border-t md:border-t-0 pt-4 md:pt-0 border-gray-800/50">
+                  {/* Nút hủy đơn / trả xe / đánh giá / xem ảnh biên bản */}
+                  <div className="w-full md:w-auto flex flex-wrap gap-2 justify-end md:self-center border-t md:border-t-0 pt-4 md:pt-0 border-gray-800/50">
+                    {(booking.status === 'Completed' || booking.status === 'Returning' || booking.status === 'Ongoing') && (
+                      <button
+                        type="button"
+                        onClick={() => openInspectionModal(booking.id)}
+                        className="flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white px-3 py-2 rounded-xl transition-all text-xs font-semibold border border-white/10 cursor-pointer"
+                      >
+                        <Camera size={14} className="text-neon" />
+                        <span>{language === 'vi' ? 'Ảnh biên bản' : 'Inspection Photos'}</span>
+                      </button>
+                    )}
+
                     {booking.status === 'Pending' ? (
                       <button 
                         onClick={() => openCancelModal(booking.id)}
@@ -837,6 +889,105 @@ export const Bookings = () => {
       {/* Chat Integration */}
       {!isChatOpen && <BookingChatFAB onClick={openChat} />}
       <BookingChatModal isOpen={isChatOpen} onClose={closeChat} />
+
+      {/* Modal Xem Ảnh Biên Bản (Thu hồi / Bàn giao xe) */}
+      <AnimatePresence>
+        {inspectionPhotosModal && inspectionPhotosModal.isOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setInspectionPhotosModal(null)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              className="bg-surface border border-white/10 rounded-2xl p-6 shadow-2xl relative w-full max-w-lg z-10 overflow-hidden text-gray-300 flex flex-col max-h-[90vh]"
+            >
+              <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
+              
+              <button 
+                onClick={() => setInspectionPhotosModal(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+              >
+                <X size={20} />
+              </button>
+
+              <h3 className="font-display font-black text-lg text-white uppercase mb-4 flex items-center gap-2 shrink-0">
+                <Camera size={20} className="text-neon shrink-0" />
+                {inspectionPhotosModal.title}
+              </h3>
+
+              <div className="space-y-4 overflow-y-auto pr-1 flex-grow">
+                {/* 4 Ảnh Hiện Trạng */}
+                <div>
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Ảnh hiện trạng 4 góc xe</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { key: 'front', label: 'Mặt trước' },
+                      { key: 'back', label: 'Mặt sau' },
+                      { key: 'left', label: 'Sườn trái' },
+                      { key: 'right', label: 'Sườn phải' }
+                    ].map((item) => {
+                      const imgUrl = inspectionPhotosModal.data?.photos?.[item.key];
+                      return (
+                        <div key={item.key} className="bg-black/40 border border-white/10 rounded-xl p-2 flex flex-col items-center">
+                          <span className="text-[10px] text-gray-400 font-semibold mb-1.5 uppercase">{item.label}</span>
+                          {imgUrl ? (
+                            <img src={imgUrl} alt={item.label} className="w-full h-28 object-cover rounded-lg border border-white/5" />
+                          ) : (
+                            <div className="w-full h-28 bg-black/60 rounded-lg flex items-center justify-center text-[11px] text-gray-600 border border-dashed border-gray-800">
+                              Chưa có ảnh
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Thông số Odometer & Checklist */}
+                <div className="bg-black/30 p-4 rounded-xl border border-white/5 space-y-2.5 text-xs">
+                  {inspectionPhotosModal.data?.endOdometer && (
+                    <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                      <span className="text-gray-400 font-medium">Số Odometer ghi nhận:</span>
+                      <span className="font-bold text-neon font-mono">{inspectionPhotosModal.data.endOdometer} km</span>
+                    </div>
+                  )}
+
+                  {inspectionPhotosModal.data?.checklist && (
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Kiểm tra thiết bị & hiện trạng:</span>
+                      <div className="flex items-center justify-between text-gray-300">
+                        <span>Mũ bảo hiểm đầy đủ (2 mũ):</span>
+                        <span className={inspectionPhotosModal.data.checklist.helmetsReturned ? 'text-neon font-bold' : 'text-red-400 font-bold'}>
+                          {inspectionPhotosModal.data.checklist.helmetsReturned ? '✓ Đạt' : '✗ Thiếu'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-gray-300">
+                        <span>Gương chiếu hậu nguyên vẹn:</span>
+                        <span className={inspectionPhotosModal.data.checklist.mirrorsIntact ? 'text-neon font-bold' : 'text-red-400 font-bold'}>
+                          {inspectionPhotosModal.data.checklist.mirrorsIntact ? '✓ Đạt' : '✗ Hỏng/Thiếu'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-gray-300">
+                        <span>Không phát sinh trầy xước mới:</span>
+                        <span className={inspectionPhotosModal.data.checklist.noNewScratches ? 'text-neon font-bold' : 'text-red-400 font-bold'}>
+                          {inspectionPhotosModal.data.checklist.noNewScratches ? '✓ Đạt' : '✗ Có vết xước'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
