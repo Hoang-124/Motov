@@ -34,7 +34,7 @@ export const Footer = () => {
   };
 
   return (
-    <footer id="footer" className="relative bg-surface pt-16 pb-8 border-t border-gray-800/80 overflow-hidden">
+    <footer id="footer" className="relative bg-[#050505] pt-16 pb-8 border-t border-white/10 overflow-hidden">
       {/* Background cyber grid pattern and radial glow */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:40px_40px] opacity-60 pointer-events-none" />
       <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-neon/5 rounded-full blur-[130px] pointer-events-none" />
@@ -42,9 +42,9 @@ export const Footer = () => {
       <div className="relative max-w-7xl mx-auto px-4 lg:px-8">
 
         {/* Core Value Badges */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-12 border-b border-gray-800/60 mb-12">
-          <div className="flex items-center gap-4 p-4 rounded-xl bg-dark/40 border border-gray-800/50 hover:border-neon/30 transition-colors duration-300">
-            <div className="w-12 h-12 rounded-lg bg-neon/10 flex items-center justify-center text-neon">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-12 border-b border-white/10 mb-12">
+          <div className="flex items-center gap-4 p-5 rounded-2xl glass-2026 border border-white/10 hover:border-neon/40 transition-all duration-300">
+            <div className="w-12 h-12 rounded-xl bg-neon/10 border border-neon/20 flex items-center justify-center text-neon shadow-[0_0_15px_rgba(204,255,0,0.2)]">
               <Compass size={24} />
             </div>
             <div>
@@ -52,8 +52,8 @@ export const Footer = () => {
               <p className="text-gray-400 text-xs mt-0.5">Explore Da Nang at your own pace</p>
             </div>
           </div>
-          <div className="flex items-center gap-4 p-4 rounded-xl bg-dark/40 border border-gray-800/50 hover:border-neon/30 transition-colors duration-300">
-            <div className="w-12 h-12 rounded-lg bg-neon/10 flex items-center justify-center text-neon">
+          <div className="flex items-center gap-4 p-5 rounded-2xl glass-2026 border border-white/10 hover:border-neon/40 transition-all duration-300">
+            <div className="w-12 h-12 rounded-xl bg-neon/10 border border-neon/20 flex items-center justify-center text-neon shadow-[0_0_15px_rgba(204,255,0,0.2)]">
               <ShieldCheck size={24} />
             </div>
             <div>
@@ -61,8 +61,8 @@ export const Footer = () => {
               <p className="text-gray-400 text-xs mt-0.5">Fully inspected & well-maintained bikes</p>
             </div>
           </div>
-          <div className="flex items-center gap-4 p-4 rounded-xl bg-dark/40 border border-gray-800/50 hover:border-neon/30 transition-colors duration-300">
-            <div className="w-12 h-12 rounded-lg bg-neon/10 flex items-center justify-center text-neon">
+          <div className="flex items-center gap-4 p-5 rounded-2xl glass-2026 border border-white/10 hover:border-neon/40 transition-all duration-300">
+            <div className="w-12 h-12 rounded-xl bg-neon/10 border border-neon/20 flex items-center justify-center text-neon shadow-[0_0_15px_rgba(204,255,0,0.2)]">
               <HeartHandshake size={24} />
             </div>
             <div>
