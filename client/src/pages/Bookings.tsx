@@ -567,7 +567,7 @@ export const Bookings = () => {
                 initial={{ scale: 0.95, y: 15, opacity: 0 }}
                 animate={{ scale: 1, y: 0, opacity: 1 }}
                 exit={{ scale: 0.95, y: 15, opacity: 0 }}
-                className="bg-surface border border-white/10 rounded-2xl p-6 shadow-2xl relative w-full max-w-md z-10 overflow-hidden text-gray-300"
+                className="bg-surface border border-white/10 rounded-2xl p-6 shadow-2xl relative w-full max-w-md z-10 overflow-hidden text-gray-300 flex flex-col max-h-[90vh]"
               >
                 <div className="absolute top-0 inset-x-0 h-1 bg-neon shadow-[0_0_15px_rgba(204,255,0,0.5)]"></div>
                 
@@ -578,12 +578,12 @@ export const Bookings = () => {
                   <X size={20} />
                 </button>
 
-                <h3 className="font-display font-black text-lg text-white uppercase mb-4 flex items-center gap-2">
+                <h3 className="font-display font-black text-lg text-white uppercase mb-4 flex items-center gap-2 shrink-0">
                   <Clock size={20} className="text-neon shrink-0" />
                   {t('myBookingsPage.returnModalTitle')}
                 </h3>
 
-                <div className="space-y-4">
+                <div className="space-y-4 overflow-y-auto pr-1 flex-grow">
                   {/* Tên xe */}
                   <div className="flex gap-4 items-center bg-black/30 p-3 rounded-xl border border-white/5">
                     <img 
@@ -701,7 +701,7 @@ export const Bookings = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5 mt-5">
+                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5 mt-4 shrink-0">
                   <button
                     type="button"
                     onClick={() => setShowReturnModal(false)}
