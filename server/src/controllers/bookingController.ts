@@ -1652,7 +1652,7 @@ export const confirmBikePickupByStaff = async (req: AuthRequest, res: Response) 
         userId: booking.userId,
         title: 'Chuyến đi của bạn đã bắt đầu',
         message: `Nhân viên đã xác nhận bàn giao xe cho đơn hàng ${booking.bookingCode}. Chúc bạn có một chuyến đi an toàn!`,
-        type: 'BookingConfirmed',
+        type: 'BookingConfirmed' as const,
         relatedId: booking._id
       };
       if (session) {
