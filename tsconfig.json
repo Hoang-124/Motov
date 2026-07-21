@@ -1,4 +1,10 @@
 {
-  "compilerOptions": {},
-  "extends": "expo/tsconfig.base"
+  "compilerOptions": {
+    "skipLibCheck": true
+  },
+  "references": [
+    { "path": "./client" },
+    { "path": "./server" },
+    { "path": "./mobile" }
+  ]
 }
