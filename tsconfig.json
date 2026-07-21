@@ -2,9 +2,12 @@
   "compilerOptions": {
     "skipLibCheck": true
   },
-  "references": [
-    { "path": "./client" },
-    { "path": "./server" },
-    { "path": "./mobile" }
+  "exclude": [
+    "client",
+    "server",
+    "mobile",
+    "node_modules",
+    "scratch",
+    "dist"
   ]
 }
