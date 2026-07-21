@@ -44,9 +44,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
     if (!token) return; // Only connect if authenticated
 
-    let socketUrl = 'http://localhost:5000';
+    let socketUrl = 'https://motov.onrender.com';
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://motov.onrender.com/api';
       socketUrl = apiUrl.replace(/\/api\/?$/, '');
     } catch (e) {
       console.error('Error parsing VITE_API_URL', e);
