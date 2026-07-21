@@ -48,6 +48,9 @@ async function performTokenRefresh(): Promise<string | null> {
   return null;
 }
 
+// Set default axios header
+axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+
 // 1. Wrap Global Axios
 axios.interceptors.response.use(
   (response) => response,
@@ -80,22 +83,22 @@ axios.interceptors.response.use(
 // 2. Wrap Global Fetch
 const originalFetch = window.fetch;
 window.fetch = async function (input, init) {
-  // Automatically append Authorization header if token exists and header is not explicitly set
   const token = localStorage.getItem('token');
   const actualInit = { ...init };
-  if (token) {
-    const urlString = typeof input === 'string' ? input : (input as Request).url;
-    const isSameOrigin = !urlString.startsWith('http://') && !urlString.startsWith('https://') 
-      || urlString.startsWith(API_BASE_URL) 
-      || urlString.startsWith(window.location.origin);
+  const urlString = typeof input === 'string' ? input : (input as Request).url;
+  const isSameOrigin = !urlString.startsWith('http://') && !urlString.startsWith('https://') 
+    || urlString.startsWith(API_BASE_URL) 
+    || urlString.startsWith(window.location.origin);
 
-    if (isSameOrigin) {
-      const headers = new Headers(init?.headers || {});
-      if (!headers.has('Authorization')) {
-        headers.set('Authorization', `Bearer ${token}`);
-      }
-      actualInit.headers = headers;
+  if (isSameOrigin) {
+    const headers = new Headers(init?.headers || {});
+    if (!headers.has('X-Requested-With')) {
+      headers.set('X-Requested-With', 'XMLHttpRequest');
     }
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+    actualInit.headers = headers;
   }
 
   let response = await originalFetch(input, actualInit);
